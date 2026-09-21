@@ -563,7 +563,7 @@ final class UnownTests: XCTestCase {
     }
 
     func testLegacyPendingUnownKeepsDefaultAAtHatch() async throws {
-        let legacy = Data(#"{"pendingHatchID":201,"eggUsage":5000000}"#.utf8)
+        let legacy = Data(#"{"saveVersion":\#(CompanionState.currentSaveVersion),"pendingHatchID":201,"eggUsage":5000000}"#.utf8)
         let decoded = try JSONDecoder().decode(CompanionState.self, from: legacy)
         XCTAssertEqual(decoded.pendingUnownForm, .a)
         let s = try store(decoded, seed: 17)

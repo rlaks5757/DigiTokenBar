@@ -10,7 +10,10 @@ import Foundation
 struct SaveEnvelope: Codable, Sendable {
     static let formatID = "digitokenbar.save"
     /// v2 adds persistent generated Pokémon profiles (IVs, gender, ability, level and moves).
-    static let schemaVersion = 2
+    /// v3: 본문 CompanionState 의 종 식별자 세대(saveVersion)가 바뀌었다 — 구버전 앱이 새 세대로
+    /// 내보낸 파일을 받았을 때 이 스키마 번호만으로도 먼저 걸러내기 위해 올린다. 로컬 로드 게이트
+    /// (CompanionState.currentSaveVersion)와 별개로, "구버전 앱이 새 세대를 수입"하는 경로를 막는다.
+    static let schemaVersion = 3
 
     var format: String
     var schema: Int
@@ -45,6 +48,16 @@ enum SaveTransferError: Error, Equatable {
     case notASaveFile
     /// 이 빌드보다 새 스키마 — 상위 버전에서 만든 세이브.
     case newerSchema(found: Int, supported: Int)
+    /// 본문 `CompanionState` 의 종 식별자 세대가 이 빌드보다 낮다(예: 포켓몬→디지몬 전환 이전 세이브).
+    /// 봉투의 `schema` 만으로는 못 잡는다 — `schema` 는 봉투 구조 버전이라 구세대 본문도 현재 구조를
+    /// 그대로 쓰면 통과하고, `CompanionState` 의 관대 디코딩이 누락된 `saveVersion` 을 0 으로 흡수해
+    /// `applySave()` 가 `load()` 를 거치지 않고 상태를 직접 대입하므로 여기서 막지 않으면 새지 않는다.
+    case olderGeneration(found: Int, supported: Int)
+    /// 본문 `CompanionState` 의 종 식별자 세대가 이 빌드보다 높다 — 더 새 빌드가 내보낸 세이브를
+    /// 구버전 앱으로 열었다. `newerSchema` 와 같은 실패 모드지만 축이 다르다(봉투 구조가 아니라
+    /// 본문 세대). 여기서 갈라내지 않으면 "이전 버전"으로 오안내되어, 실제로는 앱 업데이트로
+    /// 해결되는 상황인데 사용자가 그걸 알 방법이 없다.
+    case newerGeneration(found: Int, supported: Int)
     /// 세이브로 보기엔 과하게 큰 파일 — 파싱이 메인스레드를 오래 잡는다.
     case fileTooLarge(bytes: Int, limit: Int)
     /// 덮어쓰기 전 백업을 못 남겼다 — 확인창이 약속한 복구 수단이 없으므로 불러오기를 중단한다.
@@ -126,6 +139,21 @@ enum SaveTransfer {
         }
         guard var envelope = try? decoder.decode(SaveEnvelope.self, from: data) else {
             throw SaveTransferError.notASaveFile   // 같은 스키마인데 못 읽힘 = 손상
+        }
+        // 본문 세대 게이트 — CompanionStore.load() 와 동일한 검사를 신뢰 경계(여기)에서도 건다.
+        // load() 는 이 경로를 타지 않는다: applySave() 가 상태를 직접 대입한 뒤 save() 를 호출해
+        // saveVersion 을 현재 값으로 재인코딩하므로, 여기서 안 막으면 구세대 상태가 "현재 세대"로
+        // 세탁되어 이후 load() 게이트가 영원히 발동하지 않는다.
+        // 상위/하위를 갈라 안내한다 — SaveHeader/newerSchema 가 봉투 축에서 이미 하는 구분과 같다.
+        // 안 가르면 미래에 이 빌드보다 높은 세대를 열었을 때도 "이전 버전" 으로 오안내되어, 실제로는
+        // 앱 업데이트로 해결되는 상황을 사용자가 영영 알 수 없다.
+        if envelope.state.saveVersion > CompanionState.currentSaveVersion {
+            throw SaveTransferError.newerGeneration(found: envelope.state.saveVersion,
+                                                     supported: CompanionState.currentSaveVersion)
+        }
+        guard envelope.state.saveVersion == CompanionState.currentSaveVersion else {
+            throw SaveTransferError.olderGeneration(found: envelope.state.saveVersion,
+                                                     supported: CompanionState.currentSaveVersion)
         }
         envelope.state = sanitized(envelope.state)
         return envelope

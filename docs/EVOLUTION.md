@@ -121,6 +121,8 @@ Paildramon (331) → Imperialdramon Dragon Mode → Imperialdramon Fighter Mode 
 | Halsemon | `Holsmon` (401) | 이름 조회 실패 |
 | Atlur Kabuterimon | `Atlur Kabuterimon (Blue)` (40) | 정확 일치 없음 |
 | Imperialdramon | `Imperialdramon(Dragon Mode)` | 단독 조회 HTTP 400, **괄호 앞 공백 없음** |
+| Imperialdramon FM (405) | `Imperialdramon(Fighter Mode)` | 같은 표기 — 괄호 앞 공백 없음 (2026-09-21 실측) |
+| Imperialdramon PM (481) | `Imperialdramon(Paladin Mode)` | 같은 표기 (2026-09-21 실측) |
 
 ### 스프라이트 쪽 이름은 또 다르다
 
@@ -156,10 +158,17 @@ Wikimon vpet 도트를 **기기 시리즈 우선순위**로 시도한다:
 vb > ws > xloader   (컬러)
 ```
 
-- 로스터 47종 중 **45종이 이 3개 안에서 해결**된다.
+- 로스터 **48종 중 45종이 이 3개(vb>ws>xloader) 폴백 체인 안에서 해결**된다.
+  나머지 3종(Depthmon·Imperialdramon FM/PM)은 파일명·시리즈가 불규칙해 **고정 파일명**을 쓴다(아래 전수 검증 참고).
 - 🚫 **`pen` / `dm` / `dmc` 는 1비트 흑백이다.** 컬러와 섞으면 화풍이 깨진다.
 - 도트는 **이미 투명 배경**이다 — 크로마키 처리 불필요.
 - 용량 ~1.5KB/종 (47종 전체 68KB).
+
+> **정정 (2026-09-21, 구현 시 실측)** — 스프라이트가 필요한 종은 **48종**이다.
+> 47 = 라인 소속 33 + 죠그레스 결과 5 + 아머 결과 9 인데, 여기에
+> **Imperialdramon Fighter Mode (405)** 가 빠져 있다. 405 는 정규 라인에 없고
+> Paladin Mode 죠그레스의 **입력으로만** 등장해서 위 세 집합 어디에도 안 잡힌다.
+> 하지만 화면에 그려지므로 이름 매핑·스프라이트가 필요하다. → 용량도 ~72KB 로 정정.
 
 #### 실검증 결과 (2026-09-21)
 
@@ -190,7 +199,25 @@ https://wikimon.net/images/<h1>/<h2>/<Name>_vpet_<series>.png
 → 문서 제목에서 파일명을 파생시키면 깨진다. 위 §5 의 "런타임 이름 추론 금지" 가
 이 경우를 가리킨다. **매핑 테이블은 문서 제목과 파일명을 각각 따로 담아야 한다.**
 
-**4. 확인된 시리즈 가용성 (표본)**
+**4. 🚨 스프라이트 파일명 전수 검증 (2026-09-21, 48종 전부 조회)**
+
+`DigimonData.swift` 의 `spriteStem` 48개를 Wikimon API 로 전수 확인했다. **45개는 "공백 제거"
+추정이 맞았고, 3개가 틀렸다.** 틀린 3개의 실제 파일명은 추정 규칙으로는 절대 만들 수 없다:
+
+| 종 | 추정(틀림) | 실제 파일명 | 크기 |
+|---|---|---|---|
+| Depthmon | `Depthmon_vpet_<series>` | `Depthmon_vpet_dark_color.png` | 192×192 |
+| Imperialdramon FM (405) | `ImperialdramonFighterMode_vpet_*` | `Imperialdramon_fighter_vpet_vb.png` | 192×192 |
+| Imperialdramon PM (481) | `ImperialdramonPaladinMode_vpet_*` | `Imperialdramon_paladin_vpet_vb.png` | 192×192 |
+
+→ `fighter`/`paladin` 은 **소문자 약칭**이고 `Mode` 가 아예 없다. Depthmon 은 시리즈 자리에
+`dark_color` 라는 비표준 값이 온다. §5 의 "런타임 이름 추론 금지"를 뒷받침하는 실제 사례다.
+
+> **덤:** `Imperialdramon_DM_vpet_xloader.png` (192×192) 도 존재한다. digi-api 에 쓸 수 있는
+> Dragon Mode ID 가 없어 데이터 테이블에선 제외했지만, **스프라이트는 있다.** 나중에 체인
+> 중간 단계를 그려야 하면 이 파일을 쓰면 된다.
+
+**5. 확인된 시리즈 가용성 (표본)**
 
 | 종 | vb | xloader |
 |---|---|---|

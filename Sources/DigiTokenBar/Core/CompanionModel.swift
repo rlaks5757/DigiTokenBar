@@ -612,6 +612,14 @@ private extension KeyedDecodingContainer {
 
 /// 영속 상태(Application Support JSON). 포켓몬 전환 — 이전 커스텀 캐릭터 상태는 폐기(새로 시작).
 struct CompanionState: Codable, Sendable {
+    /// 최상위 스키마 세대 — 종 식별자 체계(포켓몬→디지몬 등)가 바뀌는 전환마다 올린다.
+    /// `DexEntry.namesVersion` 과 달리 항목별이 아니라 상태 전체에 한 번 붙는다.
+    /// `baseID`/`finalID`/`chainOrder`/`pathIDs` 가 namespace 없는 생 Int 라, 이 필드가 없으면
+    /// 구세대 세이브가 디코드 자체는 "성공"해 옛 종 id 가 새 세대 종으로 조용히 뒤바뀐다.
+    /// 누락(구버전 세이브) 시 0 으로 취급되어 항상 currentSaveVersion 과 달라진다 — CompanionStore.load()
+    /// 가 이 불일치를 감지해 fresh 로 시작한다.
+    static let currentSaveVersion = 1
+    var saveVersion = Self.currentSaveVersion
     // 토큰: 설치 이후만 측정
     var installBaselineSet = false
     var usedSinceInstall = 0
@@ -663,6 +671,8 @@ struct CompanionState: Codable, Sendable {
     // 전면 손상만 throw → load() 가 원본을 .corrupt 로 백업하고 fresh 로 시작.
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
+        // 0 = 구버전(필드 자체가 없던 세이브). 관대 디코딩 기본값이 그대로 "불일치" 신호가 된다.
+        saveVersion        = c.lenient(Int.self, forKey: .saveVersion, default: 0)
         installBaselineSet = c.lenient(Bool.self, forKey: .installBaselineSet, default: false)
         usedSinceInstall   = c.lenient(Int.self, forKey: .usedSinceInstall, default: 0)
         spentTokens        = c.lenient(Int.self, forKey: .spentTokens, default: 0)

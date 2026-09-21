@@ -209,6 +209,63 @@ final class SaveTransferTests: XCTestCase {
         }
     }
 
+    /// [회귀] 구세대(v2) 봉투는 `decode()` 에서 거부돼야 한다 — `schema` 만으로는 못 잡는다.
+    ///
+    /// `schema` 는 봉투 *구조* 버전이라 구세대 본문도 현재 봉투 구조를 그대로 쓰면 `schema <=
+    /// schemaVersion` 를 통과한다. 본문 `saveVersion` 이 없는(구버전) 상태는 관대 디코딩이 0 으로
+    /// 흡수하는데, 여기서 안 걸리면 `applySave()` 가 `load()` 를 타지 않고 상태를 직접 대입한 뒤
+    /// `save()` 를 호출해 saveVersion 을 **현재 값으로 재인코딩** — 오염된 상태가 "현재 세대"로
+    /// 세탁되어 이후 load() 게이트가 영원히 발동하지 않는다.
+    func testOlderGenerationSchemaTwoEnvelopeIsRejected() throws {
+        let data = try SaveTransfer.encode(state: CompanionState(), appVersion: "2.5.0",
+                                           deviceName: "Old Mac", now: transferNow)
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        json["schema"] = 2
+        var state = try XCTUnwrap(json["state"] as? [String: Any])
+        state.removeValue(forKey: "saveVersion")   // 구버전 세이브 = 필드 자체가 없다
+        json["state"] = state
+        let patched = try JSONSerialization.data(withJSONObject: json)
+
+        // 전제: 구조는 여전히 유효 — 여기서 새면 "본문을 못 읽어서" 거부된 것이지 세대 게이트가
+        // 발동한 게 아니므로 회귀를 못 잡는다.
+        let decoder = JSONDecoder(); decoder.dateDecodingStrategy = .iso8601
+        XCTAssertNotNil(try? decoder.decode(SaveEnvelope.self, from: patched),
+                        "전제: 필드 구조는 유효 — saveVersion 누락은 관대 디코딩으로 흡수된다")
+
+        XCTAssertThrowsError(try SaveTransfer.decode(patched)) { error in
+            XCTAssertEqual(error as? SaveTransferError,
+                           .olderGeneration(found: 0, supported: CompanionState.currentSaveVersion))
+        }
+    }
+
+    /// [회귀·W-B] 본문 세대가 이 빌드보다 **높은** 경우(장래에 currentSaveVersion 이 오른 빌드가
+    /// 내보낸 파일을 이 빌드로 열 때) "이전 버전" 이 아니라 "새 버전 — 업데이트하라" 로 갈려야 한다.
+    /// 봉투 `schema` 는 건드리지 않는다 — 건드리면 :132 의 newerSchema 게이트가 먼저 발동해
+    /// 세대 게이트(이 테스트가 검증하려는 지점)에 도달하지 못하고, 엉뚱한 케이스로 통과해버린다.
+    func testNewerGenerationEnvelopeIsReportedAsUpdateNeeded() throws {
+        let data = try SaveTransfer.encode(state: CompanionState(), appVersion: "2.5.0",
+                                           deviceName: "Future Mac", now: transferNow)
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        var state = try XCTUnwrap(json["state"] as? [String: Any])
+        state["saveVersion"] = CompanionState.currentSaveVersion + 1
+        json["state"] = state
+        let patched = try JSONSerialization.data(withJSONObject: json)
+
+        // 전제: 구조는 여전히 유효 — schema 는 그대로라 봉투 게이트를 통과해야 한다. 여기서 새면
+        // newerSchema 로 먼저 걸린 것이라 세대 게이트를 검증한 게 아니다.
+        let decoder = JSONDecoder(); decoder.dateDecodingStrategy = .iso8601
+        XCTAssertNotNil(try? decoder.decode(SaveEnvelope.self, from: patched),
+                        "전제: 필드 구조는 유효")
+        XCTAssertEqual(json["schema"] as? Int, SaveEnvelope.schemaVersion,
+                       "전제: schema 는 그대로 — 여기서 새면 newerSchema 게이트를 검증한 것이지 세대 게이트가 아니다")
+
+        XCTAssertThrowsError(try SaveTransfer.decode(patched)) { error in
+            XCTAssertEqual(error as? SaveTransferError,
+                           .newerGeneration(found: CompanionState.currentSaveVersion + 1,
+                                            supported: CompanionState.currentSaveVersion))
+        }
+    }
+
     // MARK: 기기 기준 재정렬 (회귀)
 
     /// [회귀] 이전 당일에 새 Mac 에서 쓴 토큰이 조용히 누락되던 결함.
@@ -533,7 +590,7 @@ final class SaveTransferTests: XCTestCase {
     func testCorruptStateOnDiskIsClampedOnLoadNotJustOnImport() throws {
         let url = tempURL("diskclamp")
         // 앱이 아니라 손편집·이전 버전이 남긴 것처럼 극단값을 직접 파일에 심는다.
-        let json = #"{"installBaselineSet":true,"usedSinceInstall":9223372036854775807,"#
+        let json = #"{"saveVersion":\#(CompanionState.currentSaveVersion),"installBaselineSet":true,"usedSinceInstall":9223372036854775807,"#
             + #""spentTokens":-9223372036854775808,"eggUsage":9223372036854775807,"#
             + #""claimedTodayTokens":-1,"lastDate":"2026-08-03"}"#
         try Data(json.utf8).write(to: url)
@@ -564,8 +621,14 @@ final class SaveTransferTests: XCTestCase {
         let deviceLedger: Set<String> = ["installBaselineSet", "claimedTodayTokensByProvider", "lastDate"]
         let accountLedger: Set<String> = ["candyGrantTier", "candyFeatureSeeded"]
         let devicePreference: Set<String> = ["language"]
+        // saveVersion 은 진행도 아니고 이 기기 장부도 아니다 — 페이로드가 어느 종 식별자 세대에서
+        // 왔는지 나타내는 판별자다. 병합·재설정 대상이 아니라 그대로 실어 옮기고(rebasedForThisDevice
+        // 에서 손대지 않음), SaveTransfer.decode() 가 신뢰 경계에서 이 값을 검증한다 — applySave() 는
+        // load() 를 타지 않으므로 CompanionStore.load() 의 게이트는 이 경로에 적용되지 않는다.
+        let schemaMeta: Set<String> = ["saveVersion"]
 
         let classified = progress.union(deviceLedger).union(accountLedger).union(devicePreference)
+            .union(schemaMeta)
         let actual = Set(Mirror(reflecting: CompanionState()).children.compactMap(\.label))
         XCTAssertEqual(actual, classified, """
             CompanionState 필드가 바뀌었다. 세이브 이전에서 이 필드가 무엇인지 정하고 목록을 갱신하라 —
@@ -745,9 +808,16 @@ final class SaveTransferTests: XCTestCase {
             let l = L(lang)
             let notSave = l.importErrorMessage(SaveTransferError.notASaveFile)
             let newer = l.importErrorMessage(SaveTransferError.newerSchema(found: 2, supported: 1))
+            let older = l.importErrorMessage(SaveTransferError.olderGeneration(found: 0, supported: 1))
+            let newerGen = l.importErrorMessage(SaveTransferError.newerGeneration(found: 2, supported: 1))
             XCTAssertEqual(notSave, l.importErrorNotSaveFile, "\(lang)")
             XCTAssertEqual(newer, l.importErrorNewerSchema, "\(lang)")
-            for message in [notSave, newer] {
+            XCTAssertEqual(older, l.importErrorOlderGeneration, "\(lang)")
+            XCTAssertEqual(newerGen, l.importErrorNewerGeneration, "\(lang)")
+            // [회귀·W-B] 상위 세대가 "이전 버전" 문구로 새면 안 된다 — 실제로는 앱 업데이트로
+            // 해결되는데 사용자가 그걸 알 방법이 없어진다.
+            XCTAssertNotEqual(newerGen, older, "\(lang): 상위 세대가 하위 세대 문구로 오안내됨")
+            for message in [notSave, newer, older, newerGen] {
                 XCTAssertFalse(message.contains("SaveTransferError"), "원문 노출: \(message)")
                 XCTAssertFalse(message.contains("couldn't be completed"), "원문 노출: \(message)")
             }

@@ -1713,6 +1713,16 @@ final class CompanionStore {
             AppLog.write("companion state decode failed — original backed up to \(backup.lastPathComponent), starting fresh")
             return
         }
+        guard s.saveVersion == CompanionState.currentSaveVersion else {
+            // 디코드는 성공했지만 세대가 다른 세이브(예: 종 id 체계 전환 이전) — namespace 없는 생 Int
+            // (baseID/finalID/chainOrder/pathIDs) 를 새 세대 종으로 잘못 해석하지 않도록 fresh 로 시작한다.
+            // 손상이 아니라 세대 불일치이므로 .corrupt 와 다른 확장자로 보존해 수동 복구 여지를 남긴다.
+            let backup = fileURL.appendingPathExtension("legacy")
+            try? FileManager.default.removeItem(at: backup)
+            try? FileManager.default.moveItem(at: fileURL, to: backup)
+            AppLog.write("companion state save version mismatch (found \(s.saveVersion), expected \(CompanionState.currentSaveVersion)) — original backed up to \(backup.lastPathComponent), starting fresh")
+            return
+        }
         // 불러오기 경계와 같은 정규화를 디스크에서 읽을 때도 건다. 불러오기만 막으면 **이미 저장된**
         // 극단값은 그대로 남아, 앱이 매 기동마다 같은 값을 읽어 산술 트랩으로 죽는 상태를 못 벗어난다
         // (디코드는 *성공*하므로 위의 .corrupt 복구도 발동하지 않는다). 여기서 걸면 자가 복구된다.

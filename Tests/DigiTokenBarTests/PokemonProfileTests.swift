@@ -335,7 +335,7 @@ final class PokemonProfileMigrationTests: XCTestCase {
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: dir) }
         let file = dir.appendingPathComponent("companion-state.json")
-        let json = #"{"active":{"baseID":79,"pathIDs":[79],"plannedPathIDs":[79],"stageIndex":0,"usedAtStage":10,"rarity":"common","totalForms":1,"profile":"broken"},"dex":[{"id":"kept","baseID":1,"finalID":1,"chainOrder":[1],"rarity":"common","profile":"broken"}]}"#
+        let json = #"{"saveVersion":\#(CompanionState.currentSaveVersion),"active":{"baseID":79,"pathIDs":[79],"plannedPathIDs":[79],"stageIndex":0,"usedAtStage":10,"rarity":"common","totalForms":1,"profile":"broken"},"dex":[{"id":"kept","baseID":1,"finalID":1,"chainOrder":[1],"rarity":"common","profile":"broken"}]}"#
         try Data(json.utf8).write(to: file)
 
         let store = CompanionStore(provider: ProfileLineProvider(), fileURL: file)

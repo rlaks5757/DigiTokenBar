@@ -36,6 +36,7 @@ LOGIC_CORE=(
   "Sources/DigiTokenBar/Core/LocalUsageCache.swift"
   "Sources/DigiTokenBar/Core/ModelPricing.swift"
   "Sources/DigiTokenBar/Core/CustomScanRoots.swift"
+  "Sources/DigiTokenBar/Core/DigimonData.swift"
 )
 
 echo "▶ python 테스트 (scripts/tests)"

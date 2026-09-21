@@ -17,7 +17,7 @@ final class DifficultyTests: XCTestCase {
     /// `used` 를 주면 지갑 잔액이 시드된 상태 파일로 시작한다(ShopTests 와 같은 JSON 시드 패턴).
     private func store(growth: Double = 1.0, shop: Double = 1.0, used: Int = 0) -> CompanionStore {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("ptb-diff-\(UUID().uuidString).json")
-        let json = "{\"installBaselineSet\":true,\"usedSinceInstall\":\(used),\"spentTokens\":0,"
+        let json = "{\"saveVersion\":\(CompanionState.currentSaveVersion),\"installBaselineSet\":true,\"usedSinceInstall\":\(used),\"spentTokens\":0,"
             + "\"lastDate\":\"d\",\"dex\":[],\"collectedFinals\":[]}"
         try? json.data(using: .utf8)!.write(to: url)
         let suite = UserDefaults(suiteName: "ptb-diff-\(UUID().uuidString)")!

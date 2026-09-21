@@ -430,7 +430,7 @@ final class RareCandyStoreTests: XCTestCase {
     func testCannotUseWhileLineUnloaded() {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("rc-unloaded-\(UUID().uuidString).json")
         // 활성 포켓몬 + 사탕 1 + 시드완료 상태를 저장 → RCLineThrows 로 로드하면 currentLine 이 nil.
-        let json = #"{"installBaselineSet":true,"lastDate":"d1","active":{"baseID":1,"pathIDs":[1],"stageIndex":0,"usedAtStage":0,"rarity":"common","totalForms":3},"inventory":{"rareCandy":1},"candyFeatureSeeded":true,"dex":[],"collectedFinals":[]}"#
+        let json = #"{"saveVersion":\#(CompanionState.currentSaveVersion),"installBaselineSet":true,"lastDate":"d1","active":{"baseID":1,"pathIDs":[1],"stageIndex":0,"usedAtStage":0,"rarity":"common","totalForms":3},"inventory":{"rareCandy":1},"candyFeatureSeeded":true,"dex":[],"collectedFinals":[]}"#
         try? json.data(using: .utf8)!.write(to: url)
         let s = CompanionStore(provider: RCLineThrows(), clock: { rcNow }, fileURL: url, rng: SeededRNG(seed: 1))
         XCTAssertNotNil(s.state.active, "활성 포켓몬 로드")

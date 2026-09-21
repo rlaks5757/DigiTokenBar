@@ -524,12 +524,32 @@ struct L {
     /// couldn't be completed…" 같은 원문이 그대로 노출된다(조용한 품질 저하).
     func importErrorMessage(_ error: Error) -> String {
         switch error {
-        case SaveTransferError.notASaveFile:  return importErrorNotSaveFile
-        case SaveTransferError.newerSchema:   return importErrorNewerSchema
-        case SaveTransferError.fileTooLarge:  return importErrorTooLarge
-        case SaveTransferError.backupFailed:  return importErrorBackupFailed
+        case SaveTransferError.notASaveFile:      return importErrorNotSaveFile
+        case SaveTransferError.newerSchema:       return importErrorNewerSchema
+        case SaveTransferError.olderGeneration:   return importErrorOlderGeneration
+        case SaveTransferError.newerGeneration:   return importErrorNewerGeneration
+        case SaveTransferError.fileTooLarge:      return importErrorTooLarge
+        case SaveTransferError.backupFailed:      return importErrorBackupFailed
         default: return userFacingError(error)
         }
+    }
+    var importErrorOlderGeneration: String {
+        t("더 이전 버전에서 만든 세이브라 이 앱에서 불러올 수 없어요.",
+          "This save was made by an older version and can't be imported into this app.",
+          "より古いバージョンで作成されたセーブのため、このアプリでは読み込めません。",
+          "Esta partida se creó con una versión anterior y no se puede importar en esta app.",
+          "Cette sauvegarde a été créée par une version plus ancienne et ne peut pas être importée dans cette app.",
+          "Esse save foi criado por uma versão mais antiga e não pode ser importado neste app.",
+          "Dieser Spielstand wurde mit einer älteren Version erstellt und kann in dieser App nicht importiert werden.")
+    }
+    var importErrorNewerGeneration: String {
+        t("더 새로운 버전에서 만든 세이브예요 — 앱을 업데이트한 뒤 다시 시도해 주세요.",
+          "This save was made by a newer version — update the app and try again.",
+          "より新しいバージョンで作成されたセーブです — アプリを更新してから再試行してください。",
+          "Esta partida se creó con una versión más reciente — actualiza la app e inténtalo de nuevo.",
+          "Cette sauvegarde a été créée par une version plus récente — mets l'app à jour et réessaie.",
+          "Esse save foi criado por uma versão mais recente — atualize o app e tente de novo.",
+          "Dieser Spielstand wurde mit einer neueren Version erstellt – aktualisiere die App und versuche es erneut.")
     }
     var importErrorTooLarge: String {
         t("세이브 파일이라기엔 너무 커요 — 다른 파일을 고른 것 같아요.",
