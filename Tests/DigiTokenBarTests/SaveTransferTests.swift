@@ -165,6 +165,36 @@ final class SaveTransferTests: XCTestCase {
         }
     }
 
+    /// [회귀] upstream(PokeTokenBar) 세이브를 우리 앱이 열면 **거부**해야 한다.
+    ///
+    /// 포크 시점엔 두 앱의 `formatID`/`schemaVersion` 이 같았다. 그대로 뒀다면
+    /// `format` 일치 + `schema 2 <= 2` 통과로 게이트를 모두 지나고, `CompanionState` 의
+    /// 관대 디코딩이 남의 필드를 전부 기본값으로 흡수해 **"불러오기 성공 → 빈 도감"** 이
+    /// 된다 — 봉투가 막으려던 바로 그 오인이다. 디지몬 데이터로 갈라질수록 조용히 심해진다.
+    ///
+    /// `testValidEnvelopeWithWrongFormatIDIsRejected` 는 가상의 id 로 B 분기를 고정할 뿐이라
+    /// `formatID` 를 upstream 값으로 되돌려도 통과한다. 여기서 **그 문자열 자체**를 고정한다.
+    func testUpstreamPokeTokenBarSaveIsRejected() throws {
+        let data = try SaveTransfer.encode(state: oldMacState(today: "2026-08-03"),
+                                           appVersion: "2.5.4", deviceName: "Upstream Mac", now: transferNow)
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        // upstream 이 실제로 쓰는 값 — 포크 당시 우리와 동일했다.
+        json["format"] = "poketokenbar.save"
+        let upstreamSave = try JSONSerialization.data(withJSONObject: json)
+
+        // 전제: 포맷 말고는 전부 유효해야 한다. 여기서 새면 구조 오류로 거부되어
+        // "포맷 id 로 막았다"가 아니라 "어차피 못 읽었다"가 되어 회귀를 못 잡는다.
+        let decoder = JSONDecoder(); decoder.dateDecodingStrategy = .iso8601
+        XCTAssertNotNil(try? decoder.decode(SaveEnvelope.self, from: upstreamSave),
+                        "전제: 구조는 유효 — 포맷 id 단독으로 거부되는지를 본다")
+        XCTAssertEqual(json["schema"] as? Int, SaveEnvelope.schemaVersion,
+                       "전제: 스키마는 동일 — newerSchema 로 새면 포맷 게이트를 검증 못 한다")
+
+        XCTAssertThrowsError(try SaveTransfer.decode(upstreamSave)) { error in
+            XCTAssertEqual(error as? SaveTransferError, .notASaveFile)
+        }
+    }
+
     func testNewerSchemaIsRejected() throws {
         var data = try SaveTransfer.encode(state: CompanionState(), appVersion: "2.5.0",
                                            deviceName: "Future Mac", now: transferNow)
@@ -698,7 +728,7 @@ final class SaveTransferTests: XCTestCase {
     /// 상위 스키마 세이브는 본문 모양이 달라 전체 디코드가 실패할 수 있다. 그래도 "세이브 파일이
     /// 아니에요"가 아니라 "앱을 업데이트하라"로 안내해야 한다 — 헤더를 먼저 읽는 이유다.
     func testNewerSchemaIsReportedEvenWhenTheBodyIsUnreadable() throws {
-        let json = #"{"format":"poketokenbar.save","schema":99,"whatever":{"unknown":true}}"#
+        let json = #"{"format":"digitokenbar.save","schema":99,"whatever":{"unknown":true}}"#
         XCTAssertThrowsError(try SaveTransfer.decode(Data(json.utf8))) { error in
             XCTAssertEqual(error as? SaveTransferError,
                            .newerSchema(found: 99, supported: SaveEnvelope.schemaVersion))

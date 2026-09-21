@@ -8,7 +8,7 @@ import Foundation
 /// 성공한 뒤 도감이 빈 상태가 되어, 사용자에겐 "앱이 내 진행을 지웠다"로 보인다.
 /// 봉투의 `format`/`schema` 는 관대 디코딩 대상이 아니라(기본값 없음) 이 오인을 먼저 차단한다.
 struct SaveEnvelope: Codable, Sendable {
-    static let formatID = "poketokenbar.save"
+    static let formatID = "digitokenbar.save"
     /// v2 adds persistent generated Pokémon profiles (IVs, gender, ability, level and moves).
     static let schemaVersion = 2
 
