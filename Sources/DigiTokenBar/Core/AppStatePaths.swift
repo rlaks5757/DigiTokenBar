@@ -1,10 +1,10 @@
 import Foundation
 
 /// Application Support state directory for DigiTokenBar files.
-/// `PTB_STATE_DIR` overrides the default for development/QA isolation.
+/// `DTB_STATE_DIR` overrides the default for development/QA isolation.
 enum AppStatePaths {
     static func directory() -> URL {
-        let override = (ProcessInfo.processInfo.environment["PTB_STATE_DIR"] ?? "")
+        let override = (ProcessInfo.processInfo.environment["DTB_STATE_DIR"] ?? "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
         let dir: URL
         if !override.isEmpty {

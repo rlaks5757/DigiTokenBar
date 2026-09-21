@@ -74,7 +74,7 @@ struct SessionKeyStore: Sendable {
         self.fileURL = fileURL ?? Self.defaultURL()
     }
 
-    /// 기본 위치 — companion 상태와 같은 격리 규약(`PTB_STATE_DIR`)을 따른다. QA·데모 실행이
+    /// 기본 위치 — companion 상태와 같은 격리 규약(`DTB_STATE_DIR`)을 따른다. QA·데모 실행이
     /// 실제 자격증명을 건드리지 않게. 환경변수 해석은 `AppStatePaths` 가 전담한다.
     private static func defaultURL() -> URL {
         AppStatePaths.directory().appendingPathComponent("session-key.json")

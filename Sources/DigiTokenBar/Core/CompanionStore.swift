@@ -97,7 +97,7 @@ final class CompanionStore {
     }
 
     static func defaultURL() -> URL {
-        // 상태 파일 위치. 기본은 Application Support/DigiTokenBar. `PTB_STATE_DIR` 환경변수가 있으면
+        // 상태 파일 위치. 기본은 Application Support/DigiTokenBar. `DTB_STATE_DIR` 환경변수가 있으면
         // 그 디렉토리를 쓴다 — 개발/QA 격리용(실제 companion 상태를 건드리지 않고 데모 상태로 실행).
         // 프로덕션은 이 변수가 없어 무영향.
         AppStatePaths.directory().appendingPathComponent("companion-state.json")

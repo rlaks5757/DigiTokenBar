@@ -10,7 +10,7 @@ import Foundation
 /// 새 프로바이더가 위치 override 환경변수를 쓰면 **이름만 `names` 에 추가한다** — 조회는
 /// 한 번의 셸 spawn 으로 묶이므로 프로바이더가 늘어도 기동 비용은 그대로다.
 ///
-/// 여기 넣지 않는 것: 앱이 스스로 쓰는 값(`SHELL`, `PATH`)과 개발/QA 전용 override(`PTB_STATE_DIR`).
+/// 여기 넣지 않는 것: 앱이 스스로 쓰는 값(`SHELL`, `PATH`)과 개발/QA 전용 override(`DTB_STATE_DIR`).
 /// 그것들은 사용자가 셸에 export 해 두고 앱이 못 봐서 생기는 문제가 아니다.
 enum UsageEnvironment {
 

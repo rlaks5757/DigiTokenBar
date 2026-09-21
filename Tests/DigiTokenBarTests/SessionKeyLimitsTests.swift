@@ -522,7 +522,7 @@ final class SessionKeyLimitsTests: XCTestCase {
     }
 }
 
-// MARK: 저장 위치 격리 (PTB_STATE_DIR)
+// MARK: 저장 위치 격리 (DTB_STATE_DIR)
 
 /// companion 상태와 같은 격리 규약을 따르는지 — QA·데모 실행이 실제 자격증명을 건드리면 안 된다.
 /// (환경변수를 바꾸므로 별도 클래스: XCTest 는 클래스 단위로 직렬 실행한다.)
@@ -530,13 +530,13 @@ final class SessionKeyStoreLocationTests: XCTestCase {
     func testDefaultPathHonorsStateDirOverride() throws {
         let dir = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("ptb-statedir-\(UUID().uuidString)", isDirectory: true)
-        setenv("PTB_STATE_DIR", dir.path, 1)
-        defer { unsetenv("PTB_STATE_DIR") }
+        setenv("DTB_STATE_DIR", dir.path, 1)
+        defer { unsetenv("DTB_STATE_DIR") }
 
         let store = SessionKeyStore()
         XCTAssertEqual(store.fileURL.deletingLastPathComponent().standardizedFileURL,
                        dir.standardizedFileURL,
-                       "PTB_STATE_DIR 이 있으면 그 디렉토리에 저장해야 한다")
+                       "DTB_STATE_DIR 이 있으면 그 디렉토리에 저장해야 한다")
 
         try store.save(SessionKeyCredential(key: "sk-ant-sid02-\(String(repeating: "f", count: 60))",
                                             organizationID: "org"))
@@ -546,8 +546,8 @@ final class SessionKeyStoreLocationTests: XCTestCase {
 
     /// 공백만 있는 값은 무시 — `URL(fileURLWithPath:)` 가 CWD 상대경로로 해석하는 것을 막는다.
     func testBlankStateDirFallsBackToAppSupport() {
-        setenv("PTB_STATE_DIR", "   ", 1)
-        defer { unsetenv("PTB_STATE_DIR") }
+        setenv("DTB_STATE_DIR", "   ", 1)
+        defer { unsetenv("DTB_STATE_DIR") }
         XCTAssertEqual(SessionKeyStore().fileURL.lastPathComponent, "session-key.json")
         XCTAssertTrue(SessionKeyStore().fileURL.path.contains("Application Support"),
                       "공백 값은 무시하고 기본 위치를 쓴다")
