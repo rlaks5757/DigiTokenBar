@@ -44,6 +44,21 @@ ANALYSIS.md 는 "8,500줄 사용량 엔진이 공짜로 따라온다"고 봤는�
 | `CodexRateLimitsProvider.swift` | 2 |
 | `AppLog.swift` / `CrashReporter.swift` / `LocalUsageReader.swift` / `UpdateChecker.swift` | 각 1 |
 
+> **⚠️ 정정 (2026-09-21, 구현 시 실측)** — 위 22곳은 "`Library/` 문자열 등장 횟수"이지
+> **OS 분기가 필요한 지점이 아니다.** 실제 분기 대상은 **9곳**이었다.
+>
+> | 제외 | 사유 |
+> |---|---|
+> | `Localization.swift` 7곳 | 버그 리포트 안내문을 7개 언어로 번역한 **사용자 표시 문자열**이다. 경로 로직이 아니다. |
+> | `UpdateChecker.swift` 1곳 | PATH export 문자열인데 `brewCaskPath()` 가 항상 `nil` 이라 **도달 불가능한 코드**다. |
+>
+> 반대로 문서 표에 없던 카테고리가 하나 있었다: **우리 앱 로그의 `~/Library/Logs`**
+> (`AppLog` · `CrashReporter` 2곳). 그래서 최종 분기 지점은 3종류 9곳이다 —
+> 다른 앱 Application Support 6곳, 바이너리 탐색 1곳, 우리 앱 로그 2곳.
+>
+> 아래 스케치한 `homeDot` 헬퍼는 **만들지 않았다.** 도트 디렉토리는 OS 차이가 없어
+> 호출부 15곳을 고쳐도 분기 이득이 없다(§ 아래 "도트 디렉토리는 동일" 항목과 같은 결론).
+
 ### ✅ 다행인 점: 패턴이 일관된다
 
 전부 `home` 기준 상대 경로이고, 문자열이 흩어진 게 아니라 몇 개 함수에 모여 있다.
