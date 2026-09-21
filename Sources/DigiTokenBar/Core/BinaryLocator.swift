@@ -59,18 +59,7 @@ enum BinaryLocator {
     /// 자식 프로세스 PATH 보강(augmentedEnvironment)이 공유하는 단일 소스.
     /// 새 버전매니저 지원 시 여기 한 곳만 추가하면 두 경로 모두에 반영된다.
     static func commonToolDirectories() -> [String] {
-        let home = NSHomeDirectory()
-        return [
-            "/opt/homebrew/bin",                 // Homebrew (Apple Silicon)
-            "/usr/local/bin",                    // Homebrew (Intel) / npm prefix
-            "\(home)/.local/share/mise/shims",   // mise (shims 모드)
-            "\(home)/.asdf/shims",               // asdf
-            "\(home)/.volta/bin",                // Volta
-            "\(home)/.bun/bin",                  // Bun
-            "\(home)/.npm-global/bin",           // npm prefix=~/.npm-global
-            "\(home)/.local/bin",
-            "/usr/bin",
-        ]
+        PlatformPaths.toolSearchDirectories(home: NSHomeDirectory())
     }
 
     /// 버전매니저 공통 shim/bin 경로 + 주어진 정적 경로. (절대경로 우선 탐색용)

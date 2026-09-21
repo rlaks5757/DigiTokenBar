@@ -643,10 +643,10 @@ enum LocalAdditionalUsageReader {
 
     static var defaultCursorRoots: [URL] {
         environmentPaths("CURSOR_DATA_DIR") ?? [
-            FileManager.default.homeDirectoryForCurrentUser
-                .appendingPathComponent("Library/Application Support/Cursor/User/globalStorage"),
-            FileManager.default.homeDirectoryForCurrentUser
-                .appendingPathComponent("Library/Application Support/Cursor Nightly/User/globalStorage"),
+            PlatformPaths.appSupport(home: FileManager.default.homeDirectoryForCurrentUser,
+                                     for: "Cursor/User/globalStorage"),
+            PlatformPaths.appSupport(home: FileManager.default.homeDirectoryForCurrentUser,
+                                     for: "Cursor Nightly/User/globalStorage"),
         ]
     }
 
@@ -655,8 +655,8 @@ enum LocalAdditionalUsageReader {
         home: URL = FileManager.default.homeDirectoryForCurrentUser
     ) -> [URL] {
         let curated = environmentPaths("CURSOR_DATA_DIR") ?? [
-            home.appendingPathComponent("Library/Application Support/Cursor/User/globalStorage"),
-            home.appendingPathComponent("Library/Application Support/Cursor Nightly/User/globalStorage"),
+            PlatformPaths.appSupport(home: home, for: "Cursor/User/globalStorage"),
+            PlatformPaths.appSupport(home: home, for: "Cursor Nightly/User/globalStorage"),
         ]
         return CustomScanRoots.union(defaults: curated, extraRaw: customRootsValue)
     }
@@ -1037,7 +1037,7 @@ enum LocalAdditionalUsageReader {
         home: URL = FileManager.default.homeDirectoryForCurrentUser
     ) -> [URL] {
         let sqlite = environmentPaths("KIRO_CLI_HOME")
-            ?? [home.appendingPathComponent("Library/Application Support/kiro-cli")]
+            ?? [PlatformPaths.appSupport(home: home, for: "kiro-cli")]
         let kiroHomes = environmentPaths("KIRO_HOME")
             ?? [home.appendingPathComponent(".kiro")]
         let sessions = kiroHomes.map { $0.appendingPathComponent("sessions") }
