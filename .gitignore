@@ -18,3 +18,6 @@ Package.resolved
 *.key
 *.cer
 *.certSigningRequest
+
+# 에이전트 메모리 (로컬 전용)
+.claude/
