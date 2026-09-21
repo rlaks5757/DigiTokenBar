@@ -6,6 +6,25 @@ import XCTest
 /// Reusing raw Data alone does not prevent View.init from reopening files and creating NSImages.
 @MainActor
 final class SpriteImageCacheTests: XCTestCase {
+    /// 이 클래스의 단언은 전부 `===` (객체 동일성)이라 캐시가 엔트리를 유지해야 성립한다. 하지만
+    /// `SpriteLoader.imageCache` 는 전역이고 countLimit 이 64 라, 같은 프로세스의 다른 스프라이트
+    /// 테스트가 넣은 엔트리와 합쳐져 한계를 넘으면 방금 넣은 이미지도 임의로 퇴출된다(NSCache 계약).
+    /// 격리 실행은 통과하고 전체 스위트에서만 실패하던 원인 — 테스트 동안만 퇴출을 끄고 되돌린다.
+    private var previousCountLimit = 0
+
+    override func setUp() {
+        super.setUp()
+        previousCountLimit = SpriteLoader.imageCache.countLimit
+        SpriteLoader.imageCache.removeAllObjects()
+        SpriteLoader.imageCache.countLimit = 0   // 0 = 무제한(퇴출 없음)
+    }
+
+    override func tearDown() {
+        SpriteLoader.imageCache.removeAllObjects()
+        SpriteLoader.imageCache.countLimit = previousCountLimit
+        super.tearDown()
+    }
+
     func testSynchronousLoadsReuseImagesAndKeepVariantsSeparate() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("sprite-cache-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
