@@ -1,0 +1,295 @@
+import AppKit
+
+/// 포켓몬 스프라이트를 런타임에 받아 로컬(Application Support)에 캐시. 레포/번들에 미포함.
+actor SpriteStore {
+    static let shared = SpriteStore()
+    private static let base = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon"
+    private let itemBase = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items"
+    private var mem: [String: Data] = [:]
+    private var memOrder: [String] = []   // LRU 순서(최근 접근이 뒤). 상한 초과 시 앞(오래된 것)부터 evict
+    // 원본 PNG/GIF 바이트의 LRU 상한 — 도감 한 페이지(24칸)보다 넉넉히 유지하되,
+    // 세션 중 종 변경으로 무한 누적되지 않게 한다. NSImage 캐시는 SpriteLoader 가 별도로 관리한다.
+    private let memLimit = 64
+    nonisolated let directory: URL
+
+    init(directory: URL? = nil) {
+        let d = directory ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("DigiTokenBar/sprites")
+        self.directory = d
+        try? FileManager.default.createDirectory(at: d, withIntermediateDirectories: true)
+    }
+
+    /// A/기존 종은 구캐시 그대로 유지. 다른 안농은 폼·이로치·애니메이션을 모두 구분한다.
+    static func cacheKey(speciesID: Int, animated: Bool, shiny: Bool, unownForm: UnownForm? = nil) -> String {
+        "\(assetName(speciesID: speciesID, unownForm: unownForm))-\(shiny ? "sh" : "")\(animated ? "a" : "s")"
+    }
+
+    /// PokeAPI는 A를 `201`, 나머지 폼을 `201-b`/`201-exclamation`/`201-question`으로 제공한다.
+    private static func assetName(speciesID: Int, unownForm: UnownForm?) -> String {
+        guard let form = UnownForm.resolved(speciesID: speciesID, form: unownForm), form != .a else {
+            return String(speciesID)
+        }
+        return "\(speciesID)-\(form.rawValue)"
+    }
+
+    /// 캐시와 다운로드가 같은 폼 이름을 사용한다. 네트워크 없이 요청 경로를 검증할 수 있다.
+    static func spriteURL(speciesID: Int, animated: Bool, shiny: Bool, unownForm: UnownForm? = nil) -> URL {
+        let name = assetName(speciesID: speciesID, unownForm: unownForm)
+        let path = animated ? "versions/generation-v/black-white/animated/" : ""
+        let color = shiny ? "shiny/" : ""
+        let ext = animated ? "gif" : "png"
+        return URL(string: "\(base)/\(path)\(color)\(name).\(ext)")!
+    }
+
+    func data(speciesID: Int, animated: Bool, shiny: Bool = false, unownForm: UnownForm? = nil) async -> Data? {
+        if animated, !PokemonAssets.hasAnimatedSprite(speciesID: speciesID) { return nil }
+        let key = Self.cacheKey(speciesID: speciesID, animated: animated, shiny: shiny, unownForm: unownForm)
+        if let d = mem[key] { touch(key); return d }
+        let ext = animated ? "gif" : "png"
+        let file = directory.appendingPathComponent("\(key).\(ext)")
+        if let d = try? Data(contentsOf: file) { remember(key, d); return d }
+        let url = Self.spriteURL(speciesID: speciesID, animated: animated, shiny: shiny, unownForm: unownForm)
+        guard let (d, resp) = try? await URLSession.shared.data(from: url),
+              (resp as? HTTPURLResponse)?.statusCode == 200, !d.isEmpty else { return nil }
+        try? d.write(to: file, options: .atomic)   // torn write 방지 — 크래시/강제종료 시 손상 캐시가 남지 않게
+        remember(key, d)
+        return d
+    }
+
+    /// 아이템 스프라이트(정적 PNG, 이름 기반). 포켓몬과 같은 메모리/디스크 캐시 사용(키 "item-<name>",
+    /// 포켓몬 파일 "<id>-..." 과 안 겹침). 미제공(404)/오프라인이면 nil → 뷰가 이모지로 폴백.
+    func data(itemName: String) async -> Data? {
+        let key = "item-\(itemName)"
+        if let d = mem[key] { touch(key); return d }
+        let file = directory.appendingPathComponent("\(key).png")
+        if let d = try? Data(contentsOf: file) { remember(key, d); return d }
+        guard let url = URL(string: "\(itemBase)/\(itemName).png"),
+              let (d, resp) = try? await URLSession.shared.data(from: url),
+              (resp as? HTTPURLResponse)?.statusCode == 200, !d.isEmpty else { return nil }
+        try? d.write(to: file, options: .atomic)
+        remember(key, d)
+        return d
+    }
+
+    /// 알 스프라이트(정적, pokemon/egg.png) — 애니메이션 알은 없음. 포켓몬/아이템과 같은 메모리·디스크 캐시(키 "egg").
+    func eggData() async -> Data? {
+        let key = "egg"
+        if let d = mem[key] { touch(key); return d }
+        let file = directory.appendingPathComponent("egg.png")
+        if let d = try? Data(contentsOf: file) { remember(key, d); return d }
+        guard let url = URL(string: "\(Self.base)/egg.png"),
+              let (d, resp) = try? await URLSession.shared.data(from: url),
+              (resp as? HTTPURLResponse)?.statusCode == 200, !d.isEmpty else { return nil }
+        try? d.write(to: file, options: .atomic)
+        remember(key, d)
+        return d
+    }
+
+    /// in-memory 캐시에 넣고 LRU 상한 유지(#H1) — 세션 중 종이 여러 번 바뀌어도 무한 성장 방지.
+    private func remember(_ key: String, _ data: Data) {
+        mem[key] = data
+        touch(key)
+        while memOrder.count > memLimit {
+            let old = memOrder.removeFirst()
+            mem.removeValue(forKey: old)
+        }
+    }
+    /// 접근/삽입 키를 최근(뒤)으로 이동 — 활성 종이 evict 되지 않게 하는 LRU.
+    private func touch(_ key: String) {
+        if let i = memOrder.firstIndex(of: key) { memOrder.remove(at: i) }
+        memOrder.append(key)
+    }
+}
+
+@MainActor
+enum SpriteLoader {
+    static let cacheDir: URL = {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("DigiTokenBar/sprites")
+    }()
+
+    /// 동기 시드와 async 로드가 NSImage 를 공유해 파일 읽기와 이미지 객체 생성을 반복하지 않는다.
+    /// 키는 디렉터리를 포함한 파일 경로다. countLimit 은 퇴출 기준이며 엄격한 메모리 상한은 아니다.
+    static let imageCache: NSCache<NSString, NSImage> = {
+        let cache = NSCache<NSString, NSImage>()
+        cache.countLimit = 64
+        return cache
+    }()
+
+    /// 메모리·디스크 캐시에 이미 있으면 동기 반환(네트워크 없음). 없으면 nil.
+    /// shiny 캐시 미스는 일반 캐시로 폴백 — 오프라인에서 live mon 이 알 글리프로 보이는 것 방지.
+    static func cachedImage(speciesID: Int, animated: Bool = false, shiny: Bool = false,
+                            directory: URL = cacheDir, unownForm: UnownForm? = nil) -> NSImage? {
+        let ext = animated ? "gif" : "png"
+        let key = SpriteStore.cacheKey(speciesID: speciesID, animated: animated, shiny: shiny, unownForm: unownForm)
+        let f = directory.appendingPathComponent("\(key).\(ext)")
+        let imageKey = f.path as NSString
+        if let img = imageCache.object(forKey: imageKey) { return img }
+        if let d = try? Data(contentsOf: f), let img = NSImage(data: d) {
+            imageCache.setObject(img, forKey: imageKey)
+            return img
+        }
+        guard shiny else { return nil }
+        // 폴백은 일반색 키에만 저장한다 — 나중에 받은 이로치 이미지를 가리지 않게.
+        return cachedImage(speciesID: speciesID, animated: animated, shiny: false,
+                           directory: directory, unownForm: unownForm)
+    }
+
+    private final class AnimationFrames {
+        let frames: [(image: NSImage, delay: TimeInterval)]
+        init(_ frames: [(image: NSImage, delay: TimeInterval)]) { self.frames = frames }
+    }
+    // Decoded animations are larger than PNGs; keep recent detail visits without retaining the dex.
+    private static let animationCache: NSCache<NSString, AnimationFrames> = {
+        let cache = NSCache<NSString, AnimationFrames>()
+        cache.countLimit = 16
+        return cache
+    }()
+
+    /// First render and playback share the exact GIF pixels, including its canvas and delays.
+    static func cachedFrames(speciesID: Int, shiny: Bool, directory: URL = cacheDir, unownForm: UnownForm? = nil)
+        -> [(image: NSImage, delay: TimeInterval)] {
+        let key = SpriteStore.cacheKey(speciesID: speciesID, animated: true, shiny: shiny, unownForm: unownForm)
+        let file = directory.appendingPathComponent("\(key).gif")
+        if let cached = animationCache.object(forKey: file.path as NSString) { return cached.frames }
+        guard let data = try? Data(contentsOf: file) else { return [] }
+        return rememberFrames(data, file: file)
+    }
+
+    private static func rememberFrames(_ data: Data, file: URL) -> [(image: NSImage, delay: TimeInterval)] {
+        let frames = GIFDecoder.frames(from: data)
+        if !frames.isEmpty { animationCache.setObject(AnimationFrames(frames), forKey: file.path as NSString) }
+        return frames
+    }
+
+    static func animationFrames(speciesID: Int, shiny: Bool, store: SpriteStore = .shared,
+                                unownForm: UnownForm? = nil) async
+        -> [(image: NSImage, delay: TimeInterval)] {
+        for variant in shiny ? [true, false] : [false] {
+            let cached = cachedFrames(speciesID: speciesID, shiny: variant,
+                                      directory: store.directory, unownForm: unownForm)
+            if !cached.isEmpty { return cached }
+            guard let data = await store.data(speciesID: speciesID, animated: true,
+                                             shiny: variant, unownForm: unownForm) else { continue }
+            let key = SpriteStore.cacheKey(speciesID: speciesID, animated: true,
+                                            shiny: variant, unownForm: unownForm)
+            let frames = rememberFrames(data, file: store.directory.appendingPathComponent("\(key).gif"))
+            if !frames.isEmpty { return frames }
+        }
+        return []
+    }
+
+    /// The static PNG has a 96px padded canvas; animated GIFs are tightly framed.
+    /// Normalize only the animated view's placeholder, leaving static dex thumbnails unchanged.
+    private static let placeholderCache: NSCache<NSImage, NSImage> = {
+        let cache = NSCache<NSImage, NSImage>()
+        cache.countLimit = 64
+        return cache
+    }()
+    static func animationPlaceholder(_ image: NSImage) -> NSImage {
+        if let cached = placeholderCache.object(forKey: image) { return cached }
+        let cropped = cropToContent(image)
+        placeholderCache.setObject(cropped, forKey: image)
+        return cropped
+    }
+
+    /// 정적 스프라이트. animated=true 면 Gen-V 움직이는 스프라이트(없으면 정적으로 폴백).
+    /// shiny=true 는 색이 다른 스프라이트 — 미제공 종이면 일반으로 폴백.
+    static func image(speciesID: Int, animated: Bool = false, shiny: Bool = false,
+                      store: SpriteStore = .shared, unownForm: UnownForm? = nil) async -> NSImage? {
+        for moving in animated ? [true, false] : [false] {
+            let key = SpriteStore.cacheKey(speciesID: speciesID, animated: moving, shiny: shiny, unownForm: unownForm)
+            let ext = moving ? "gif" : "png"
+            let imageKey = store.directory.appendingPathComponent("\(key).\(ext)").path as NSString
+            if let img = imageCache.object(forKey: imageKey) { return img }
+            guard let d = await store.data(speciesID: speciesID, animated: moving,
+                                          shiny: shiny, unownForm: unownForm) else { continue }
+            // await 중 같은 종의 다른 행이 로드를 끝냈으면 그 객체를 재사용한다.
+            if let img = imageCache.object(forKey: imageKey) { return img }
+            guard let img = NSImage(data: d) else { continue }
+            imageCache.setObject(img, forKey: imageKey)
+            return img
+        }
+        // shiny 미제공 → 일반 폴백
+        guard shiny else { return nil }
+        return await image(speciesID: speciesID, animated: animated, shiny: false, store: store, unownForm: unownForm)
+    }
+
+    /// 아이템 스프라이트 — 메모리·디스크 캐시 동기 조회(없으면 nil). 아이콘 즉시 표시용.
+    static func cachedItemImage(name: String, directory: URL = cacheDir) -> NSImage? {
+        let f = directory.appendingPathComponent("item-\(name).png")
+        let imageKey = f.path as NSString
+        if let img = imageCache.object(forKey: imageKey) { return img }
+        if let d = try? Data(contentsOf: f), let img = NSImage(data: d) {
+            imageCache.setObject(img, forKey: imageKey)
+            return img
+        }
+        return nil
+    }
+
+    /// 아이템 스프라이트 — 런타임 로드(+캐시). 미제공/실패면 nil(뷰가 이모지로 폴백).
+    static func itemImage(name: String, store: SpriteStore = .shared) async -> NSImage? {
+        let imageKey = store.directory.appendingPathComponent("item-\(name).png").path as NSString
+        if let img = imageCache.object(forKey: imageKey) { return img }
+        guard let d = await store.data(itemName: name) else { return nil }
+        if let img = imageCache.object(forKey: imageKey) { return img }
+        guard let img = NSImage(data: d) else { return nil }
+        imageCache.setObject(img, forKey: imageKey)
+        return img
+    }
+
+    /// 알 스프라이트는 96×96 캔버스에 실제 알이 28×30(≈29%)만 차지 — 그대로 쓰면 프레임에서 아주 작게
+    /// 보인다(🥚 이모지는 여백이 없어 꽉 찼음). 콘텐츠 경계로 1회 크롭해 여백을 제거하고 캐시 →
+    /// 상점·홈 등 모든 크기에서 이모지처럼 프레임을 꽉 채운다.
+    private static var croppedEgg: NSImage?
+
+    /// 크롭 완료분만 동기 반환(미준비면 nil — 동기 크롭 안 함, 히치 방지). 첫 표시 때만 🥚 폴백 후 eggImage 로 교체.
+    static func cachedEggImage() -> NSImage? { croppedEgg }
+
+    /// 알 스프라이트 — 런타임 로드 + 콘텐츠 크롭(최초 1회 메모이즈). 오프라인/실패면 nil(뷰가 🥚 폴백).
+    static func eggImage() async -> NSImage? {
+        if let c = croppedEgg { return c }
+        guard let d = await SpriteStore.shared.eggData(), let img = NSImage(data: d) else { return nil }
+        croppedEgg = cropToContent(img)
+        return croppedEgg
+    }
+
+    /// 비투명(alpha>0) 콘텐츠 경계로 크롭 — 큰 투명 여백 제거. 96×96 1회만 수행(메모이즈).
+    private static func cropToContent(_ image: NSImage) -> NSImage {
+        guard let tiff = image.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff) else { return image }
+        let w = rep.pixelsWide, h = rep.pixelsHigh
+        var minX = w, minY = h, maxX = -1, maxY = -1
+        for y in 0..<h {
+            for x in 0..<w where (rep.colorAt(x: x, y: y)?.alphaComponent ?? 0) > 0.01 {
+                if x < minX { minX = x }; if x > maxX { maxX = x }
+                if y < minY { minY = y }; if y > maxY { maxY = y }
+            }
+        }
+        guard maxX >= minX, maxY >= minY else { return image }
+        // 콘텐츠 bbox 를 정사각(긴 변 기준)으로 확장해 중앙 정렬 — 알 콘텐츠는 28×30(세로가 김)이라 그대로
+        // 크롭하면 SpriteView 의 size×size 정사각 프레임에서 가로로 늘어나 뚱뚱해진다. 정사각 크롭이면 비율 보존.
+        let bw = maxX - minX + 1, bh = maxY - minY + 1
+        let side = min(max(bw, bh), min(w, h))
+        let sx = max(0, min(minX - (side - bw) / 2, w - side))
+        let sy = max(0, min(minY - (side - bh) / 2, h - side))
+        guard let cg = rep.cgImage?.cropping(to: CGRect(x: sx, y: sy, width: side, height: side))
+        else { return image }
+        return NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
+    }
+}
+
+/// 스프라이트를 정사각 프레임에 넣을 때의 **비율 유지** 기하 — 팝오버(SpriteView)와 메뉴바가 공유한다.
+///
+/// Gen-V 움직이는 스프라이트(GIF)는 캔버스가 종마다 다르고 정사각이 아니다 — 잭키(#325) 36×66,
+/// 피카츄(#25) 50×46, 팬텀(#143) 74×75. 반면 정적 스프라이트는 96×96, 아이템은 30×30 으로 전부
+/// 정사각이라 "size×size 로 늘려 채우기"가 정적 경로에서는 아무 증상이 없다가 GIF 경로에서만
+/// 왜곡으로 드러났다(잭키 = 가로 1.83배). 두 호출부가 같은 식을 쓰게 여기로 모은다.
+enum SpriteFit {
+    /// `box`×`box` 정사각 안에 원본 비율을 유지해 맞춘 크기(contentMode .fit — 긴 변이 box 에 닿는다).
+    /// 원본 크기가 비었으면(디코드 실패 등) 정사각 폴백 — 0 나눗셈 방지.
+    static func size(for pixelSize: CGSize, box: CGFloat) -> CGSize {
+        guard pixelSize.width > 0, pixelSize.height > 0 else { return CGSize(width: box, height: box) }
+        let scale = min(box / pixelSize.width, box / pixelSize.height)
+        return CGSize(width: pixelSize.width * scale, height: pixelSize.height * scale)
+    }
+}

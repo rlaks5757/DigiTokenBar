@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel superseded runs on the same ref (e.g. rapid pushes to a PR).
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test:
+    name: build-test
+    # macos-15 ships Xcode 16 / Swift 6, which Package.swift requires
+    # (swift-tools-version: 6.0, platform macOS 14).
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Show Swift version
+        run: swift --version
+
+      - name: Build
+        run: swift build -v
+
+      # test-gate.sh runs `swift test --enable-code-coverage` and then enforces a
+      # line-coverage floor on the logic-core files. It replaces a bare `swift test`:
+      # the tests still run, and a coverage regression now fails the build.
+      - name: Test + coverage gate
+        run: ./scripts/test-gate.sh
+
+  secret-scan:
+    name: secret-scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # Full history so gitleaks can diff the whole PR commit range.
+          fetch-depth: 0
+
+      - name: Scan for committed secrets
+        uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

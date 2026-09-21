@@ -7,3 +7,14 @@
 
 # 개발용 로컬 문서 (깃 추적 제외)
 ANALYSIS.md
+
+# 앱 번들 빌드 산출물
+build/
+Package.resolved
+
+# 서명 자료 — 개인키/인증서는 절대 커밋하지 않는다
+*.p12
+*.pem
+*.key
+*.cer
+*.certSigningRequest
