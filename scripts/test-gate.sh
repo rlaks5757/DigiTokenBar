@@ -2,8 +2,9 @@
 #
 # test-gate.sh — 안정성 가드레일. 커밋/머지 전 수동 실행 (1인 로컬, CI 없음).
 #
-#   1) swift test 전체 통과
-#   2) "로직 코어" 파일 집합의 라인 커버리지 >= THRESHOLD
+#   1) scripts/tests python 테스트 전체 통과
+#   2) swift test 전체 통과
+#   3) "로직 코어" 파일 집합의 라인 커버리지 >= THRESHOLD
 #
 # 로직 코어 = 결정적으로 단위 테스트 가능한 파일만 포함. ProcessRunner / PokeAPIClient /
 # CcusageProvider / CodexRateLimitsProvider / OAuthLimitsProvider / UpdateChecker /
@@ -37,6 +38,10 @@ LOGIC_CORE=(
   "Sources/DigiTokenBar/Core/CustomScanRoots.swift"
 )
 
+echo "▶ python 테스트 (scripts/tests)"
+python3 -m unittest discover -s scripts/tests
+
+echo
 echo "▶ swift test (--enable-code-coverage)"
 swift test --enable-code-coverage
 

@@ -36,6 +36,28 @@ Thank you all.
 """
 
 
+# 미기입 릴리스 노트 템플릿 — 모든 섹션이 주석 placeholder 뿐이라 내용이 비어 있다.
+# 파일(docs/reference/release-notes-template.md)이 아니라 여기에 두는 이유: 그 문서는
+# 아직 존재하지 않는 tap/cask 를 안내하게 되고, release.sh 는 현재 실행 자체를 거부한다.
+UNFILLED_TEMPLATE = """<!-- Write in English. Replace every instruction with actual release content.
+Keep all sections; use 'None.' if a change category is empty. -->
+## New
+
+<!-- **Feature title** (#PR, @author) — explain the user-visible behavior. -->
+
+## Fixed
+
+<!-- - Describe the resolved symptom (#PR, @author). -->
+
+## Other
+
+<!-- - Documentation, maintenance, or other changes. -->
+
+## Contributors
+
+<!-- Deduplicated GitHub handles: @alice · @bob. -->
+"""
+
 class ReleaseMetadataTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -69,7 +91,7 @@ class ReleaseMetadataTests(unittest.TestCase):
                     self.check()
 
     def test_unfilled_template_fails(self):
-        self.notes.write_text((ROOT / "docs/reference/release-notes-template.md").read_text())
+        self.notes.write_text(UNFILLED_TEMPLATE)
         with self.assertRaises(ValueError):
             self.check()
 
