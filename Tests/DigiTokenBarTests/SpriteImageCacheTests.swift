@@ -10,18 +10,27 @@ final class SpriteImageCacheTests: XCTestCase {
     /// `SpriteLoader.imageCache` 는 전역이고 countLimit 이 64 라, 같은 프로세스의 다른 스프라이트
     /// 테스트가 넣은 엔트리와 합쳐져 한계를 넘으면 방금 넣은 이미지도 임의로 퇴출된다(NSCache 계약).
     /// 격리 실행은 통과하고 전체 스위트에서만 실패하던 원인 — 테스트 동안만 퇴출을 끄고 되돌린다.
-    private var previousCountLimit = 0
+    // nonisolated(unsafe): @MainActor 클래스의 sync setUp/tearDown 은 릴리스 Swift 에서 nonisolated 로
+    // 취급돼 main-actor 프로퍼티 접근이 컴파일 에러가 된다(UsageStoreTests 와 동일 패턴). imageCache 는
+    // @MainActor 라 본문은 assumeIsolated 로 명시적으로 홉한다.
+    private nonisolated(unsafe) var previousCountLimit = 0
 
     override func setUp() {
         super.setUp()
-        previousCountLimit = SpriteLoader.imageCache.countLimit
-        SpriteLoader.imageCache.removeAllObjects()
-        SpriteLoader.imageCache.countLimit = 0   // 0 = 무제한(퇴출 없음)
+        previousCountLimit = MainActor.assumeIsolated {
+            let countLimit = SpriteLoader.imageCache.countLimit
+            SpriteLoader.imageCache.removeAllObjects()
+            SpriteLoader.imageCache.countLimit = 0   // 0 = 무제한(퇴출 없음)
+            return countLimit
+        }
     }
 
     override func tearDown() {
-        SpriteLoader.imageCache.removeAllObjects()
-        SpriteLoader.imageCache.countLimit = previousCountLimit
+        let countLimit = previousCountLimit
+        MainActor.assumeIsolated {
+            SpriteLoader.imageCache.removeAllObjects()
+            SpriteLoader.imageCache.countLimit = countLimit
+        }
         super.tearDown()
     }
 
