@@ -1,0 +1,9 @@
+.DS_Store
+.build/
+.swiftpm/
+*.xcodeproj
+*.xcworkspace
+/scratch/
+
+# 개발용 로컬 문서 (깃 추적 제외)
+ANALYSIS.md
