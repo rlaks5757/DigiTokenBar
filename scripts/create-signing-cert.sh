@@ -36,7 +36,7 @@ fi
 # macOS 기본 LibreSSL 사용 — Homebrew OpenSSL 3 의 p12 는 -legacy 없이는 security 가 못 읽음
 OPENSSL=/usr/bin/openssl
 # p12 전송용 임시 암호 (즉시 import 후 파일 삭제 — 보안 의미 없음, 빈 암호는 MAC 검증 실패 회피용)
-P12PW="poketokenbar"
+P12PW="digitokenbar"
 
 cat > "$TMP/openssl.cnf" <<EOF
 [req]

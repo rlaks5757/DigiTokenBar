@@ -21,7 +21,7 @@ final class UpdateChecker {
     private(set) var isUpdating = false
 
     let currentVersion: String
-    private let repo = "chattymin/DigiTokenBar"
+    private let repo = "rlaks5757/DigiTokenBar"
     private let clock: () -> Date
     private let defaults: UserDefaults
     private var lastChecked: Date?
@@ -134,26 +134,19 @@ final class UpdateChecker {
 
     // MARK: brew 적용 (nonisolated — 블로킹 Process 는 detached 에서)
 
-    /// poke-token-bar 가 brew cask 로 설치돼 있으면 brew 경로 반환, 아니면 nil(→ 릴리스 페이지 폴백).
+    /// 항상 `nil` — brew 자동 업데이트는 **의도적으로 비활성화**되어 있다(→ 릴리스 페이지 폴백).
+    ///
+    /// DigiTokenBar 는 아직 자체 cask/tap 이 없다. 원래 코드는 upstream cask `poke-token-bar` 를
+    /// 감지·업그레이드했는데, 포크에서는 이게 **제3자 앱에 대한 파괴적 동작**이 된다:
+    /// upstream PokeTokenBar 를 brew 로 설치한 사용자의 머신에서 우리 앱이 업데이트를 실행하면
+    /// **우리가 아니라 사용자의 PokeTokenBar 설치본을 업그레이드한다.** 게다가 그 뒤 재실행 대상은
+    /// `io.github.rlaks5757.digitokenbar.login` 이라, 업그레이드 대상과 재실행 대상이 서로 다른 앱이다.
+    ///
+    /// 존재하지 않는 cask 이름(`digi-token-bar` 등)으로 바꾸는 것도 답이 아니다 — tap 이 없으면
+    /// `brew list` 가 실패해 어차피 nil 이고, 실재하지 않는 배포 채널을 코드가 약속하게 된다.
+    /// 자체 cask/tap 을 준비할 때 이 함수를 되살린다.
     private nonisolated static func brewCaskPath() -> String? {
-        guard let brew = BinaryLocator.resolve("brew", staticPaths: [
-            "/opt/homebrew/bin/brew", "/usr/local/bin/brew",
-        ]) else { return nil }
-        return run(brew, ["list", "--cask", "poke-token-bar"], timeout: 20) ? brew : nil
-    }
-
-    private nonisolated static func run(_ binary: String, _ args: [String], timeout: TimeInterval) -> Bool {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: binary)
-        process.arguments = args
-        process.standardInput = FileHandle.nullDevice
-        process.standardOutput = FileHandle.nullDevice
-        process.standardError = FileHandle.nullDevice
-        do { try process.run() } catch { return false }
-        let deadline = Date().addingTimeInterval(timeout)
-        while process.isRunning && Date() < deadline { Thread.sleep(forTimeInterval: 0.1) }
-        if process.isRunning { process.terminate(); return false }
-        return process.terminationStatus == 0
+        nil
     }
 
     /// 앱이 완전히 종료된 뒤 tap 갱신 + cask 업그레이드 + 재오픈을 수행하는 분리(detached) 스크립트 본문.
@@ -164,6 +157,11 @@ final class UpdateChecker {
     /// - brew 를 백그라운드+워치독(≤300s)으로 감싸 hang 시에도 reopen 이 반드시 실행되게 함
     ///   (앱이 종료된 채 영영 안 돌아오는 것 방지). 종료 직후 재오픈 실패 대비 `open` 재시도.
     /// 인자는 positional($1=brew, $2=bundlePath, $3=pid)로 전달 — 셸 인젝션 차단.
+    ///
+    /// ⚠️ 아래 `--cask poke-token-bar` 는 upstream cask 이름이지만 **도달 불가능한 코드**다 —
+    /// 유일한 진입점인 `brewCaskPath()` 가 항상 `nil` 을 반환해 이 스크립트는 실행되지 않는다.
+    /// 자체 tap/cask 가 없는 상태에서 없는 이름으로 바꾸면 실재하지 않는 배포 채널을 약속하게 되므로
+    /// 그대로 둔다. brew 경로를 되살릴 때 `brewCaskPath()` 와 **함께** 우리 cask 이름으로 바꿀 것.
     nonisolated static let detachedUpgradeScript = """
     for i in $(seq 1 40); do kill -0 "$3" 2>/dev/null || break; sleep 0.5; done
     export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"

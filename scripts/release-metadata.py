@@ -21,7 +21,7 @@ def check_notes(notes_path, contributors_path):
     for name in ("New", "Fixed", "Other", "Contributors"):
         if not sections.get(name):
             raise ValueError(f"Release notes need a nonempty '## {name}' section")
-    for command in ("brew install --cask chattymin/tap/poke-token-bar", "brew upgrade --cask poke-token-bar"):
+    for command in ("brew install --cask rlaks5757/tap/digi-token-bar", "brew upgrade --cask digi-token-bar"):
         if command not in visible:
             raise ValueError(f"Release notes are missing: {command}")
 

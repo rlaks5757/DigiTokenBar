@@ -12,9 +12,21 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-REPO="chattymin/DigiTokenBar"
-TAP_REPO="chattymin/homebrew-tap"
-CASK_PATH="Casks/poke-token-bar.rb"
+# ── 미구성 가드 — 실행 금지 ────────────────────────────────────────────────
+# DigiTokenBar 는 아직 릴리스 파이프라인이 없다: Homebrew tap 도, cask 도, Pages 도 없다.
+# upstream 에서 이식된 이 스크립트를 그대로 돌리면 아래 단계가 **upstream 저장소를 향한다**:
+#   - GitHub Release 생성 대상
+#   - Homebrew tap 에 cask 커밋 push  ← 남의 저장소에 쓰기를 시도한다
+# 포크 시점에 소유자 토큰만 우리 것으로 바꾸면 "동작하는 것처럼 보이지만 실패하는" 상태가 되어
+# 더 위험하다. 파이프라인을 실제로 구성할 때 이 가드를 제거한다(그때 아래 값도 함께 확정).
+echo "✗ scripts/release.sh 는 아직 사용할 수 없습니다 — 릴리스 파이프라인 미구성." >&2
+echo "  tap/cask/Pages 가 준비되지 않았습니다. 준비 후 이 가드를 제거하세요." >&2
+exit 1
+
+REPO="rlaks5757/DigiTokenBar"
+# 아래 두 값은 아직 존재하지 않는다(placeholder). 가드 제거 시 실제 값으로 확정할 것.
+TAP_REPO="rlaks5757/homebrew-tap"
+CASK_PATH="Casks/digi-token-bar.rb"
 
 # ── 문서 일관성 검토 (배포 전 항상 실행) ───────────────────────────────────
 # 기계적으로 잡을 수 있는 것만 자동 경고. 내용(기능 설명) 변경 여부는 사람이 체크리스트로 판단.
@@ -155,11 +167,11 @@ gh api "repos/$TAP_REPO/contents/$CASK_PATH" --jq '.content' | base64 -d \
   | perl -pe "s/version \"[0-9.]+\"/version \"$VERSION\"/" > "$TMP_CASK"
 SHA=$(gh api "repos/$TAP_REPO/contents/$CASK_PATH" --jq '.sha')
 gh api -X PUT "repos/$TAP_REPO/contents/$CASK_PATH" \
-  -f message="cask: poke-token-bar $VERSION" \
+  -f message="cask: digi-token-bar $VERSION" \
   -f content="$(base64 -i "$TMP_CASK")" -f sha="$SHA" --jq '.commit.html_url'
 rm -f "$TMP_CASK"
 
 echo "▶ 8/8 GitHub Pages 재빌드(랜딩 동적 배지 갱신 유도)"
 gh api -X POST "repos/$REPO/pages/builds" >/dev/null 2>&1 || true
 
-echo "✓ v$VERSION 배포 완료. 검증: brew upgrade --cask poke-token-bar"
+echo "✓ v$VERSION 배포 완료. 검증: brew upgrade --cask digi-token-bar"
