@@ -320,3 +320,4 @@ upstream 의 분기 선택은 `CollectionWeight.adjusted(_:isCollected:)` 로
 | 진화 구조 | 단일 부모 트리 | 🔄 **트리 + 죠그레스 `(A,B)→C` 테이블** |
 | 아머 진화 | 없음 | ➕ **신규** — 아이템 기반 결정적 분기 |
 | 스프라이트 | PokéAPI GIF | 🔄 **Wikimon vpet 도트** |
+| 경로 탐색 | macOS 경로 하드코딩 | 🔄 **`PlatformPaths` 로 분리** ([`PLATFORM.md`](./PLATFORM.md)) |
