@@ -321,3 +321,31 @@ upstream 의 분기 선택은 `CollectionWeight.adjusted(_:isCollected:)` 로
 | 아머 진화 | 없음 | ➕ **신규** — 아이템 기반 결정적 분기 |
 | 스프라이트 | PokéAPI GIF | 🔄 **Wikimon vpet 도트** |
 | 경로 탐색 | macOS 경로 하드코딩 | 🔄 **`PlatformPaths` 로 분리** ([`PLATFORM.md`](./PLATFORM.md)) |
+| 도감 상세 — 수치 스탯 | 종족값·실능력치·IV 바 | ❌ **제거** (아래) |
+| 도감 상세 — 타입/기술 | PokéAPI | 🔄 **digi-api** (타입·속성·필드·기술) |
+
+### 🚨 확정: 수치 스탯 패널은 제거한다
+
+**결정일 2026-09-21.** upstream 도감 상세에는 종족값·실능력치 바(IV 포함)가 있다.
+`CompanionView` 의 `baseStatsSection` / `statsSection` / `statRow` 와 `PokemonStatCalculator`
+가 이를 그린다.
+
+**digi-api.com 에는 대응 데이터가 없다.** 실제 응답으로 확인했다:
+
+| 필드 | digi-api | 판정 |
+|---|---|---|
+| `types` (Warrior, Dragon Man …) | ✅ | 타입 배지로 대응 |
+| `attributes` (Vaccine/Virus/Data) | ✅ | 신규 표시 |
+| `fields` (Dragon's Roar …) | ✅ | 신규 표시 |
+| `skills` (기술명 + 설명) | ✅ | 기술 목록으로 대응 |
+| `stats` / `hp` / `attack` / `defense` | ❌ **없음** | — |
+| `height` / `weight` | ❌ **없음** | — |
+
+수치가 필요하면 47종을 **손으로 지어내야** 한다. 출처가 없는 값을 만들어 유지보수하는
+비용이 UI 한 칸의 가치를 넘고, 설계 문서 어디에도 근거가 없다.
+
+→ **스탯 바·IV 개념을 UI 와 모델에서 제거하고, 도감 상세를 타입·속성·필드·기술 중심으로
+재구성한다.** digi-api 가 주는 것만 그린다.
+
+> 참고: IV 는 스탯 바에만 쓰이는 게 아니라 개체 구분에도 쓰인다. 제거 범위는 **표시**가
+> 기준이고, 저장 모델에 남은 잔재는 세이브 스키마 작업에서 함께 정리한다.
