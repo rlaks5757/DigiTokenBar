@@ -20,7 +20,7 @@ final class PureComputePerformanceTests: XCTestCase {
         measure {
             var acc = 0
             for i in 0..<100_000 {
-                acc &+= PokemonBalance.phaseThreshold(rarity: .rare, totalForms: 3, stageIndex: i % 3)
+                acc &+= DigimonBalance.phaseThreshold(rarity: .rare, totalForms: 3, stageIndex: i % 3)
             }
             XCTAssertGreaterThan(acc, 0)
         }
@@ -80,7 +80,7 @@ final class StorePerformanceTests: XCTestCase {
             let sorted = s.dexEntriesSorted
             XCTAssertEqual(sorted.count, 1000)
         }
-        // 정렬 정확성: 포획 로그는 기록 시각 최신순 — 희귀도는 순서에 관여하지 않는다.
+        // 정렬 정확성: 동행 기록는 기록 시각 최신순 — 희귀도는 순서에 관여하지 않는다.
         let sorted = s.dexEntriesSorted
         for i in 1..<sorted.count {
             XCTAssertGreaterThanOrEqual(
@@ -101,7 +101,7 @@ final class StoreTerminationTests: XCTestCase {
         let s = CompanionStore(provider: StubProvider(value: pline(base: 1, rarity: .common)),
                                clock: { pNow }, fileURL: tmpURL(), rng: SeededRNG(seed: 1))
         await s.hatch(baseID: 1)
-        s.applyUsage(Int(PokemonBalance.graduationTotal(.common)) * 10)   // 졸업 총량의 10배
+        s.applyUsage(Int(DigimonBalance.graduationTotal(.common)) * 10)   // 졸업 총량의 10배
         XCTAssertNil(s.state.active)            // 졸업 완료
         XCTAssertEqual(s.dexEntries.count, 1)   // 정확히 1회
         XCTAssertEqual(s.dexEntries[0].chainOrder, [1, 2, 3])
@@ -114,7 +114,7 @@ final class StoreTerminationTests: XCTestCase {
         let s = CompanionStore(provider: provider, clock: { pNow }, fileURL: tmpURL(), rng: SeededRNG(seed: 9))
         for n in 1...20 {
             await s.hatch(baseID: 1)
-            s.applyUsage(Int(PokemonBalance.graduationTotal(.common)) * 10)
+            s.applyUsage(Int(DigimonBalance.graduationTotal(.common)) * 10)
             XCTAssertEqual(s.dexEntries.count, n)
             XCTAssertNil(s.state.active)
         }

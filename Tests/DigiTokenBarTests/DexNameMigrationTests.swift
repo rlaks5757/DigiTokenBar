@@ -1,7 +1,7 @@
 import XCTest
 @testable import DigiTokenBar
 
-private actor MigratingNameProvider: PokeProviding {
+private actor MigratingNameProvider: DigimonLineProviding {
     var value: EvoLine
     var offline = false
     private(set) var calls = 0
@@ -68,7 +68,7 @@ final class DexNameMigrationTests: XCTestCase {
         XCTAssertEqual(store.state.inventory["rareCandy"], 3)
         XCTAssertTrue(store.state.dex.allSatisfy { !$0.needsNamesRefresh })
         XCTAssertEqual(store.dexStoredChainNames(store.state.dex[0])?[1], "이상해씨")
-        XCTAssertEqual(PokemonNameLocalization.resolve(store.state.dex[0].names![2]!, preferredCodes: ["it"]), "Ivysaur")
+        XCTAssertEqual(DigimonNameLocalization.resolve(store.state.dex[0].names![2]!, preferredCodes: ["it"]), "Ivysaur")
         _ = await store.dexResolveChainNames(old) // A mounted row can still hold its old value.
         await store.backfillMissingDexNames()
         let calls = await provider.calls

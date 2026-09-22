@@ -1,9 +1,9 @@
 import XCTest
 @testable import DigiTokenBar
 
-private let profileDetails = PokemonDetails(
+private let profileDetails = DigimonDetails(
     speciesID: 79,
-    name: "slowpoke",
+    name: "agumon",
     height: 12,
     weight: 360,
     baseExperience: 63,
@@ -13,33 +13,33 @@ private let profileDetails = PokemonDetails(
         "hp": 90, "attack": 65, "defense": 65,
         "special-attack": 40, "special-defense": 40, "speed": 15,
     ],
-    abilities: [PokemonAbilityOption(name: "oblivious", slot: 1, isHidden: false)],
+    abilities: [DigimonAbilityOption(name: "oblivious", slot: 1, isHidden: false)],
     moves: [
-        PokemonMoveOption(name: "tackle", learnMethods: [
-            PokemonMoveLearnMethod(method: "level-up", level: 1)]),
-        PokemonMoveOption(name: "curse", learnMethods: [
-            PokemonMoveLearnMethod(method: "level-up", level: 1)]),
-        PokemonMoveOption(name: "yawn", learnMethods: [
-            PokemonMoveLearnMethod(method: "level-up", level: 1)]),
-        PokemonMoveOption(name: "growl", learnMethods: [
-            PokemonMoveLearnMethod(method: "level-up", level: 5)]),
-        PokemonMoveOption(name: "water-gun", learnMethods: [
-            PokemonMoveLearnMethod(method: "level-up", level: 9)]),
-        PokemonMoveOption(name: "surf", learnMethods: [
-            PokemonMoveLearnMethod(method: "machine", level: 0)]),
+        DigimonMoveOption(name: "tackle", learnMethods: [
+            DigimonMoveLearnMethod(method: "level-up", level: 1)]),
+        DigimonMoveOption(name: "curse", learnMethods: [
+            DigimonMoveLearnMethod(method: "level-up", level: 1)]),
+        DigimonMoveOption(name: "yawn", learnMethods: [
+            DigimonMoveLearnMethod(method: "level-up", level: 1)]),
+        DigimonMoveOption(name: "growl", learnMethods: [
+            DigimonMoveLearnMethod(method: "level-up", level: 5)]),
+        DigimonMoveOption(name: "water-gun", learnMethods: [
+            DigimonMoveLearnMethod(method: "level-up", level: 9)]),
+        DigimonMoveOption(name: "surf", learnMethods: [
+            DigimonMoveLearnMethod(method: "machine", level: 0)]),
     ])
 
 private func profileDetails(genderRate: Int,
-                            abilities: [PokemonAbilityOption]) -> PokemonDetails {
-    PokemonDetails(speciesID: 999, name: "test", height: 10, weight: 100,
+                            abilities: [DigimonAbilityOption]) -> DigimonDetails {
+    DigimonDetails(speciesID: 999, name: "test", height: 10, weight: 100,
                    baseExperience: nil, genderRate: genderRate, types: ["normal"],
                    baseStats: ["hp": 50], abilities: abilities, moves: [])
 }
 
-final class PokemonProfileLogicTests: XCTestCase {
+final class DigimonProfileLogicTests: XCTestCase {
     func testGenerationIsDeterministicAndIVsStayInRange() {
-        let a = PokemonProfile.generate(seed: 42, instanceID: "same")
-        let b = PokemonProfile.generate(seed: 42, instanceID: "same")
+        let a = DigimonProfile.generate(seed: 42, instanceID: "same")
+        let b = DigimonProfile.generate(seed: 42, instanceID: "same")
         XCTAssertEqual(a, b)
         for iv in [a.ivs.hp, a.ivs.attack, a.ivs.defense,
                    a.ivs.specialAttack, a.ivs.specialDefense, a.ivs.speed] {
@@ -48,7 +48,7 @@ final class PokemonProfileLogicTests: XCTestCase {
     }
 
     func testEnrichmentRollsPersistentIdentityAndFourLegalMoves() {
-        var profile = PokemonProfile.generate(seed: 7, instanceID: "p")
+        var profile = DigimonProfile.generate(seed: 7, instanceID: "p")
         profile.level = 9
         profile.enrich(with: profileDetails)
 
@@ -65,9 +65,9 @@ final class PokemonProfileLogicTests: XCTestCase {
     }
 
     func testNonHPStatUsesNeutralFormulaWithNoModifier() throws {
-        var neutral = PokemonProfile.generate(seed: 1, instanceID: "neutral")
+        var neutral = DigimonProfile.generate(seed: 1, instanceID: "neutral")
         neutral.level = 50
-        let stats = PokemonStatCalculator.stats(details: profileDetails, profile: neutral)
+        let stats = DigimonStatCalculator.stats(details: profileDetails, profile: neutral)
         let attack = try XCTUnwrap(stats.first { $0.name == "attack" })
         let specialAttack = try XCTUnwrap(stats.first { $0.name == "special-attack" })
         let neutralAttack = ((2 * 65 + neutral.ivs.attack) * 50) / 100 + 5
@@ -76,34 +76,34 @@ final class PokemonProfileLogicTests: XCTestCase {
         XCTAssertEqual(specialAttack.value, neutralSpecial)
     }
 
-    func testActualStatScaleExpandsForHighHPPokemon() {
-        XCTAssertEqual(PokemonStatCalculator.displayScaleMaximum(for: [180, 299]), 300)
-        XCTAssertEqual(PokemonStatCalculator.displayScaleMaximum(for: [651, 300]), 700)
+    func testActualStatScaleExpandsForHighHPDigimon() {
+        XCTAssertEqual(DigimonStatCalculator.displayScaleMaximum(for: [180, 299]), 300)
+        XCTAssertEqual(DigimonStatCalculator.displayScaleMaximum(for: [651, 300]), 700)
     }
 
     func testGrowthMapsHatchToFiveAndGraduationToHundred() {
-        var profile = PokemonProfile.generate(seed: 1, instanceID: "growth")
+        var profile = DigimonProfile.generate(seed: 1, instanceID: "growth")
         XCTAssertEqual(profile.level, 5)
-        profile.applyGrowth(PokemonBalance.graduationTotal(.common), rarity: .common)
+        profile.applyGrowth(DigimonBalance.graduationTotal(.common), rarity: .common)
         XCTAssertEqual(profile.level, 100)
     }
 
     func testGenderlessAndMaleBranchesAreResolved() {
-        var genderless = PokemonProfile.generate(seed: 1, instanceID: "genderless")
+        var genderless = DigimonProfile.generate(seed: 1, instanceID: "genderless")
         genderless.enrich(with: profileDetails(genderRate: -1, abilities: []))
         XCTAssertEqual(genderless.gender, .genderless)
 
-        var male = PokemonProfile.generate(seed: 1, instanceID: "male")
+        var male = DigimonProfile.generate(seed: 1, instanceID: "male")
         male.enrich(with: profileDetails(genderRate: 0, abilities: []))
         XCTAssertEqual(male.gender, .male)
     }
 
     func testHiddenAbilityRollCanSelectAHiddenSlot() {
         let details = profileDetails(genderRate: -1, abilities: [
-            PokemonAbilityOption(name: "hidden-one", slot: 3, isHidden: true),
-            PokemonAbilityOption(name: "hidden-two", slot: 4, isHidden: true),
+            DigimonAbilityOption(name: "hidden-one", slot: 3, isHidden: true),
+            DigimonAbilityOption(name: "hidden-two", slot: 4, isHidden: true),
         ])
-        var profile = PokemonProfile.generate(seed: 115, instanceID: "hidden-roll")
+        var profile = DigimonProfile.generate(seed: 115, instanceID: "hidden-roll")
         profile.enrich(with: details)
         XCTAssertEqual(profile.abilityName, "hidden-two")
         XCTAssertEqual(profile.abilitySlot, 4)
@@ -112,10 +112,10 @@ final class PokemonProfileLogicTests: XCTestCase {
 
     func testAllHiddenAbilitiesFallBackWhenRareRollMisses() {
         let details = profileDetails(genderRate: -1, abilities: [
-            PokemonAbilityOption(name: "first-hidden", slot: 2, isHidden: true),
-            PokemonAbilityOption(name: "second-hidden", slot: 3, isHidden: true),
+            DigimonAbilityOption(name: "first-hidden", slot: 2, isHidden: true),
+            DigimonAbilityOption(name: "second-hidden", slot: 3, isHidden: true),
         ])
-        var profile = PokemonProfile.generate(seed: 1, instanceID: "hidden-fallback")
+        var profile = DigimonProfile.generate(seed: 1, instanceID: "hidden-fallback")
         profile.enrich(with: details)
         XCTAssertEqual(profile.abilityName, "first-hidden")
         XCTAssertEqual(profile.abilitySlot, 2)
@@ -123,24 +123,24 @@ final class PokemonProfileLogicTests: XCTestCase {
     }
 
     func testAbilityNameFallbackChainRepairsPersistedSelections() {
-        let normal = PokemonAbilityOption(name: "normal", slot: 1, isHidden: false)
-        let hidden = PokemonAbilityOption(name: "hidden", slot: 3, isHidden: true)
+        let normal = DigimonAbilityOption(name: "normal", slot: 1, isHidden: false)
+        let hidden = DigimonAbilityOption(name: "hidden", slot: 3, isHidden: true)
 
-        var slotOnly = PokemonProfile.generate(seed: 2, instanceID: "slot-only")
+        var slotOnly = DigimonProfile.generate(seed: 2, instanceID: "slot-only")
         slotOnly.abilitySlot = 1
         slotOnly.abilityIsHidden = true
         slotOnly.enrich(with: profileDetails(genderRate: -1, abilities: [normal]))
         XCTAssertEqual(slotOnly.abilityName, "normal", "same slot should repair a stale hidden flag")
         XCTAssertFalse(slotOnly.abilityIsHidden)
 
-        var normalFallback = PokemonProfile.generate(seed: 3, instanceID: "normal-fallback")
+        var normalFallback = DigimonProfile.generate(seed: 3, instanceID: "normal-fallback")
         normalFallback.abilitySlot = 99
         normalFallback.abilityIsHidden = true
         normalFallback.enrich(with: profileDetails(genderRate: -1, abilities: [hidden, normal]))
         XCTAssertEqual(normalFallback.abilityName, "normal")
         XCTAssertFalse(normalFallback.abilityIsHidden)
 
-        var hiddenFallback = PokemonProfile.generate(seed: 4, instanceID: "hidden-fallback-chain")
+        var hiddenFallback = DigimonProfile.generate(seed: 4, instanceID: "hidden-fallback-chain")
         hiddenFallback.abilitySlot = 99
         hiddenFallback.enrich(with: profileDetails(genderRate: -1, abilities: [hidden]))
         XCTAssertEqual(hiddenFallback.abilityName, "hidden")
@@ -148,7 +148,7 @@ final class PokemonProfileLogicTests: XCTestCase {
     }
 
     func testSpeciesIdentityRebaseKeepsIVsButClearsDisguiseMetadata() {
-        var profile = PokemonProfile.generate(seed: 7, instanceID: "ditto")
+        var profile = DigimonProfile.generate(seed: 7, instanceID: "ditto")
         profile.enrich(with: profileDetails)
         let ivs = profile.ivs
 
@@ -167,12 +167,12 @@ final class PokemonProfileLogicTests: XCTestCase {
     }
 }
 
-final class PokemonDetailNormalizationTests: XCTestCase {
+final class DigimonDetailNormalizationTests: XCTestCase {
     func testParserKeepsOnlySupportedVersionGroupBeforeCaching() {
         let supported = PokemonMoveVersionDTO(
             level_learned_at: 5,
             move_learn_method: NamedRef(name: "level-up", url: nil),
-            version_group: NamedRef(name: PokemonDetails.preferredVersionGroup, url: nil))
+            version_group: NamedRef(name: DigimonDetails.preferredVersionGroup, url: nil))
         let unsupported = PokemonMoveVersionDTO(
             level_learned_at: 9,
             move_learn_method: NamedRef(name: "level-up", url: nil),
@@ -188,30 +188,30 @@ final class PokemonDetailNormalizationTests: XCTestCase {
 
         XCTAssertEqual(normalized.map(\.name), ["mixed"])
         XCTAssertEqual(normalized[0].learnMethods,
-                       [PokemonMoveLearnMethod(method: "level-up", level: 5)])
+                       [DigimonMoveLearnMethod(method: "level-up", level: 5)])
     }
 }
 
-/// 이식 세이브는 다른 기기에서 온 파일이고 `PokemonProfile` 은 합성 디코더라 파일이 말하는 값을 그대로
+/// 이식 세이브는 다른 기기에서 온 파일이고 `DigimonProfile` 은 합성 디코더라 파일이 말하는 값을 그대로
 /// 받는다. 즉 `SaveTransfer.sanitized` 가 손편집된 세이브와 상세 화면 사이의 유일한 관문이다.
 /// `moves` 도 저장·메모리·UI 경계에서 무제한 배열을 신뢰하지 않도록 클램프한다.
 /// active/dex 두 호출부를 각각 검증한다(한쪽만 통과하는 걸 구별하기 위해).
-final class PokemonProfileSanitizationTests: XCTestCase {
-    private func hostileProfile() -> PokemonProfile {
-        var profile = PokemonProfile.generate(seed: 5, instanceID: "hostile")
+final class DigimonProfileSanitizationTests: XCTestCase {
+    private func hostileProfile() -> DigimonProfile {
+        var profile = DigimonProfile.generate(seed: 5, instanceID: "hostile")
         profile.instanceID = ""
         profile.level = 9_999
         profile.growthTokens = .max
-        profile.ivs = PokemonIVs(hp: 999, attack: -5, defense: 31,
+        profile.ivs = DigimonIVs(hp: 999, attack: -5, defense: 31,
                                  specialAttack: 64, specialDefense: -1, speed: 500)
         profile.moves = (0..<400).map {
-            PokemonKnownMove(name: "move-\($0)-" + String(repeating: "x", count: 200),
+            DigimonKnownMove(name: "move-\($0)-" + String(repeating: "x", count: 200),
                              learnedAtLevel: 900 + $0)
         }
         return profile
     }
 
-    private func assertClamped(_ profile: PokemonProfile?, _ label: String) throws {
+    private func assertClamped(_ profile: DigimonProfile?, _ label: String) throws {
         let p = try XCTUnwrap(profile, label)
         XCTAssertEqual(p.level, 100, "\(label): level")
         XCTAssertEqual(p.growthTokens, SaveTransfer.maxTokenValue, "\(label): growthTokens")
@@ -242,7 +242,7 @@ final class PokemonProfileSanitizationTests: XCTestCase {
     }
 
     func testImportRaisesProfileLevelToHatchMinimum() throws {
-        var profile = PokemonProfile.generate(seed: 5, instanceID: "below-hatch-level")
+        var profile = DigimonProfile.generate(seed: 5, instanceID: "below-hatch-level")
         profile.level = -99
         var state = CompanionState()
         state.active = MonState(baseID: 79, pathIDs: [79], stageIndex: 0, usedAtStage: 0,
@@ -253,28 +253,28 @@ final class PokemonProfileSanitizationTests: XCTestCase {
     }
 }
 
-private struct ProfileLineProvider: PokeProviding {
+private struct ProfileLineProvider: DigimonLineProviding {
     func line(baseSpeciesID: Int) async throws -> EvoLine {
         EvoLine(baseID: baseSpeciesID, tree: EvoNode(speciesID: baseSpeciesID, children: []),
-                rarity: .common, names: [baseSpeciesID: ["en": "Slowpoke"]])
+                rarity: .common, names: [baseSpeciesID: ["en": "Agumon"]])
     }
     func baseSpeciesIndex() async throws -> [BaseSpecies] { [] }
     func baseSpecies(id: Int) async throws -> BaseSpecies? { nil }
 }
 
-private struct ProfileDetailProvider: PokemonDetailProviding {
-    func pokemonDetails(speciesID: Int) async throws -> PokemonDetails { profileDetails }
+private struct ProfileDetailProvider: DigimonDetailProviding {
+    func digimonDetails(speciesID: Int) async throws -> DigimonDetails { profileDetails }
 }
 
 private enum ProfileDetailTestError: Error { case unavailable }
 
-private struct ThrowingProfileDetailProvider: PokemonDetailProviding {
-    func pokemonDetails(speciesID: Int) async throws -> PokemonDetails {
+private struct ThrowingProfileDetailProvider: DigimonDetailProviding {
+    func digimonDetails(speciesID: Int) async throws -> DigimonDetails {
         throw ProfileDetailTestError.unavailable
     }
 }
 
-private actor RecordingProfileProvider: PokeProviding, PokemonDetailProviding {
+private actor RecordingProfileProvider: DigimonLineProviding, DigimonDetailProviding {
     private var requestedDetails: [Int] = []
 
     func line(baseSpeciesID: Int) async throws -> EvoLine {
@@ -282,24 +282,24 @@ private actor RecordingProfileProvider: PokeProviding, PokemonDetailProviding {
                 rarity: .common, names: [baseSpeciesID: ["en": "Test"]])
     }
     func baseSpeciesIndex() async throws -> [BaseSpecies] { [] }
-    func pokemonDetails(speciesID: Int) async throws -> PokemonDetails {
+    func digimonDetails(speciesID: Int) async throws -> DigimonDetails {
         requestedDetails.append(speciesID)
-        return PokemonDetails(speciesID: speciesID, name: "test", height: 10, weight: 100,
+        return DigimonDetails(speciesID: speciesID, name: "test", height: 10, weight: 100,
                               baseExperience: nil, genderRate: -1, types: ["normal"],
                               baseStats: ["hp": 50], abilities: [], moves: [])
     }
     func detailIDs() -> [Int] { requestedDetails }
 }
 
-private actor SuspendedProfileProvider: PokeProviding, PokemonDetailProviding {
-    private var continuation: CheckedContinuation<PokemonDetails, Never>?
+private actor SuspendedProfileProvider: DigimonLineProviding, DigimonDetailProviding {
+    private var continuation: CheckedContinuation<DigimonDetails, Never>?
 
     func line(baseSpeciesID: Int) async throws -> EvoLine {
         EvoLine(baseID: baseSpeciesID, tree: EvoNode(speciesID: baseSpeciesID, children: []),
                 rarity: .common, names: [baseSpeciesID: ["en": "Test"]])
     }
     func baseSpeciesIndex() async throws -> [BaseSpecies] { [] }
-    func pokemonDetails(speciesID: Int) async throws -> PokemonDetails {
+    func digimonDetails(speciesID: Int) async throws -> DigimonDetails {
         await withCheckedContinuation { continuation = $0 }
     }
     func isDetailSuspended() -> Bool { continuation != nil }
@@ -311,8 +311,8 @@ private actor SuspendedProfileProvider: PokeProviding, PokemonDetailProviding {
 }
 
 @MainActor
-final class PokemonProfileMigrationTests: XCTestCase {
-    func testCorruptProfileRegeneratesWithoutDroppingPokemon() throws {
+final class DigimonProfileMigrationTests: XCTestCase {
+    func testCorruptProfileRegeneratesWithoutDroppingDigimon() throws {
         let dir = FileManager.default.temporaryDirectory
             .appendingPathComponent("profile-recovery-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -350,7 +350,7 @@ final class PokemonProfileMigrationTests: XCTestCase {
             atPath: dir.appendingPathComponent("companion-state.pre-profiles-v1.json").path))
 
         let instanceID = try XCTUnwrap(store.state.active?.profile?.instanceID)
-        await store.loadPokemonDetails(speciesID: 79)
+        await store.loadDigimonDetails(speciesID: 79)
         XCTAssertEqual(store.state.active?.profile?.instanceID, instanceID)
         XCTAssertEqual(store.state.active?.profile?.gender, .female)
         XCTAssertEqual(store.state.active?.profile?.abilityName, "oblivious")
@@ -376,7 +376,7 @@ final class PokemonProfileMigrationTests: XCTestCase {
         let profile = try XCTUnwrap(store.state.dex.first?.profile)
         let expected = CompanionStore.reconstructedGrowthTokens(
             rarity: .common, totalForms: 2, completedStages: 1, currentStageUsage: 0)
-        let actualThreeFormThreshold = PokemonBalance.phaseThreshold(
+        let actualThreeFormThreshold = DigimonBalance.phaseThreshold(
             rarity: .common, totalForms: 3, stageIndex: 0)
         XCTAssertEqual(profile.growthTokens, expected)
         XCTAssertGreaterThan(expected, actualThreeFormThreshold,
@@ -385,7 +385,7 @@ final class PokemonProfileMigrationTests: XCTestCase {
         XCTAssertLessThan(profile.level, 100)
     }
 
-    func testPokemonIndividualsIncludesSyntheticActiveAndMatchingStoredIndividuals() throws {
+    func testDigimonIndividualsIncludesSyntheticActiveAndMatchingStoredIndividuals() throws {
         let dir = FileManager.default.temporaryDirectory
             .appendingPathComponent("profile-individuals-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -394,25 +394,25 @@ final class PokemonProfileMigrationTests: XCTestCase {
         var saved = CompanionState()
         saved.active = MonState(
             baseID: 79, pathIDs: [79], stageIndex: 0, usedAtStage: 0, rarity: .common,
-            totalForms: 1, profile: PokemonProfile.generate(seed: 1, instanceID: "active-instance"))
+            totalForms: 1, profile: DigimonProfile.generate(seed: 1, instanceID: "active-instance"))
         saved.dex = [
             DexEntry(id: "stored-new", baseID: 79, finalID: 79, chainOrder: [79], rarity: .common,
                      caughtAt: Date(timeIntervalSince1970: 20),
-                     profile: PokemonProfile.generate(seed: 2, instanceID: "stored-new")),
+                     profile: DigimonProfile.generate(seed: 2, instanceID: "stored-new")),
             DexEntry(id: "stored-old", baseID: 79, finalID: 79, chainOrder: [79], rarity: .common,
                      caughtAt: Date(timeIntervalSince1970: 10),
-                     profile: PokemonProfile.generate(seed: 3, instanceID: "stored-old")),
+                     profile: DigimonProfile.generate(seed: 3, instanceID: "stored-old")),
         ]
         try JSONEncoder().encode(saved).write(to: file)
         let store = CompanionStore(provider: ProfileLineProvider(), fileURL: file)
 
-        let individuals = store.pokemonIndividuals(speciesID: 79)
+        let individuals = store.digimonIndividuals(speciesID: 79)
 
         XCTAssertEqual(individuals.map(\.id), ["active-79-79", "stored-new", "stored-old"])
         XCTAssertEqual(individuals.first?.profile?.instanceID, "active-instance")
         XCTAssertNotEqual(individuals.first?.id, individuals.first?.profile?.instanceID,
                           "the active row has a synthetic UI identity but keeps its profile identity")
-        XCTAssertTrue(store.pokemonIndividuals(speciesID: 80).isEmpty)
+        XCTAssertTrue(store.digimonIndividuals(speciesID: 80).isEmpty)
     }
 
     func testDetailLoadEnrichesEveryMatchingStoredIndividual() async throws {
@@ -424,15 +424,15 @@ final class PokemonProfileMigrationTests: XCTestCase {
         var saved = CompanionState()
         saved.dex = [
             DexEntry(id: "one", baseID: 79, finalID: 79, chainOrder: [79], rarity: .common,
-                     caughtAt: Date(), profile: PokemonProfile.generate(seed: 1, instanceID: "one")),
+                     caughtAt: Date(), profile: DigimonProfile.generate(seed: 1, instanceID: "one")),
             DexEntry(id: "two", baseID: 79, finalID: 79, chainOrder: [79], rarity: .common,
-                     caughtAt: Date(), profile: PokemonProfile.generate(seed: 2, instanceID: "two")),
+                     caughtAt: Date(), profile: DigimonProfile.generate(seed: 2, instanceID: "two")),
         ]
         try JSONEncoder().encode(saved).write(to: file)
         let store = CompanionStore(provider: ProfileLineProvider(), detailProvider: ProfileDetailProvider(),
                                    fileURL: file)
 
-        await store.loadPokemonDetails(speciesID: 79)
+        await store.loadDigimonDetails(speciesID: 79)
 
         XCTAssertEqual(store.state.dex.compactMap(\.profile?.gender), [.female, .female])
         XCTAssertTrue(store.state.dex.allSatisfy { $0.profile?.abilityName == "oblivious" })
@@ -446,14 +446,14 @@ final class PokemonProfileMigrationTests: XCTestCase {
         let store = CompanionStore(provider: ProfileLineProvider(),
                                    detailProvider: ThrowingProfileDetailProvider(), fileURL: file)
 
-        await store.loadPokemonDetails(speciesID: 79)
+        await store.loadDigimonDetails(speciesID: 79)
 
-        XCTAssertTrue(store.failedPokemonDetailIDs.contains(79))
-        XCTAssertFalse(store.loadingPokemonDetailIDs.contains(79))
-        XCTAssertNil(store.pokemonDetailsByID[79])
+        XCTAssertTrue(store.failedDigimonDetailIDs.contains(79))
+        XCTAssertFalse(store.loadingDigimonDetailIDs.contains(79))
+        XCTAssertNil(store.digimonDetailsByID[79])
     }
 
-    func testStartupWarmupLoadsOnlyTheActivePokemon() async throws {
+    func testStartupWarmupLoadsOnlyTheActiveDigimon() async throws {
         let dir = FileManager.default.temporaryDirectory
             .appendingPathComponent("profile-warmup-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -468,7 +468,7 @@ final class PokemonProfileMigrationTests: XCTestCase {
         let provider = RecordingProfileProvider()
         let store = CompanionStore(provider: provider, fileURL: file)
 
-        await store.preparePokemonProfiles()
+        await store.prepareDigimonProfiles()
 
         let detailIDs = await provider.detailIDs()
         XCTAssertEqual(detailIDs, [79])

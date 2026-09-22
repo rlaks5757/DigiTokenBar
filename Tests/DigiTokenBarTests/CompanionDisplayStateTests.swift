@@ -80,7 +80,7 @@ final class CompanionDisplayStateTests: XCTestCase {
         // 기준선 설정(첫 update 는 baseline 만 잡고 delta 는 적용 안 함).
         s.update(todayTokensByProvider: ["test": 100], todayDate: "d", monthTotal: 0, burnTier: .normal, limitWarning: false, hasUsageData: true)
         // stage0 임계 도달 → 정확히 1회 진화(1→2). justEvolvedTo 설정 + 이벤트 창 갱신(clock+4).
-        s.applyUsage(PokemonBalance.phaseThreshold(rarity: .common, totalForms: 3, stageIndex: 0))
+        s.applyUsage(DigimonBalance.phaseThreshold(rarity: .common, totalForms: 3, stageIndex: 0))
         XCTAssertEqual(s.state.active?.stageIndex, 1)
         let evolvedName = s.justEvolvedTo
         XCTAssertNotNil(evolvedName, "진화 직후 진화 문구가 설정돼야 함")
@@ -103,14 +103,14 @@ final class CompanionDisplayStateTests: XCTestCase {
                                clock: { dNow }, fileURL: url, rng: SeededRNG(seed: 1))
         XCTAssertTrue(s.isEgg)
         XCTAssertEqual(s.eggProgress, 0)
-        XCTAssertEqual(s.eggTokensToHatch, PokemonBalance.eggHatchThreshold)
+        XCTAssertEqual(s.eggTokensToHatch, DigimonBalance.eggHatchThreshold)
 
         // 임계의 40% 사용
         s.update(todayTokensByProvider: ["test": 0], todayDate: "d", monthTotal: 0, burnTier: .idle, limitWarning: false, hasUsageData: true)
-        let part = PokemonBalance.eggHatchThreshold * 2 / 5
+        let part = DigimonBalance.eggHatchThreshold * 2 / 5
         s.update(todayTokensByProvider: ["test": part], todayDate: "d", monthTotal: 0, burnTier: .idle, limitWarning: false, hasUsageData: true)
         XCTAssertEqual(s.eggProgress, 0.4, accuracy: 0.001)
-        XCTAssertEqual(s.eggTokensToHatch, PokemonBalance.eggHatchThreshold - part)
+        XCTAssertEqual(s.eggTokensToHatch, DigimonBalance.eggHatchThreshold - part)
         XCTAssertTrue(s.eggStarted)
     }
 }

@@ -20,7 +20,7 @@ private func w(_ key: String, _ kind: WindowClass, _ util: Double, name: String 
 }
 
 /// line() 이 throw 하는 provider — 라인 미로딩(오프라인/재시작 직후) 상태 재현용.
-private struct RCLineThrows: PokeProviding {
+private struct RCLineThrows: DigimonLineProviding {
     func line(baseSpeciesID: Int) async throws -> EvoLine { throw URLError(.notConnectedToInternet) }
     func baseSpeciesIndex() async throws -> [BaseSpecies] { [] }
     func baseSpecies(id: Int) async throws -> BaseSpecies? { nil }
@@ -359,7 +359,7 @@ final class RareCandyStoreTests: XCTestCase {
         let s = store(rcLinear3)
         await s.hatch(baseID: 1)
         for stage in 0..<3 {
-            s.applyUsage(PokemonBalance.phaseThreshold(
+            s.applyUsage(DigimonBalance.phaseThreshold(
                 rarity: .common, totalForms: 3, stageIndex: stage))
         }
         await s.hatch(baseID: 1)
@@ -389,7 +389,7 @@ final class RareCandyStoreTests: XCTestCase {
 
     /// [회귀] 사탕 졸업은 store 폴링 틱 없이도 스프라이트 정체성(currentSpeciesID)
     /// 관찰을 발화해야 한다 — AppDelegate.observeCompanionSprite 가 이 발화로 메뉴바 스프라이트를 즉시
-    /// 갱신한다. 발화가 없으면 메뉴바가 다음 사용량 폴링(기본 120s)까지 이전 포켓몬으로 남는다
+    /// 갱신한다. 발화가 없으면 메뉴바가 다음 사용량 폴링(기본 120s)까지 이전 디지몬으로 남는다
     /// (리포트: 사탕 졸업 직후 메뉴바 잔상). 진화(.evolved)도 같은 applyUsage 경로라 함께 보호된다.
     func testCandyGraduationFiresSpriteIdentityObservation() async {
         let s = store(rcNoEvo)
@@ -424,15 +424,15 @@ final class RareCandyStoreTests: XCTestCase {
         XCTAssertEqual(s.useRareCandy(), .unavailable)
     }
 
-    /// [회귀 가드] 활성 포켓몬이 있어도 라인 미로딩(재시작 직후·오프라인)이면 사용 불가 —
+    /// [회귀 가드] 활성 디지몬이 있어도 라인 미로딩(재시작 직후·오프라인)이면 사용 불가 —
     /// 진화 없이 XP만 적립되는 것 방지. 재고가 있어도 소모되지 않는다.
     func testCannotUseWhileLineUnloaded() {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("rc-unloaded-\(UUID().uuidString).json")
-        // 활성 포켓몬 + 사탕 1 + 시드완료 상태를 저장 → RCLineThrows 로 로드하면 currentLine 이 nil.
+        // 활성 디지몬 + 사탕 1 + 시드완료 상태를 저장 → RCLineThrows 로 로드하면 currentLine 이 nil.
         let json = #"{"saveVersion":\#(CompanionState.currentSaveVersion),"installBaselineSet":true,"lastDate":"d1","active":{"baseID":1,"pathIDs":[1],"stageIndex":0,"usedAtStage":0,"rarity":"common","totalForms":3},"inventory":{"rareCandy":1},"candyFeatureSeeded":true,"dex":[],"collectedFinals":[]}"#
         try? json.data(using: .utf8)!.write(to: url)
         let s = CompanionStore(provider: RCLineThrows(), clock: { rcNow }, fileURL: url, rng: SeededRNG(seed: 1))
-        XCTAssertNotNil(s.state.active, "활성 포켓몬 로드")
+        XCTAssertNotNil(s.state.active, "활성 디지몬 로드")
         XCTAssertNil(s.currentLine, "라인 미로딩(throws)")
         XCTAssertEqual(s.rareCandyCount, 1)
         XCTAssertFalse(s.canUseRareCandy)
@@ -767,7 +767,7 @@ final class CandyNotificationCopyTests: XCTestCase {
         let l = L(.ko)
         let one = l.notifCandyTitle(item: l.itemName(.rareCandy), count: 1)
         let five = l.notifCandyTitle(item: l.itemName(.rareCandy), count: 5)
-        XCTAssertTrue(one.contains("이상한 사탕"))
+        XCTAssertTrue(one.contains("디지코어"))
         XCTAssertTrue(one.contains("1개"), one)
         XCTAssertTrue(five.contains("5개"), five)
     }

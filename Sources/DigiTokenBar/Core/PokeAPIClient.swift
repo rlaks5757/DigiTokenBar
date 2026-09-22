@@ -7,7 +7,7 @@ struct BaseSpecies: Sendable, Codable {
 }
 
 /// 포켓몬 라인 데이터 제공(주입 가능 — 테스트는 스텁 사용).
-protocol PokeProviding: Sendable {
+protocol DigimonLineProviding: Sendable {
     func line(baseSpeciesID: Int) async throws -> EvoLine
     /// 1~5세대 base 전체 인덱스 (GraphQL 1쿼리, 디스크 캐시).
     func baseSpeciesIndex() async throws -> [BaseSpecies]
@@ -16,20 +16,20 @@ protocol PokeProviding: Sendable {
     func baseSpecies(id: Int) async throws -> BaseSpecies?
 }
 
-/// Separate from `PokeProviding` so existing evolution-only test doubles stay small.
-protocol PokemonDetailProviding: Sendable {
-    func pokemonDetails(speciesID: Int) async throws -> PokemonDetails
+/// Separate from `DigimonLineProviding` so existing evolution-only test doubles stay small.
+protocol DigimonDetailProviding: Sendable {
+    func digimonDetails(speciesID: Int) async throws -> DigimonDetails
 }
 
 /// PokéAPI 클라이언트 — 종/진화체인을 런타임 fetch + 파싱. 포켓몬 데이터는 레포에 번들하지 않는다.
 /// species 응답은 actor 캐시(다국어 이름 재사용).
-actor PokeAPIClient: PokeProviding, PokemonDetailProviding {
+actor PokeAPIClient: DigimonLineProviding, DigimonDetailProviding {
     static let shared = PokeAPIClient()
     private let base = URL(string: "https://pokeapi.co/api/v2")!
     static var langCodes: [String] { AppLanguage.allCases.flatMap(\.apiCodes) }
     private var speciesCache: [Int: SpeciesDTO] = [:]
     private var lineCache: [Int: EvoLine] = [:]   // 프리패칭 → 부화 순간 네트워크 0
-    private var detailsCache: [Int: PokemonDetails] = [:]
+    private var detailsCache: [Int: DigimonDetails] = [:]
 
     private static let detailsDirectory: URL = {
         let dir = AppStatePaths.directory().appendingPathComponent("pokemon-details-v1", isDirectory: true)
@@ -38,11 +38,11 @@ actor PokeAPIClient: PokeProviding, PokemonDetailProviding {
     }()
     private struct DetailSnapshot: Codable {
         let fetchedAt: Date
-        let details: PokemonDetails
+        let details: DigimonDetails
     }
 
     /// Default-form battle metadata. Memory → 30-day disk cache → REST, with stale disk fallback offline.
-    func pokemonDetails(speciesID: Int) async throws -> PokemonDetails {
+    func digimonDetails(speciesID: Int) async throws -> DigimonDetails {
         if let cached = detailsCache[speciesID] { return cached }
         let file = Self.detailsDirectory.appendingPathComponent("\(speciesID).json")
         let disk = (try? Data(contentsOf: file))
@@ -54,7 +54,7 @@ actor PokeAPIClient: PokeProviding, PokemonDetailProviding {
         do {
             let dto: PokemonDTO = try await get(base.appendingPathComponent("pokemon/\(speciesID)"))
             let speciesDTO = try await species(speciesID)
-            let details = PokemonDetails(
+            let details = DigimonDetails(
                 speciesID: speciesID,
                 name: dto.name,
                 height: dto.height,
@@ -64,7 +64,7 @@ actor PokeAPIClient: PokeProviding, PokemonDetailProviding {
                 types: dto.types.sorted { $0.slot < $1.slot }.map { $0.type.name },
                 baseStats: Dictionary(uniqueKeysWithValues: dto.stats.map { ($0.stat.name, $0.base_stat) }),
                 abilities: dto.abilities.map {
-                    PokemonAbilityOption(name: $0.ability.name, slot: $0.slot, isHidden: $0.is_hidden)
+                    DigimonAbilityOption(name: $0.ability.name, slot: $0.slot, isHidden: $0.is_hidden)
                 }.sorted { $0.slot < $1.slot },
                 moves: Self.normalizedMoves(dto.moves))
             detailsCache[speciesID] = details
@@ -83,15 +83,15 @@ actor PokeAPIClient: PokeProviding, PokemonDetailProviding {
 
     /// Reduce PokéAPI's cross-generation move history at the trust boundary, before it reaches
     /// either memory or disk. Moves absent from the supported version group are omitted entirely.
-    static func normalizedMoves(_ moves: [PokemonMoveDTO]) -> [PokemonMoveOption] {
+    static func normalizedMoves(_ moves: [PokemonMoveDTO]) -> [DigimonMoveOption] {
         moves.compactMap { move in
-            let methods = move.version_group_details.compactMap { row -> PokemonMoveLearnMethod? in
-                guard row.version_group.name == PokemonDetails.preferredVersionGroup else { return nil }
-                return PokemonMoveLearnMethod(method: row.move_learn_method.name,
+            let methods = move.version_group_details.compactMap { row -> DigimonMoveLearnMethod? in
+                guard row.version_group.name == DigimonDetails.preferredVersionGroup else { return nil }
+                return DigimonMoveLearnMethod(method: row.move_learn_method.name,
                                               level: row.level_learned_at)
             }
             guard !methods.isEmpty else { return nil }
-            return PokemonMoveOption(name: move.move.name, learnMethods: methods)
+            return DigimonMoveOption(name: move.move.name, learnMethods: methods)
         }.sorted { $0.name < $1.name }
     }
 
@@ -111,7 +111,7 @@ actor PokeAPIClient: PokeProviding, PokemonDetailProviding {
         var names: [Int: [String: String]] = [:]
         for id in allIDs(tree) {
             let sp = try await species(id)
-            names[id] = PokemonNameLocalization.collect(sp.names)
+            names[id] = DigimonNameLocalization.collect(sp.names)
         }
         let line = EvoLine(baseID: baseSpeciesID, tree: tree, rarity: rarity, names: names)
         lineCache[baseSpeciesID] = line
@@ -182,7 +182,7 @@ actor PokeAPIClient: PokeProviding, PokemonDetailProviding {
         var bases: [BaseSpecies] = []
         let batchSize = 6
         var start = 1
-        let maxID = PokemonAssets.queryableSpeciesIDs.upperBound
+        let maxID = DigimonAssets.queryableSpeciesIDs.upperBound
         while start <= maxID {
             let end = min(start + batchSize - 1, maxID)
             let found = await withTaskGroup(of: BaseSpecies?.self) { group -> [BaseSpecies] in
@@ -214,7 +214,7 @@ actor PokeAPIClient: PokeProviding, PokemonDetailProviding {
         req.httpMethod = "POST"
         req.timeoutInterval = 15
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        let maxID = PokemonAssets.queryableSpeciesIDs.upperBound
+        let maxID = DigimonAssets.queryableSpeciesIDs.upperBound
         let query = "{ pokemonspecies(where: {evolves_from_species_id: {_is_null: true}, id: {_lte: \(maxID)}}, order_by: {id: asc}) { id capture_rate } }"
         req.httpBody = try JSONSerialization.data(withJSONObject: ["query": query])
         let (data, resp) = try await URLSession.shared.data(for: req)

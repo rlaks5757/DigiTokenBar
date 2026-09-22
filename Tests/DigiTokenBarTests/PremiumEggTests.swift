@@ -11,7 +11,7 @@ import XCTest
 //   ④ 인덱스가 stale 이라 뽑은 종의 실제 등급이 하한 미만            → 부화 직전 최종 관문
 
 /// capture_rate 로 등급이 갈리는 다종 인덱스. 라인의 등급은 인덱스와 **같은 규칙**으로 계산한다.
-private struct TieredProvider: PokeProviding {
+private struct TieredProvider: DigimonLineProviding {
     static let entries = [
         BaseSpecies(id: 1, captureRate: 255),   // common
         BaseSpecies(id: 2, captureRate: 100),   // uncommon
@@ -38,7 +38,7 @@ private struct TieredProvider: PokeProviding {
 /// GraphQL 인덱스는 죽고 REST 만 사는 상황. 모든 id 가 base 이고 capture_rate 는 id 로 결정된다
 /// (3의 배수 = rare 30 · 그 외 짝수 = uncommon 100 · 나머지 = common 255) → 폴백의 rejection sampling 이
 /// 실제로 여러 번 돌면서 필터를 밟는다.
-private struct RestOnlyTieredProvider: PokeProviding {
+private struct RestOnlyTieredProvider: DigimonLineProviding {
     static func captureRate(_ id: Int) -> Int { id % 3 == 0 ? 30 : (id % 2 == 0 ? 100 : 255) }
     func baseSpeciesIndex() async throws -> [BaseSpecies] { throw URLError(.badServerResponse) }
     func baseSpecies(id: Int) async throws -> BaseSpecies? {
@@ -53,7 +53,7 @@ private struct RestOnlyTieredProvider: PokeProviding {
 }
 
 /// 인덱스는 "희귀(capture_rate 30)"라고 하는데 실제 라인은 common — stale 인덱스 시뮬.
-private struct LyingIndexProvider: PokeProviding {
+private struct LyingIndexProvider: DigimonLineProviding {
     func baseSpeciesIndex() async throws -> [BaseSpecies] { [BaseSpecies(id: 7, captureRate: 30)] }
     func baseSpecies(id: Int) async throws -> BaseSpecies? { BaseSpecies(id: 7, captureRate: 30) }
     func line(baseSpeciesID: Int) async throws -> EvoLine {
@@ -70,8 +70,8 @@ final class PremiumEggTests: XCTestCase {
         FileManager.default.temporaryDirectory.appendingPathComponent("premium-egg-\(UUID().uuidString).json")
     }
 
-    /// 활성 포켓몬이 있는 상태(리롤 가능) + 지갑.
-    private func activeStore(used: Int = 20_000_000_000, provider: any PokeProviding = TieredProvider(),
+    /// 활성 디지몬이 있는 상태(리롤 가능) + 지갑.
+    private func activeStore(used: Int = 20_000_000_000, provider: any DigimonLineProviding = TieredProvider(),
                              at file: URL? = nil) -> CompanionStore {
         let f = file ?? url()
         let mon = "{\"baseID\":10,\"pathIDs\":[10],\"stageIndex\":0,\"usedAtStage\":200000000,"
@@ -83,12 +83,12 @@ final class PremiumEggTests: XCTestCase {
     }
 
     /// 부화 직전 알(임계 충족) + 보증 등급. seed 로 롤을 바꾼다.
-    private func eggStore(tier: Rarity?, seed: UInt64, provider: any PokeProviding) -> CompanionStore {
+    private func eggStore(tier: Rarity?, seed: UInt64, provider: any DigimonLineProviding) -> CompanionStore {
         let f = url()
         let tierJSON = tier.map { "\"\($0.rawValue)\"" } ?? "null"
         let json = "{\"saveVersion\":\(CompanionState.currentSaveVersion),\"installBaselineSet\":true,\"usedSinceInstall\":10000000,\"spentTokens\":0,"
             + "\"lastDate\":\"d\",\"active\":null,\"dex\":[],\"collectedFinals\":[],"
-            + "\"eggUsage\":\(PokemonBalance.eggHatchThreshold),\"eggTier\":\(tierJSON)}"
+            + "\"eggUsage\":\(DigimonBalance.eggHatchThreshold),\"eggTier\":\(tierJSON)}"
         try? json.data(using: .utf8)!.write(to: f)
         return CompanionStore(provider: provider, clock: { self.now }, fileURL: f, rng: SeededRNG(seed: seed))
     }
@@ -180,7 +180,7 @@ final class PremiumEggTests: XCTestCase {
         XCTAssertEqual(s.state.eggTier, .rare, "보증이 상태에 기록됨")
         XCTAssertEqual(s.eggGuarantee, .rare)
         XCTAssertEqual(s.state.spentTokens, FreshEgg.price(guaranteeing: .rare))
-        XCTAssertNil(s.state.active, "현재 포켓몬은 더 이상 활성이 아니다")
+        XCTAssertNil(s.state.active, "현재 디지몬은 더 이상 활성이 아니다")
         XCTAssertEqual(s.state.eggUsage, 0, "새 알은 처음부터 인큐베이션")
         // 등급 알도 새 알과 같은 놓아줌 경로를 쓴다 — 종은 남기되 졸업으로 세지는 않는다.
         XCTAssertEqual(s.state.dex.count, 1, "놓아준 개체가 기록으로 남는다")
@@ -213,12 +213,12 @@ final class PremiumEggTests: XCTestCase {
     /// 이전 보증으로 미리 뽑아둔 종(pendingHatchID)은 구매 시 버려야 한다 — 안 버리면 보증 없이 뽑은
     /// 종이 그대로 프리미엄 알에서 부화한다.
     /// 구매한 알은 깨끗한 롤 상태에서 출발한다 — 보증이 걸리고, 미리 뽑아둔 종은 남아 있지 않다.
-    /// (활성 포켓몬과 pre-roll 은 애초에 공존하지 않는다: 프리패치는 알 상태에서만 돌고 `hatchIfNeeded`
+    /// (활성 디지몬과 pre-roll 은 애초에 공존하지 않는다: 프리패치는 알 상태에서만 돌고 `hatchIfNeeded`
     /// 가 부화 직전 비운다. 그 불변식이 밖에서 들어온 파일에도 유지되는지는
     /// `testSanitizedDropsGuaranteeAndItsPreRollWhenActiveExists` 가 지킨다.)
     func testPurchaseStartsFromCleanRollState() {
         let s = activeStore()
-        XCTAssertNil(s.state.pendingHatchID, "활성 포켓몬이 있는 동안엔 pre-roll 이 없다")
+        XCTAssertNil(s.state.pendingHatchID, "활성 디지몬이 있는 동안엔 pre-roll 이 없다")
         XCTAssertTrue(s.buyEgg(.rare))
         XCTAssertEqual(s.state.eggTier, .rare)
         XCTAssertNil(s.state.pendingHatchID, "새 보증으로 다시 롤한다")
@@ -337,7 +337,7 @@ final class PremiumEggTests: XCTestCase {
         XCTAssertNil(s.state.active, "하한 미만이면 부화시키지 않는다")
         XCTAssertNil(s.state.pendingHatchID, "다음 틱에 다시 뽑도록 pre-roll 폐기")
         XCTAssertEqual(s.state.eggTier, .rare, "보증은 그대로 유지")
-        XCTAssertEqual(s.state.eggUsage, PokemonBalance.eggHatchThreshold, "인큐베이션 진행도 유지")
+        XCTAssertEqual(s.state.eggUsage, DigimonBalance.eggHatchThreshold, "인큐베이션 진행도 유지")
     }
 
     /// 대조군 — 같은 provider 라도 보증이 없으면 그 common 이 정상 부화한다(위 테스트가 가드를 밟는 증거).
@@ -364,7 +364,7 @@ final class PremiumEggTests: XCTestCase {
         await s.hatchIfNeeded()
         guard let active = s.state.active else { return XCTFail("부화 실패") }
         XCTAssertNil(s.state.eggTier, "부화 시점에 보증 소비")
-        s.applyUsage(PokemonBalance.graduationTotal(active.rarity) * 2)   // 단일 형태 → 졸업
+        s.applyUsage(DigimonBalance.graduationTotal(active.rarity) * 2)   // 단일 형태 → 졸업
         XCTAssertNil(s.state.active, "졸업")
         XCTAssertEqual(s.state.dex.count, 1)
         XCTAssertNil(s.state.eggTier, "졸업으로 받는 알에는 보증이 없다")
@@ -383,7 +383,7 @@ final class PremiumEggTests: XCTestCase {
         XCTAssertEqual(rebased.eggTier, .uncommon)
     }
 
-    /// 활성 포켓몬과 알 보증은 공존할 수 없다(알이 없으니까). 손편집·구버전 조합으로 둘 다 오면 떨군다 —
+    /// 활성 디지몬과 알 보증은 공존할 수 없다(알이 없으니까). 손편집·구버전 조합으로 둘 다 오면 떨군다 —
     /// 안 그러면 지금 개체가 졸업할 때 그 보증이 다음 알로 새어 영구 프리미엄이 된다.
     /// 그 보증으로 미리 뽑아둔 종(pendingHatchID)도 같이 버려야 한다: 보증만 지우면 졸업으로 받는 **무료**
     /// 알이 그 pre-roll 로 부화해 아무도 사지 않은 프리미엄 결과가 나온다.

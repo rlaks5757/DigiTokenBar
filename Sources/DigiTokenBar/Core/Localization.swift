@@ -2,7 +2,7 @@ import Foundation
 
 /// 앱 전체 UI 문자열 — 언어별. 단일 소스(AppLanguage)에서 파생한다.
 /// 뷰는 `companion.l.<key>` 로 접근하며, language 변경 시 @Observable 로 자동 재렌더된다.
-/// 포켓몬 이름은 PokéAPI 다국어 데이터(EvoLine.localizedName)에서 별도로 온다.
+/// 디지몬 이름은 DigimonData 번들(EvoLine.localizedName)에서 별도로 온다.
 struct L {
     let lang: AppLanguage
     init(_ lang: AppLanguage) { self.lang = lang }
@@ -21,7 +21,7 @@ struct L {
 
     // MARK: 탭
     var home: String { t("홈", "Home", "ホーム", "Inicio", "Accueil", "Início", "Startseite") }
-    /// 상위 탭 이름 — 안에서 도감/포획 로그를 세그먼트로 전환하므로 둘을 아우르는 말이어야 한다.
+    /// 상위 탭 이름 — 안에서 도감/동행 기록을 세그먼트로 전환하므로 둘을 아우르는 말이어야 한다.
     /// (ko 가 "도감"이면 탭과 세그먼트가 같은 이름이 돼 en/ja 의 Collection/コレクション 과도 어긋난다.)
     var collection: String { t("컬렉션", "Collection", "コレクション", "Colección", "Collection", "Coleção", "Sammlung") }
 
@@ -177,19 +177,19 @@ struct L {
     func percentRemaining(_ percent: String) -> String {
         t("\(percent) 남음", "\(percent) left", "残り\(percent)", "\(percent) restante", "\(percent) restant", "\(percent) restante", "\(percent) übrig")
     }
-    var allOffHint: String { t("전부 끄면 캐릭터만 표시됩니다", "All off shows only the character", "すべてオフにするとキャラクターのみ表示", "Si desactivas todo, solo se mostrará el personaje", "Tout désactiver n'affiche que le personnage", "Se desativar tudo, só o personagem aparece", "Wenn du alles ausschaltest, wird nur das Pokémon angezeigt") }
-    // MARK: 대표 포켓몬
-    var representativePokemonLabel: String {
-        t("대표 포켓몬", "Representative Pokémon", "代表ポケモン", "Pokémon representativo", "Pokémon représentatif", "Pokémon representativo", "Repräsentatives Pokémon")
+    var allOffHint: String { t("전부 끄면 캐릭터만 표시됩니다", "All off shows only the character", "すべてオフにするとキャラクターのみ表示", "Si desactivas todo, solo se mostrará el personaje", "Tout désactiver n'affiche que le personnage", "Se desativar tudo, só o personagem aparece", "Wenn du alles ausschaltest, wird nur das Digimon angezeigt") }
+    // MARK: 대표 디지몬
+    var representativeDigimonLabel: String {
+        t("대표 디지몬", "Representative Digimon", "代表デジモン", "Digimon representativo", "Digimon représentatif", "Digimon representativo", "Repräsentatives Digimon")
     }
     var representativeFollowCurrent: String {
-        t("현재 포켓몬 따라가기", "Follow current companion", "現在のポケモンに合わせる", "Seguir al compañero actual", "Suivre le compagnon actuel", "Seguir o companheiro atual", "Aktuellem Begleiter folgen")
+        t("현재 디지몬 따라가기", "Follow current companion", "現在のデジモンに合わせる", "Seguir al compañero actual", "Suivre le compagnon actuel", "Seguir o companheiro atual", "Aktuellem Begleiter folgen")
     }
     var representativeChooseFromDex: String {
-        t("도감에서 선택…", "Choose in Pokédex…", "図鑑で選ぶ…", "Elegir en la Pokédex…", "Choisir dans le Pokédex…", "Escolher na Pokédex…", "Im Pokédex auswählen…")
+        t("도감에서 선택…", "Choose in Digidex…", "図鑑で選ぶ…", "Elegir en la Digidex…", "Choisir dans le Digidex…", "Escolher na Digidex…", "Im Digidex auswählen…")
     }
     var representativeSet: String {
-        t("대표로 설정", "Set as representative", "代表ポケモンに設定", "Establecer como representante", "Définir comme représentatif", "Definir como representante", "Als repräsentativ festlegen")
+        t("대표로 설정", "Set as representative", "代表デジモンに設定", "Establecer como representante", "Définir comme représentatif", "Definir como representante", "Als repräsentativ festlegen")
     }
     var representativeBadge: String { t("대표", "Representative", "代表", "Representante", "Représentatif", "Representante", "Repräsentativ") }
     // MARK: 난이도
@@ -213,22 +213,22 @@ struct L {
         return String(format: "%.2f%%", percent)
     }
     // MARK: 플로팅 펫
-    var floatingPetSectionTitle: String { t("플로팅 펫", "Floating Pet", "フローティングペット", "Mascota flotante", "Compagnon flottant", "Mascote flutuante", "Schwebendes Pokémon") }
-    var floatingPetEnableLabel: String { t("플로팅 펫 표시", "Show floating pet", "フローティングペットを表示", "Mostrar mascota flotante", "Afficher le compagnon flottant", "Mostrar mascote flutuante", "Schwebendes Pokémon anzeigen") }
+    var floatingPetSectionTitle: String { t("플로팅 펫", "Floating Pet", "フローティングペット", "Mascota flotante", "Compagnon flottant", "Mascote flutuante", "Schwebendes Digimon") }
+    var floatingPetEnableLabel: String { t("플로팅 펫 표시", "Show floating pet", "フローティングペットを表示", "Mostrar mascota flotante", "Afficher le compagnon flottant", "Mostrar mascote flutuante", "Schwebendes Digimon anzeigen") }
     var floatingPetHint: String {
-        t("포켓몬이 화면 위에 떠 있어요 — 드래그로 위치를 옮길 수 있어요",
-          "Your Pokémon floats over the screen — drag to reposition",
-          "ポケモンが画面の上に浮かびます — ドラッグで移動できます",
-          "Tu Pokémon flota sobre la pantalla — arrástralo para moverlo",
-          "Ton Pokémon flotte au-dessus de l'écran — fais-le glisser pour le déplacer",
-          "Seu Pokémon flutua sobre a tela — arraste para reposicionar",
-          "Dein Pokémon schwebt über dem Bildschirm – zieh es an die gewünschte Stelle")
+        t("디지몬이 화면 위에 떠 있어요 — 드래그로 위치를 옮길 수 있어요",
+          "Your Digimon floats over the screen — drag to reposition",
+          "デジモンが画面の上に浮かびます — ドラッグで移動できます",
+          "Tu Digimon flota sobre la pantalla — arrástralo para moverlo",
+          "Ton Digimon flotte au-dessus de l'écran — fais-le glisser pour le déplacer",
+          "Seu Digimon flutua sobre a tela — arraste para reposicionar",
+          "Dein Digimon schwebt über dem Bildschirm – zieh es an die gewünschte Stelle")
     }
     var floatingPetSizeLabel: String { t("크기", "Size", "サイズ", "Tamaño", "Taille", "Tamanho", "Größe") }
     /// 푸터 눈 아이콘의 툴팁(켜져 있을 때) — 켜는 쪽 문구는 floatingPetEnableLabel 을 그대로 쓴다.
     var floatingPetHideLabel: String {
         t("플로팅 펫 숨기기", "Hide floating pet", "フローティングペットを隠す", "Ocultar mascota flotante",
-          "Masquer le compagnon flottant", "Ocultar mascote flutuante", "Schwebendes Pokémon ausblenden")
+          "Masquer le compagnon flottant", "Ocultar mascote flutuante", "Schwebendes Digimon ausblenden")
     }
     /// 지금은 한도 알림만 말풍선으로 뜨지만, 알림 종류가 늘어도 이 라벨은 그대로 쓴다.
     var floatingPetBubbleAlertsLabel: String {
@@ -236,7 +236,7 @@ struct L {
     }
     var floatingPetMenuOpen: String { t("토큰 바 열기", "Open Token Bar", "トークンバーを開く", "Abrir Token Bar", "Ouvrir Token Bar", "Abrir o Token Bar", "Token Bar öffnen") }
     var floatingPetMenuHide: String {
-        t("플로팅 펫 끄기", "Turn off floating pet", "フローティングペットをオフ", "Desactivar mascota flotante", "Désactiver le compagnon flottant", "Desativar mascote flutuante", "Schwebendes Pokémon ausschalten")
+        t("플로팅 펫 끄기", "Turn off floating pet", "フローティングペットをオフ", "Desactivar mascota flotante", "Désactiver le compagnon flottant", "Desativar mascote flutuante", "Schwebendes Digimon ausschalten")
     }
     func floatingPetHoverTokensOnly(_ tokens: String) -> String {
         t("오늘 \(tokens) 토큰", "Today: \(tokens) tokens", "今日: \(tokens) トークン", "Hoy: \(tokens) tokens", "Aujourd'hui : \(tokens) tokens", "Hoje: \(tokens) tokens", "Heute: \(tokens) Tokens")
@@ -402,13 +402,13 @@ struct L {
     var transferSectionTitle: String { t("백업 & 이전", "Backup & Transfer", "バックアップと移行", "Copia de seguridad y transferencia", "Sauvegarde et transfert", "Backup e transferência", "Sicherung & Übertragung") }
     var exportSaveLabel: String { t("세이브 내보내기", "Export save", "セーブを書き出す", "Exportar partida", "Exporter la sauvegarde", "Exportar save", "Spielstand exportieren") }
     var exportSaveHint: String {
-        t("도감·누적 토큰·가방·현재 포켓몬을 파일 하나로 저장해요",
-          "Saves your Pokédex, lifetime tokens, Bag, and current Pokémon as one file",
-          "図鑑・累計トークン・バッグ・現在のポケモンを1つのファイルに保存します",
-          "Guarda tu Pokédex, tokens acumulados, Bolsa y Pokémon actual en un solo archivo",
-          "Enregistre ton Pokédex, tes tokens cumulés, ton Sac et ton Pokémon actuel dans un seul fichier",
-          "Salva sua Pokédex, tokens acumulados, Bolsa e Pokémon atual em um único arquivo",
-          "Speichert deinen Pokédex, alle bisherigen Tokens, deinen Beutel und dein aktuelles Pokémon in einer Datei")
+        t("도감·누적 토큰·가방·현재 디지몬을 파일 하나로 저장해요",
+          "Saves your Digidex, lifetime tokens, Bag, and current Digimon as one file",
+          "図鑑・累計トークン・バッグ・現在のデジモンを1つのファイルに保存します",
+          "Guarda tu Digidex, tokens acumulados, Bolsa y Digimon actual en un solo archivo",
+          "Enregistre ton Digidex, tes tokens cumulés, ton Sac et ton Digimon actuel dans un seul fichier",
+          "Salva sua Digidex, tokens acumulados, Bolsa e Digimon atual em um único arquivo",
+          "Speichert deinen Digidex, alle bisherigen Tokens, deinen Beutel und dein aktuelles Digimon in einer Datei")
     }
     var exportSaveButton: String { t("내보내기…", "Export…", "書き出す…", "Exportar…", "Exporter…", "Exportar…", "Exportieren…") }
     var importSaveLabel: String { t("세이브 불러오기", "Import save", "セーブを読み込む", "Importar partida", "Importer une sauvegarde", "Importar save", "Spielstand importieren") }
@@ -439,9 +439,9 @@ struct L {
           이 Mac의 현재 진행은 대체됩니다. 직전 상태는 상태 폴더에 백업으로 남습니다(최근 5개).
           """,
           """
-          Incoming save: \(incomingDex) in Pokédex · \(incomingTokens) lifetime
+          Incoming save: \(incomingDex) in Digidex · \(incomingTokens) lifetime
           Exported: \(exportedAt) · \(sourceDevice)
-          This Mac now: \(currentDex) in Pokédex · \(currentTokens) lifetime
+          This Mac now: \(currentDex) in Digidex · \(currentTokens) lifetime
 
           This Mac's current progress is replaced. The previous state is kept as a backup in the state folder (last 5).
           """,
@@ -453,30 +453,30 @@ struct L {
           このMacの現在の進行は置き換えられます。直前の状態は状態フォルダにバックアップとして残ります（最新5件）。
           """,
           """
-          Partida a importar: Pokédex \(incomingDex) · \(incomingTokens) acumulados
+          Partida a importar: Digidex \(incomingDex) · \(incomingTokens) acumulados
           Exportada: \(exportedAt) · \(sourceDevice)
-          Este Mac ahora: Pokédex \(currentDex) · \(currentTokens) acumulados
+          Este Mac ahora: Digidex \(currentDex) · \(currentTokens) acumulados
 
           El progreso actual de este Mac será reemplazado. El estado anterior se guarda como copia de seguridad en la carpeta de estado (últimas 5).
           """,
           """
-          Sauvegarde à importer : Pokédex \(incomingDex) · \(incomingTokens) cumulés
+          Sauvegarde à importer : Digidex \(incomingDex) · \(incomingTokens) cumulés
           Exportée : \(exportedAt) · \(sourceDevice)
-          Ce Mac actuellement : Pokédex \(currentDex) · \(currentTokens) cumulés
+          Ce Mac actuellement : Digidex \(currentDex) · \(currentTokens) cumulés
 
           La progression actuelle de ce Mac sera remplacée. L'état précédent est conservé en sauvegarde dans le dossier d'état (5 derniers).
           """,
           """
-          Save a ser importado: Pokédex \(incomingDex) · \(incomingTokens) acumulados
+          Save a ser importado: Digidex \(incomingDex) · \(incomingTokens) acumulados
           Exportado: \(exportedAt) · \(sourceDevice)
-          Este Mac agora: Pokédex \(currentDex) · \(currentTokens) acumulados
+          Este Mac agora: Digidex \(currentDex) · \(currentTokens) acumulados
 
           O progresso atual deste Mac será substituído. O estado anterior fica guardado como backup na pasta de estado (últimos 5).
           """,
           """
-          Zu importierender Spielstand: \(incomingDex) im Pokédex · \(incomingTokens) insgesamt
+          Zu importierender Spielstand: \(incomingDex) im Digidex · \(incomingTokens) insgesamt
           Exportiert: \(exportedAt) · \(sourceDevice)
-          Dieser Mac jetzt: \(currentDex) im Pokédex · \(currentTokens) insgesamt
+          Dieser Mac jetzt: \(currentDex) im Digidex · \(currentTokens) insgesamt
 
           Der aktuelle Fortschritt auf diesem Mac wird ersetzt. Der vorherige Stand bleibt als Sicherung im Statusordner erhalten (die letzten 5).
           """)
@@ -484,12 +484,12 @@ struct L {
     var importConfirmReplace: String { t("대체", "Replace", "置き換える", "Reemplazar", "Remplacer", "Substituir", "Ersetzen") }
     func importSaveDone(dex: Int, tokens: String) -> String {
         t("불러왔어요 — 도감 \(dex)마리 · 누적 \(tokens)",
-          "Imported — \(dex) in Pokédex · \(tokens) lifetime",
+          "Imported — \(dex) in Digidex · \(tokens) lifetime",
           "読み込みました — 図鑑 \(dex)匹 · 累計 \(tokens)",
-          "Importado — Pokédex \(dex) · \(tokens) acumulados",
-          "Importé — Pokédex \(dex) · \(tokens) cumulés",
-          "Importado — Pokédex \(dex) · \(tokens) acumulados",
-          "Importiert – \(dex) im Pokédex · \(tokens) insgesamt")
+          "Importado — Digidex \(dex) · \(tokens) acumulados",
+          "Importé — Digidex \(dex) · \(tokens) cumulés",
+          "Importado — Digidex \(dex) · \(tokens) acumulados",
+          "Importiert – \(dex) im Digidex · \(tokens) insgesamt")
     }
     var importErrorNotSaveFile: String {
         t("DigiTokenBar 세이브 파일이 아니에요.",
@@ -673,6 +673,13 @@ struct L {
 
     // MARK: 컴패니언
     var finalForm: String { t("최종 진화체", "Final form", "最終進化", "Forma final", "Forme finale", "Forma final", "Letzte Entwicklungsstufe") }
+    /// 진화 단계 이름 — 데이터는 Child/Adult/Perfect/Ultimate 로 저장되고(EvoLine 참조), 화면에
+    /// 아직 쓰이는 곳은 없다(준비만). en 은 저장된 rawValue 를 그대로 따른다 — 더빙 명칭(Ultimate
+    /// 를 "Mega" 로 부르는 등)을 쓰면 저장된 단계와 한 칸 어긋난다.
+    var stageNameChild: String { t("성장기", "Child", "成長期", "Child", "Enfant", "Child", "Child") }
+    var stageNameAdult: String { t("성숙기", "Adult", "成熟期", "Adult", "Adulte", "Adult", "Adult") }
+    var stageNamePerfect: String { t("완전체", "Perfect", "完全体", "Perfect", "Parfait", "Perfect", "Perfect") }
+    var stageNameUltimate: String { t("궁극체", "Ultimate", "究極体", "Ultimate", "Ultime", "Ultimate", "Ultimate") }
     func stage(_ i: Int, _ k: Int) -> String { t("진화 단계 \(i) / \(k)", "Stage \(i) / \(k)", "進化段階 \(i) / \(k)", "Etapa \(i) / \(k)", "Stade \(i) / \(k)", "Estágio \(i) / \(k)", "Entwicklungsstufe \(i) / \(k)") }
     var unknownNextEvolution: String { t("알 수 없는 다음 진화", "Unknown next evolution", "次の進化先は不明", "Próxima evolución desconocida", "Prochaine évolution inconnue", "Próxima evolución desconhecida", "Nächste Entwicklung unbekannt") }
     var eggIncubating: String { t("🥚 부화 준비 중", "🥚 Incubating", "🥚 孵化の準備中", "🥚 Incubando", "🥚 En incubation", "🥚 Incubando", "🥚 Wird ausgebrütet") }
@@ -694,19 +701,19 @@ struct L {
         t("\(name) 졸업 → 도감에 보존. 새 Token Egg가 도착했어요!",
           "\(name) graduated → saved to the dex. A new Token Egg has arrived!",
           "\(name) 卒業 → 図鑑に保存。新しいToken Eggが届きました！",
-          "\(name) se graduó → guardado en la Pokédex. ¡Ha llegado un nuevo Token Egg!",
-          "\(name) a été diplômé → conservé dans le Pokédex. Un nouveau Token Egg est arrivé !",
-          "\(name) se formou → guardado na Pokédex. Chegou um novo Token Egg!",
-          "\(name) verabschiedet sich → im Pokédex gespeichert. Ein neues Token Egg ist da!")
+          "\(name) se graduó → guardado en la Digidex. ¡Ha llegado un nuevo Token Egg!",
+          "\(name) a été diplômé → conservé dans le Digidex. Un nouveau Token Egg est arrivé !",
+          "\(name) se formou → guardado na Digidex. Chegou um novo Token Egg!",
+          "\(name) verabschiedet sich → im Digidex gespeichert. Ein neues Token Egg ist da!")
     }
-    var dexEmptyTitle: String { t("아직 잡은 포켓몬이 없어요!", "No Pokémon caught yet!", "まだ捕まえたポケモンがいません！", "¡Todavía no has capturado ningún Pokémon!", "Aucun Pokémon capturé pour l'instant !", "Você ainda não capturou nenhum Pokémon!", "Du hast noch kein Pokémon gefangen!") }
-    var dexEmptyHint: String { t("토큰을 써서 첫 포켓몬을 부화시켜 보세요.", "Spend tokens to hatch your first Pokémon.", "トークンを使って最初のポケモンを孵化させましょう。", "Usa tokens para eclosionar tu primer Pokémon.", "Dépense des tokens pour faire éclore ton premier Pokémon.", "Use tokens para chocar seu primeiro Pokémon.", "Verwende Tokens, damit dein erstes Pokémon schlüpft.") }
+    var dexEmptyTitle: String { t("아직 만난 디지몬이 없어요!", "No Digimon met yet!", "まだ出会ったデジモンがいません！", "¡Todavía no has conocido a ningún Digimon!", "Aucun Digimon rencontré pour l'instant !", "Você ainda não conheceu nenhum Digimon!", "Du hast noch kein Digimon getroffen!") }
+    var dexEmptyHint: String { t("토큰을 써서 첫 디지몬을 부화시켜 보세요.", "Spend tokens to hatch your first Digimon.", "トークンを使って最初のデジモンを孵化させましょう。", "Usa tokens para eclosionar tu primer Digimon.", "Dépense des tokens pour faire éclore ton premier Digimon.", "Use tokens para chocar seu primeiro Digimon.", "Verwende Tokens, damit dein erstes Digimon schlüpft.") }
 
     // MARK: 도감 요약 헤더
-    var dexTitle: String { t("도감", "Pokédex", "図鑑", "Pokédex", "Pokédex", "Pokédex", "Pokédex") }
+    var dexTitle: String { t("도감", "Digidex", "図鑑", "Digidex", "Digidex", "Digidex", "Digidex") }
     func dexTotal(_ n: Int) -> String { t("총 \(n)마리", "\(n) total", "全\(n)匹", "\(n) en total", "\(n) au total", "\(n) no total", "\(n) insgesamt") }
-    /// 포획 로그 = 개체 단위 기록(같은 라인 중복이 정상). 도감 = 종 단위 집계.
-    var catchLogTitle: String { t("포획 로그", "Catch log", "捕獲ログ", "Registro de capturas", "Journal de captures", "Registro de capturas", "Fangprotokoll") }
+    /// 동행 기록 = 개체 단위 기록(같은 라인 중복이 정상). 도감 = 종 단위 집계.
+    var catchLogTitle: String { t("동행 기록", "Companion log", "パートナー記録", "Registro de compañeros", "Journal des compagnons", "Registro de companheiros", "Begleiterprotokoll") }
     /// 도감 총계는 개체가 아니라 종 수 — 로그의 dexTotal("총 N마리")과 단위가 다르다.
     func dexSpeciesTotal(_ n: Int) -> String { t("\(n)종", "\(n) species", "\(n)種", "\(n) especies", "\(n) espèces", "\(n) espécies", "\(n) Spezies") }
     func dexPageLabel(_ page: Int, _ total: Int) -> String {
@@ -715,17 +722,17 @@ struct L {
     var dexPagePrev: String { t("이전 페이지", "Previous page", "前のページ", "Página anterior", "Page précédente", "Página anterior", "Vorherige Seite") }
     var dexPageNext: String { t("다음 페이지", "Next page", "次のページ", "Página siguiente", "Page suivante", "Próxima página", "Nächste Seite") }
     var dexRaising: String { t("키우는 중", "Raising", "育成中", "Criando", "En élevage", "Treinando", "In Aufzucht") }
-    /// 포획 로그에서 졸업분과 놓아준 개체를 가르는 표식. 종은 도감에 남고 개체 기록만 이 뱃지를 단다.
-    var dexReleased: String { t("놓아줌", "Released", "逃がした", "Liberado", "Relâché", "Solto", "Freigelassen") }
+    /// 동행 기록에서 졸업분과 놓아준 개체를 가르는 표식. 종은 도감에 남고 개체 기록만 이 뱃지를 단다.
+    var dexReleased: String { t("놓아줌", "Released", "見送った", "Liberado", "Relâché", "Solto", "Entlassen") }
     var rarityCommon: String { t("일반", "Common", "ノーマル", "Común", "Commun", "Comum", "Gewöhnlich") }
     var rarityUncommon: String { t("고급", "Uncommon", "アンコモン", "Poco común", "Peu commun", "Incomum", "Ungewöhnlich") }
     var rarityRare: String { t("희귀", "Rare", "レア", "Raro", "Rare", "Raro", "Selten") }
     var rarityLegendary: String { t("전설", "Legendary", "伝説", "Legendario", "Légendaire", "Lendário", "Legendär") }
     var dexFilterHint: String { t("탭하면 이 희귀도만 보기 · 다시 탭하면 전체", "Tap to show only this rarity · tap again to clear", "タップでこの希少度のみ表示・再タップで全体", "Toca para ver solo esta rareza · toca de nuevo para ver todo", "Touche pour n'afficher que cette rareté · touche à nouveau pour tout afficher", "Toque para ver só esta raridade · toque de novo para ver tudo", "Tippe, um nur diese Seltenheit zu sehen · tippe erneut für alle") }
-    // MARK: Pokémon 상세
-    var loadingPokemonDetails: String { t("포켓몬 정보를 불러오는 중…", "Loading Pokémon details…", "ポケモン情報を読み込み中…", "Cargando detalles del Pokémon…", "Chargement des détails du Pokémon…", "Carregando detalhes do Pokémon…", "Pokémon-Details werden geladen…") }
-    var pokemonDetailsUnavailable: String { t("포켓몬 정보를 불러오지 못했어요.", "Pokémon details could not be loaded.", "ポケモン情報を読み込めませんでした。", "No se pudieron cargar los detalles.", "Impossible de charger les détails.", "Não foi possível carregar os detalhes.", "Pokémon-Details konnten nicht geladen werden.") }
-    var pokemonIndividual: String { t("개체", "Individual", "個体", "Ejemplar", "Individu", "Indivíduo", "Individuum") }
+    // MARK: 디지몬 상세
+    var loadingDigimonDetails: String { t("디지몬 정보를 불러오는 중…", "Loading Digimon details…", "デジモン情報を読み込み中…", "Cargando detalles del Digimon…", "Chargement des détails du Digimon…", "Carregando detalhes do Digimon…", "Digimon-Details werden geladen…") }
+    var digimonDetailsUnavailable: String { t("디지몬 정보를 불러오지 못했어요.", "Digimon details could not be loaded.", "デジモン情報を読み込めませんでした。", "No se pudieron cargar los detalles.", "Impossible de charger les détails.", "Não foi possível carregar os detalhes.", "Digimon-Details konnten nicht geladen werden.") }
+    var digimonIndividual: String { t("개체", "Individual", "個体", "Ejemplar", "Individu", "Indivíduo", "Individuum") }
     var level: String { t("레벨", "Level", "レベル", "Nivel", "Niveau", "Nível", "Level") }
     var gender: String { t("성별", "Gender", "性別", "Sexo", "Sexe", "Gênero", "Geschlecht") }
     var ability: String { t("특성", "Ability", "特性", "Habilidad", "Talent", "Habilidade", "Fähigkeit") }
@@ -741,7 +748,7 @@ struct L {
     var baseStatTotal: String { t("합계", "Base total", "合計", "Total base", "Total de base", "Total base", "Basiswertsumme") }
     var possibleAbilities: String { t("가능한 특성", "Possible abilities", "可能な特性", "Habilidades posibles", "Talents possibles", "Habilidades possíveis", "Mögliche Fähigkeiten") }
     func completeMoveList(_ count: Int) -> String { t("전체 기술 목록 \(count)개", "Complete move list · \(count)", "全技リスト・\(count)", "Lista completa · \(count)", "Liste complète · \(count)", "Lista completa · \(count)", "Vollständige Attackenliste · \(count)") }
-    func genderLabel(_ gender: PokemonGender?) -> String {
+    func genderLabel(_ gender: DigimonGender?) -> String {
         switch gender {
         case .male: return t("수컷", "Male", "オス", "Macho", "Mâle", "Macho", "Männlich")
         case .female: return t("암컷", "Female", "メス", "Hembra", "Femelle", "Fêmea", "Weiblich")
@@ -760,7 +767,7 @@ struct L {
         default: return stat
         }
     }
-    func moveMethod(_ detail: PokemonMoveLearnMethod) -> String {
+    func moveMethod(_ detail: DigimonMoveLearnMethod) -> String {
         switch detail.method {
         case "level-up": return detail.level > 0 ? "Lv. \(detail.level)" : t("시작", "Start", "基本", "Inicio", "Départ", "Inicial", "Start")
         case "machine": return "TM"
@@ -806,7 +813,7 @@ struct L {
     var notifEvolveTitle: String { t("✨ 진화!", "✨ Evolved!", "✨ 進化！", "✨ ¡Evolucionó!", "✨ Évolution !", "✨ Evoluiu!", "✨ Entwicklung!") }
     func notifEvolveBody(_ name: String) -> String { t("\(name)(으)로 진화했어요!", "Evolved into \(name)!", "\(name) に進化しました！", "¡Evolucionó a \(name)!", "A évolué en \(name) !", "Evoluiu para \(name)!", "Hat sich zu \(name) entwickelt!") }
     var notifGraduateTitle: String { t("🎓 졸업!", "🎓 Graduated!", "🎓 卒業！", "🎓 ¡Graduado!", "🎓 Diplômé !", "🎓 Formatura!", "🎓 Abschied!") }
-    func notifGraduateBody(_ name: String) -> String { t("\(name) — 도감에 보존! 새 알이 도착했어요.", "\(name) — saved to your Pokédex! A new egg has arrived.", "\(name) — 図鑑に保存！新しいタマゴが届きました。", "\(name) — ¡guardado en tu Pokédex! Ha llegado un nuevo huevo.", "\(name) — conservé dans ton Pokédex ! Un nouvel œuf est arrivé.", "\(name) — guardado na sua Pokédex! Chegou um novo ovo.", "\(name) – in deinem Pokédex gespeichert! Ein neues Ei ist da.") }
+    func notifGraduateBody(_ name: String) -> String { t("\(name) — 도감에 보존! 새 알이 도착했어요.", "\(name) — saved to your Digidex! A new egg has arrived.", "\(name) — 図鑑に保存！新しいタマゴが届きました。", "\(name) — ¡guardado en tu Digidex! Ha llegado un nuevo huevo.", "\(name) — conservé dans ton Digidex ! Un nouvel œuf est arrivé.", "\(name) — guardado na sua Digidex! Chegou um novo ovo.", "\(name) – in deinem Digidex gespeichert! Ein neues Ei ist da.") }
 
     // MARK: Claude 한도 토큰 갱신 오류 (친절 안내)
     func limitRefreshHTTPError(_ status: Int) -> String {
@@ -950,12 +957,12 @@ struct L {
         t("\(name)에게 사용할까요?", "Use on \(name)?", "\(name) に使いますか？", "¿Usar en \(name)?", "Utiliser sur \(name) ?", "Usar em \(name)?", "Bei \(name) verwenden?")
     }
     var useAfterHatch: String { t("부화 후 사용할 수 있어요", "Usable after hatching", "孵化後に使えます", "Se puede usar después de eclosionar", "Utilisable après l'éclosion", "Dá para usar depois que chocar", "Nach dem Schlüpfen verwendbar") }
-    var useNeedsPokemon: String { t("사용할 포켓몬이 없어요", "No Pokémon to use it on", "使えるポケモンがいません", "No hay ningún Pokémon en quien usarlo", "Aucun Pokémon sur qui l'utiliser", "Nenhum Pokémon para usar o item", "Kein Pokémon, bei dem du es verwenden kannst") }
+    var useNeedsDigimon: String { t("사용할 디지몬이 없어요", "No Digimon to use it on", "使えるデジモンがいません", "No hay ningún Digimon en quien usarlo", "Aucun Digimon sur qui l'utiliser", "Nenhum Digimon para usar o item", "Kein Digimon, bei dem du es verwenden kannst") }
     var useArmorEvolutionComingSoon: String { t("아머 진화는 준비 중이에요", "Armor evolution is coming soon", "アーマー進化は準備中です", "La armor-evolución llegará pronto", "L'armor-évolution arrive bientôt", "A armor-evolução está por vir", "Rüstungs-Evolution ist in Vorbereitung") }
 
     /// Rare Candy batch preview, including carryover and graduation waste.
     var candyGraduates: String {
-        t("이 포켓몬은 졸업할 것으로 예상돼요.", "Expected to graduate.", "卒業する見込みです。",
+        t("이 디지몬은 졸업할 것으로 예상돼요.", "Expected to graduate.", "卒業する見込みです。",
           "Se espera que se gradúe.", "Devrait terminer sa croissance.",
           "Deve se formar.", "Schließt voraussichtlich sein Training ab.")
     }
@@ -979,7 +986,7 @@ struct L {
     /// 아이템 표시명 — 디지멘탈 8종은 크레스트 속성명(GAME-DESIGN.md §4).
     func itemName(_ kind: ItemKind) -> String {
         switch kind {
-        case .rareCandy: return t("이상한 사탕", "Rare Candy", "ふしぎなアメ", "Caramelo Raro", "Super Bonbon", "Doce Raro", "Sonderbonbon")
+        case .rareCandy: return t("디지코어", "Digicore", "デジコア", "Diginúcleo", "Digicœur", "Diginúcleo", "Digikern")
         case .digimentalCourage: return t("용기의 디지멘탈", "Digimental of Courage", "勇気のデジメンタル", "Digimental del Valor", "Digimental du Courage", "Digimental da Coragem", "Digimental des Mutes")
         case .digimentalSincerity: return t("성실의 디지멘탈", "Digimental of Sincerity", "誠実のデジメンタル", "Digimental de la Sinceridad", "Digimental de la Sincérité", "Digimental da Sinceridade", "Digimental der Aufrichtigkeit")
         case .digimentalMiracles: return t("기적의 디지멘탈", "Digimental of Miracles", "奇跡のデジメンタル", "Digimental de los Milagros", "Digimental des Miracles", "Digimental dos Milagres", "Digimental der Wunder")
@@ -995,13 +1002,13 @@ struct L {
         switch kind {
         case .rareCandy:
             let xp = TokenFormatter.compact(RareCandy.xp)   // 상수에서 파생(하드코딩 드리프트 방지)
-            return t("현재 포켓몬의 경험치를 \(xp) 올려줘요.",
-                     "Raises your Pokémon's EXP by \(xp).",
-                     "ポケモンの経験値を\(xp)上げます。",
-                     "Aumenta la experiencia de tu Pokémon en \(xp).",
-                     "Augmente l'EXP de ton Pokémon de \(xp).",
-                     "Aumenta a experiência do seu Pokémon em \(xp).",
-                     "Gibt deinem aktuellen Pokémon \(xp) EP.")
+            return t("현재 디지몬의 경험치를 \(xp) 올려줘요.",
+                     "Raises your Digimon's EXP by \(xp).",
+                     "デジモンの経験値を\(xp)上げます。",
+                     "Aumenta la experiencia de tu Digimon en \(xp).",
+                     "Augmente l'EXP de ton Digimon de \(xp).",
+                     "Aumenta a experiência do seu Digimon em \(xp).",
+                     "Gibt deinem aktuellen Digimon \(xp) EP.")
         case .digimentalCourage, .digimentalSincerity, .digimentalMiracles, .digimentalLove,
              .digimentalPurity, .digimentalKnowledge, .digimentalHope, .digimentalLight,
              .digimentalFriendship:
@@ -1029,7 +1036,7 @@ struct L {
     // 조사가 어긋난다(レアのタマゴ vs 자연스러운 レアなタマゴ). 세 언어를 명시 트리플로 적는다.
     func eggName(_ tier: Rarity?) -> String {
         switch tier {
-        case nil, .common?: return t("포켓몬 알", "Pokémon Egg", "ポケモンのタマゴ", "Huevo Pokémon", "Œuf Pokémon", "Ovo Pokémon", "Pokémon-Ei")
+        case nil, .common?: return t("디지몬 알", "Digimon Egg", "デジモンのタマゴ", "Huevo Digimon", "Œuf Digimon", "Ovo Digimon", "Digimon-Ei")
         case .uncommon?:  return t("고급 알", "Uncommon Egg", "アンコモンのタマゴ", "Huevo poco común", "Œuf peu commun", "Ovo incomum", "Ungewöhnliches Ei")
         case .rare?:      return t("희귀 알", "Rare Egg", "レアのタマゴ", "Huevo raro", "Œuf rare", "Ovo raro", "Seltenes Ei")
         case .legendary?: return t("전설 알", "Legendary Egg", "でんせつのタマゴ", "Huevo legendario", "Œuf légendaire", "Ovo lendário", "Legendäres Ei")   // 미판매(FreshEgg.shopTiers)
@@ -1037,22 +1044,22 @@ struct L {
     }
     func eggDescription(_ tier: Rarity?) -> String {
         guard let tier, tier != .common else {
-            return t("지금 포켓몬을 놓아주고 새 알로 다시 시작해요.",
-                     "Send off your current Pokémon and start fresh with a new egg.",
-                     "いまのポケモンを手放して新しいタマゴからやり直します。",
-                     "Suelta a tu Pokémon actual y empieza de nuevo con un huevo nuevo.",
-                     "Laisse partir ton Pokémon actuel et repars de zéro avec un nouvel œuf.",
-                     "Solte seu Pokémon atual e recomece com um ovo novo.",
-                     "Verabschiede dein aktuelles Pokémon und starte mit einem neuen Ei.")
+            return t("지금 디지몬을 놓아주고 새 알로 다시 시작해요.",
+                     "Send off your current Digimon and start fresh with a new egg.",
+                     "いまのデジモンを手放して新しいタマゴからやり直します。",
+                     "Suelta a tu Digimon actual y empieza de nuevo con un huevo nuevo.",
+                     "Laisse partir ton Digimon actuel et repars de zéro avec un nouvel œuf.",
+                     "Solte seu Digimon atual e recomece com um ovo novo.",
+                     "Verabschiede dein aktuelles Digimon und starte mit einem neuen Ei.")
         }
         let r = rarityLabel(tier)
-        return t("지금 포켓몬을 놓아주고 \(r) 이상이 확정으로 나오는 알을 받아요.",
-                 "Send off your current Pokémon for an egg guaranteed to hatch \(r) or better.",
-                 "いまのポケモンを手放して \(r) 以上が確定で孵るタマゴをもらいます。",
-                 "Suelta a tu Pokémon actual y consigue un huevo garantizado de \(r) o superior.",
-                 "Laisse partir ton Pokémon actuel pour un œuf garanti \(r) ou mieux.",
-                 "Solte seu Pokémon atual e ganhe um ovo que garante \(r) ou melhor.",
-                 "Verabschiede dein aktuelles Pokémon und erhalte ein Ei, aus dem garantiert ein Pokémon der Seltenheitsstufe \(r) oder höher schlüpft.")
+        return t("지금 디지몬을 놓아주고 \(r) 이상이 확정으로 나오는 알을 받아요.",
+                 "Send off your current Digimon for an egg guaranteed to hatch \(r) or better.",
+                 "いまのデジモンを手放して \(r) 以上が確定で孵るタマゴをもらいます。",
+                 "Suelta a tu Digimon actual y consigue un huevo garantizado de \(r) o superior.",
+                 "Laisse partir ton Digimon actuel pour un œuf garanti \(r) ou mieux.",
+                 "Solte seu Digimon atual e ganhe um ovo que garante \(r) ou melhor.",
+                 "Verabschiede dein aktuelles Digimon und erhalte ein Ei, aus dem garantiert ein Digimon der Seltenheitsstufe \(r) oder höher schlüpft.")
     }
     /// 알 상태의 상점 알 카드 비활성 사유 — 항목은 보이되 구매 버튼 아래에 한 줄로 붙는다(EggCard).
     var eggShopLockedHint: String {
@@ -1078,23 +1085,23 @@ struct L {
           "Soltar \(monName) e trocar pelo \(eggName)?",
           "\(monName) verabschieden und gegen \(eggName) tauschen?")
     }
-    // MARK: 사탕 획득 알림 ("왜 받는지" = 토큰 한도를 다 채운 수고에 대한 보상)
+    // MARK: 디지코어 획득 알림 ("왜 받는지" = 토큰 한도를 다 채운 수고에 대한 보상)
     func notifCandyTitle(item: String, count: Int) -> String {
-        t("🍬 \(item) \(count)개를 받았어요!",
-          "🍬 You got \(count)× \(item)!",
-          "🍬 \(item)を\(count)個もらいました！",
-          "🍬 ¡Has recibido \(count)× \(item)!",
-          "🍬 Tu as reçu \(count)× \(item) !",
-          "🍬 Você ganhou \(count)× \(item)!",
-          "🍬 Du hast \(count)× \(item) erhalten!")
+        t("⚡ \(item) \(count)개를 받았어요!",
+          "⚡ You got \(count)× \(item)!",
+          "⚡ \(item)を\(count)個もらいました！",
+          "⚡ ¡Has recibido \(count)× \(item)!",
+          "⚡ Tu as reçu \(count)× \(item) !",
+          "⚡ Você ganhou \(count)× \(item)!",
+          "⚡ Du hast \(count)× \(item) erhalten!")
     }
     func notifCandyBody(window: String) -> String {
-        t("\(window) 토큰 한도를 다 채웠어요. 열심히 쓴 만큼 사탕을 드려요 — 포켓몬에게 써서 진화시켜 보세요!",
-          "You maxed out your \(window) token limit. A treat for the effort — use it to evolve your Pokémon!",
-          "\(window)のトークン上限を使い切りました。がんばったごほうびです — ポケモンに使って進化させよう！",
-          "Has agotado tu límite de tokens \(window). Un premio por el esfuerzo — ¡úsalo para evolucionar a tu Pokémon!",
-          "Tu as atteint ta limite de tokens \(window). Une récompense pour l'effort — utilise-la pour faire évoluer ton Pokémon !",
-          "Você esgotou seu limite de tokens — \(window). Você merece um agrado: use no seu Pokémon para evoluir!",
-          "Du hast das Token-Limit für \(window) ausgeschöpft. Eine Belohnung für deinen Einsatz – verwende sie, um dein Pokémon zu entwickeln!")
+        t("\(window) 토큰 한도를 다 채웠어요. 열심히 쓴 만큼 디지코어를 드려요 — 디지몬에게 써서 진화시켜 보세요!",
+          "You maxed out your \(window) token limit. A treat for the effort — use it to evolve your Digimon!",
+          "\(window)のトークン上限を使い切りました。がんばったごほうびです — デジモンに使って進化させよう！",
+          "Has agotado tu límite de tokens \(window). Un premio por el esfuerzo — ¡úsalo para evolucionar a tu Digimon!",
+          "Tu as atteint ta limite de tokens \(window). Une récompense pour l'effort — utilise-la pour faire évoluer ton Digimon !",
+          "Você esgotou seu limite de tokens — \(window). Você merece um agrado: use no seu Digimon para evoluir!",
+          "Du hast das Token-Limit für \(window) ausgeschöpft. Eine Belohnung für deinen Einsatz – verwende sie, um dein Digimon zu entwickeln!")
     }
 }

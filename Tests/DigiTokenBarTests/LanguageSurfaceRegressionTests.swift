@@ -65,4 +65,20 @@ final class LanguageSurfaceRegressionTests: XCTestCase {
         let companion = try String(contentsOf: root.appendingPathComponent("Sources/DigiTokenBar/UI/CompanionView.swift"), encoding: .utf8)
         XCTAssertTrue(companion.contains(".accessibilityLabel(forward ? L(language).evolutionScrollNext"))
     }
+
+    /// [회귀] 화면 문자열에 포켓몬 세계관 잔재가 남지 않았는지 지킨다. 주석·`// MARK:` 는 화면에
+    /// 안 보이므로 제외 — 타입명·파일명은 다른 작업 범위라 여기서 단언하지 않는다.
+    func testLocalizationStringsHaveNoLeftoverUpstreamTerms() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent()
+        let source = try String(contentsOf: root.appendingPathComponent("Sources/DigiTokenBar/Core/Localization.swift"), encoding: .utf8)
+        let codeLines = source.split(separator: "\n", omittingEmptySubsequences: false)
+            .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }
+        let bannedTerms = ["포켓몬", "Pokémon", "Pokedex", "Pokédex", "ポケモン"]
+        for line in codeLines {
+            for term in bannedTerms {
+                XCTAssertFalse(line.contains(term), "leftover Pokémon term '\(term)' in: \(line)")
+            }
+        }
+    }
 }

@@ -78,7 +78,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         LoginItem.migrateFromLegacyLoginItemIfNeeded()   // 로그인아이템 → KeepAlive 에이전트(크래시 자동 재실행)
         store = UsageStore()
         companion = CompanionStore()
-        Task { await companion.preparePokemonProfiles() }
+        Task { await companion.prepareDigimonProfiles() }
         updater = UpdateChecker()
         store.localizationLanguage = companion.language   // 알림 현지화용 미러 시드
         store.onRefresh = { [weak self] in self?.onStoreRefreshed() }   // 한도 로드 후 companion·사탕 지급
@@ -127,7 +127,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     /// 대표 스프라이트 정체성(종) 관찰 — 대표 선택·해제뿐 아니라 사탕 진화·졸업(BagView), 세이브
     /// 가져오기, 부화·메타몽 리빌 async 완료처럼 store 갱신 틱 없이 companion 만 바뀌는 경로에서도
     /// 메뉴바를 즉시 갱신한다. observeStore(menuTitle)만으론 다음 사용량 폴링(기본 120s)까지
-    /// 이전 포켓몬이 남는다(사탕 졸업 후 메뉴바 잔상 리포트 — UsageStore.onRefresh 주석과 같은 부류).
+    /// 이전 디지몬이 남는다(사탕 졸업 후 메뉴바 잔상 리포트 — UsageStore.onRefresh 주석과 같은 부류).
     /// (플로팅 펫은 `body` 에서 직접 읽어 SwiftUI 관찰이 처리한다.)
     private func observeCompanionSprite() {
         withObservationTracking {
@@ -228,7 +228,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     /// 나란히 보면 메뉴바만 느려 보였다(2026-08-20). 코얼레싱은 남기고 늘어짐만 눌러 0.1 로 낮춤.
     static let menuFrameTolerance = 0.1
 
-    /// 대표 포켓몬에 맞춰 메뉴바 프레임을 준비. 종이 바뀐 경우에만 재로딩.
+    /// 대표 디지몬에 맞춰 메뉴바 프레임을 준비. 종이 바뀐 경우에만 재로딩.
     /// 정적 스프라이트 + 상하 bob 2프레임(유일한 움직임 — Wikimon vpet 스프라이트는 정적 PNG 만 있다).
     private func ensureMenuAnimation() {
         let subject = companion.representativeSubject

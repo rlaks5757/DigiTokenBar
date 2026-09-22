@@ -13,7 +13,7 @@ final class DifficultySaveTests: XCTestCase {
         state.usedSinceInstall = 900_000_000
         state.spentTokens = 123_000_000
         if egg {
-            state.eggUsage = Int(Double(PokemonBalance.eggHatchThreshold) * difficulty * fraction)
+            state.eggUsage = Int(Double(DigimonBalance.eggHatchThreshold) * difficulty * fraction)
         } else {
             var mon = MonState(baseID: 1, pathIDs: [1], plannedPathIDs: [1, 2, 3],
                                stageIndex: 0, usedAtStage: 0, rarity: .common, totalForms: 3,
@@ -80,7 +80,7 @@ final class DifficultySaveTests: XCTestCase {
         for old in [0.0001, 0.01, 20.0] {
             for egg in [false, true] {
                 let (s, url, defaults) = try fixture(egg: egg, difficulty: old, boost: true)
-                let expected = PokemonBalance.clampDifficulty(old)
+                let expected = DigimonBalance.clampDifficulty(old)
                 XCTAssertEqual(s.growthDifficulty, expected)
                 XCTAssertEqual(defaults.double(forKey: "growthDifficulty"), expected)
                 XCTAssertEqual(s.shopDifficulty, 2)
@@ -137,7 +137,7 @@ final class DifficultySaveTests: XCTestCase {
     }
 }
 
-private struct DifficultySaveProvider: PokeProviding {
+private struct DifficultySaveProvider: DigimonLineProviding {
     func baseSpeciesIndex() async throws -> [BaseSpecies] { [] }
     func baseSpecies(id: Int) async throws -> BaseSpecies? { nil }
     func line(baseSpeciesID: Int) async throws -> EvoLine {

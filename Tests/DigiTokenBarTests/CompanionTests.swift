@@ -4,12 +4,12 @@ import Observation
 
 // MARK: 경제
 
-final class PokemonBalanceTests: XCTestCase {
+final class DigimonBalanceTests: XCTestCase {
     func testGraduationTotalIsConstantPerRarityRegardlessOfStages() {
         for rarity in [Rarity.common, .uncommon, .rare, .legendary] {
-            let T = PokemonBalance.graduationTotal(rarity)
+            let T = DigimonBalance.graduationTotal(rarity)
             for k in 1...3 {
-                let sum = (0..<k).reduce(0) { $0 + PokemonBalance.phaseThreshold(rarity: rarity, totalForms: k, stageIndex: $1) }
+                let sum = (0..<k).reduce(0) { $0 + DigimonBalance.phaseThreshold(rarity: rarity, totalForms: k, stageIndex: $1) }
                 // 반올림 오차 허용
                 XCTAssertLessThanOrEqual(abs(sum - T), 2, "rarity=\(rarity) k=\(k) sum=\(sum) T=\(T)")
             }
@@ -19,34 +19,34 @@ final class PokemonBalanceTests: XCTestCase {
         for rarity in [Rarity.common, .uncommon, .rare, .legendary] {
             for forms in 1...3 {
                 for stage in 0..<forms {
-                    let standard = PokemonBalance.phaseThreshold(
+                    let standard = DigimonBalance.phaseThreshold(
                         rarity: rarity, totalForms: forms, stageIndex: stage)
-                    let boosted = PokemonBalance.phaseThreshold(
+                    let boosted = DigimonBalance.phaseThreshold(
                         rarity: rarity, totalForms: forms, stageIndex: stage,
-                        growthMultiplier: PokemonBalance.repeatGrowthMultiplier)
+                        growthMultiplier: DigimonBalance.repeatGrowthMultiplier)
                     XCTAssertEqual(boosted, Int((Double(standard) / 2).rounded()))
                 }
             }
         }
         XCTAssertEqual(
-            PokemonBalance.phaseThreshold(
+            DigimonBalance.phaseThreshold(
                 rarity: .common, totalForms: 3, stageIndex: 0,
-                growthMultiplier: PokemonBalance.repeatGrowthMultiplier),
+                growthMultiplier: DigimonBalance.repeatGrowthMultiplier),
             62_500_000)
     }
     func testHigherStageCostsMore() {
         for k in 2...3 {
             for i in 0..<(k - 1) {
                 XCTAssertLessThan(
-                    PokemonBalance.phaseThreshold(rarity: .common, totalForms: k, stageIndex: i),
-                    PokemonBalance.phaseThreshold(rarity: .common, totalForms: k, stageIndex: i + 1))
+                    DigimonBalance.phaseThreshold(rarity: .common, totalForms: k, stageIndex: i),
+                    DigimonBalance.phaseThreshold(rarity: .common, totalForms: k, stageIndex: i + 1))
             }
         }
     }
     func testRarerCostsMore() {
-        XCTAssertLessThan(PokemonBalance.graduationTotal(.common), PokemonBalance.graduationTotal(.uncommon))
-        XCTAssertLessThan(PokemonBalance.graduationTotal(.uncommon), PokemonBalance.graduationTotal(.rare))
-        XCTAssertLessThan(PokemonBalance.graduationTotal(.rare), PokemonBalance.graduationTotal(.legendary))
+        XCTAssertLessThan(DigimonBalance.graduationTotal(.common), DigimonBalance.graduationTotal(.uncommon))
+        XCTAssertLessThan(DigimonBalance.graduationTotal(.uncommon), DigimonBalance.graduationTotal(.rare))
+        XCTAssertLessThan(DigimonBalance.graduationTotal(.rare), DigimonBalance.graduationTotal(.legendary))
     }
     func testRarityDerivation() {
         XCTAssertEqual(Rarity.from(captureRate: 255, isLegendary: false, isMythical: false), .common)
@@ -104,14 +104,14 @@ private func waitUntilAsync(timeout: TimeInterval = 1, _ condition: @escaping ()
     return await condition()
 }
 
-struct StubProvider: PokeProviding {
+struct StubProvider: DigimonLineProviding {
     let value: EvoLine
     func line(baseSpeciesID: Int) async throws -> EvoLine { value }
     // 인덱스 = 자기 라인 base 단일 항목 → 선택 롤 1회 소비 후 항상 그 base (테스트 rng 재생 단순화)
     func baseSpeciesIndex() async throws -> [BaseSpecies] { [BaseSpecies(id: value.baseID, captureRate: 255)] }
 }
 
-private actor SuspendedLineProvider: PokeProviding {
+private actor SuspendedLineProvider: DigimonLineProviding {
     private let value: EvoLine
     private var continuation: CheckedContinuation<EvoLine, Never>?
     private var suspended = false
@@ -140,7 +140,7 @@ private actor SuspendedLineProvider: PokeProviding {
     }
 }
 
-private actor SuspendedFailingIndexProvider: PokeProviding {
+private actor SuspendedFailingIndexProvider: DigimonLineProviding {
     private var continuation: CheckedContinuation<[BaseSpecies], Error>?
     private var failNextRequest = false
 
@@ -170,7 +170,7 @@ private actor SuspendedFailingIndexProvider: PokeProviding {
     }
 }
 
-private actor SuspendedFailingLineProvider: PokeProviding {
+private actor SuspendedFailingLineProvider: DigimonLineProviding {
     private var continuation: CheckedContinuation<EvoLine, Error>?
     private var failNextRequest = false
 
@@ -199,23 +199,23 @@ private actor SuspendedFailingLineProvider: PokeProviding {
 }
 
 // 테스트 스텁 공통 — base 판정을 주입 인덱스에서 파생. REST 폴백 경로는 실클라이언트만 override.
-extension PokeProviding {
+extension DigimonLineProviding {
     func baseSpecies(id: Int) async throws -> BaseSpecies? {
         try await baseSpeciesIndex().first { $0.id == id }
     }
 }
 
-private enum PokeStubError: Error { case boom }
+private enum DigimonStubError: Error { case boom }
 
 /// GraphQL base 인덱스 장애 시뮬 — baseSpeciesIndex 는 throw(엔드포인트 다운), REST 폴백(baseSpecies)은 성공.
-private struct FallbackOnlyProvider: PokeProviding {
+private struct FallbackOnlyProvider: DigimonLineProviding {
     func line(baseSpeciesID: Int) async throws -> EvoLine { makeLine(base: baseSpeciesID, tree: node(baseSpeciesID)) }
-    func baseSpeciesIndex() async throws -> [BaseSpecies] { throw PokeStubError.boom }
+    func baseSpeciesIndex() async throws -> [BaseSpecies] { throw DigimonStubError.boom }
     func baseSpecies(id: Int) async throws -> BaseSpecies? { BaseSpecies(id: id, captureRate: 100) }
 }
 
 /// line() 호출 횟수를 센다 — 이미 저장된 항목에 불필요한 조회가 붙는지 검증용.
-private final class CountingLineProvider: PokeProviding, @unchecked Sendable {
+private final class CountingLineProvider: DigimonLineProviding, @unchecked Sendable {
     let value: EvoLine
     nonisolated(unsafe) private(set) var lineCalls = 0
     init(value: EvoLine) { self.value = value }
@@ -224,20 +224,20 @@ private final class CountingLineProvider: PokeProviding, @unchecked Sendable {
 }
 
 /// line() 자체가 실패(오프라인) — 도감 이름 조회 폴백 검증용.
-private struct LineThrowsProvider: PokeProviding {
-    func line(baseSpeciesID: Int) async throws -> EvoLine { throw PokeStubError.boom }
+private struct LineThrowsProvider: DigimonLineProviding {
+    func line(baseSpeciesID: Int) async throws -> EvoLine { throw DigimonStubError.boom }
     func baseSpeciesIndex() async throws -> [BaseSpecies] { [] }
 }
 
 /// 샘플러 테스트용 — 주입한 base 인덱스 + 요청 id 그대로의 무진화 라인 반환.
-final class IndexProvider: PokeProviding, @unchecked Sendable {
+final class IndexProvider: DigimonLineProviding, @unchecked Sendable {
     nonisolated(unsafe) var index: [BaseSpecies] = []
     nonisolated(unsafe) var failAll = false
     func line(baseSpeciesID: Int) async throws -> EvoLine {
         makeLine(base: baseSpeciesID, tree: node(baseSpeciesID))
     }
     func baseSpeciesIndex() async throws -> [BaseSpecies] {
-        if failAll { throw PokeStubError.boom }
+        if failAll { throw DigimonStubError.boom }
         return index
     }
 }
@@ -312,7 +312,7 @@ final class CompanionStoreTests: XCTestCase {
         try? FileManager.default.removeItem(at: backup)
     }
 
-    /// [회귀] active(현재 포켓몬)가 손상돼도(pathIDs 누락 등) 알로 폴백하되 도감·인벤토리·누적은 보존한다 —
+    /// [회귀] active(현재 디지몬)가 손상돼도(pathIDs 누락 등) 알로 폴백하되 도감·인벤토리·누적은 보존한다 —
     /// 예전엔 active decode 실패가 CompanionState 전체를 throw 시켜 전면 초기화됐다(필드별 관대화로 수정).
     func testCorruptActiveFallsBackToEggWhileRestSurvives() throws {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("poke-active-corrupt-\(UUID().uuidString).json")
@@ -408,7 +408,7 @@ final class CompanionStoreTests: XCTestCase {
     /// 테스트의 주장 자체는 그대로 유지돼야 하기 때문). active.baseID=1 은 포켓몬 세계에서 이상해씨,
     /// 디지몬 세계에서는 아구몬이다 — 게이트가 없으면 이 값이 그대로 새 세대로 흘러들어 조용히
     /// 오염된다(§ CompanionModel.currentSaveVersion 1→2 변경 이력 참고).
-    func testPokemonEraSaveVersionOneIsRejectedByCurrentGenerationGate() throws {
+    func testUpstreamEraSaveVersionOneIsRejectedByCurrentGenerationGate() throws {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("poke-era-\(UUID().uuidString).json")
         let json = #"{"saveVersion":1,"#
             + #""active":{"baseID":1,"pathIDs":[1],"stageIndex":0,"usedAtStage":0,"#
@@ -456,9 +456,9 @@ final class CompanionStoreTests: XCTestCase {
     func testGraduationStoresChainNames() async {
         let s = store(linear3)
         await s.hatch(baseID: 1)
-        s.applyUsage(PokemonBalance.phaseThreshold(rarity: .common, totalForms: 3, stageIndex: 0))  // →2
-        s.applyUsage(PokemonBalance.phaseThreshold(rarity: .common, totalForms: 3, stageIndex: 1))  // →3(최종)
-        s.applyUsage(PokemonBalance.phaseThreshold(rarity: .common, totalForms: 3, stageIndex: 2))  // 졸업
+        s.applyUsage(DigimonBalance.phaseThreshold(rarity: .common, totalForms: 3, stageIndex: 0))  // →2
+        s.applyUsage(DigimonBalance.phaseThreshold(rarity: .common, totalForms: 3, stageIndex: 1))  // →3(최종)
+        s.applyUsage(DigimonBalance.phaseThreshold(rarity: .common, totalForms: 3, stageIndex: 2))  // 졸업
         XCTAssertEqual(s.state.dex.count, 1)
         XCTAssertEqual(s.state.dex.first?.chainOrder, [1, 2, 3])
         XCTAssertEqual(s.state.dex.first?.names?[1]?["ko"], "포1")   // 초기 단계도 저장
@@ -575,9 +575,9 @@ final class CompanionStoreTests: XCTestCase {
         XCTAssertTrue(s.setRepresentativeSpeciesID(1))
 
         for stage in 0..<3 {
-            s.applyUsage(PokemonBalance.phaseThreshold(rarity: .common, totalForms: 3, stageIndex: stage))
+            s.applyUsage(DigimonBalance.phaseThreshold(rarity: .common, totalForms: 3, stageIndex: stage))
             XCTAssertEqual(s.representativeSubject.speciesID, 1,
-                           "진화·졸업·새 알 전환이 고정한 대표 포켓몬을 덮어쓰면 안 된다")
+                           "진화·졸업·새 알 전환이 고정한 대표 디지몬을 덮어쓰면 안 된다")
         }
 
         XCTAssertNil(s.state.active, "졸업 후 새 알")
@@ -709,13 +709,13 @@ final class CompanionStoreTests: XCTestCase {
 
     // MARK: 도감 "키우는 중" 표식 (현재 형태 한 칸)
 
-    /// 진화 뒤에도 Raising 은 현재 형태에만 선다. 지나온 형태를 함께 표시하면 두 포켓몬을 동시에
+    /// 진화 뒤에도 Raising 은 현재 형태에만 선다. 지나온 형태를 함께 표시하면 두 디지몬을 동시에
     /// 키우는 것처럼 읽히므로, 도감 포함 여부와 현재 상태 표식은 서로 다른 규칙이다.
     func testDexSpeciesMarksOnlyCurrentEvolutionStageAsRaising() async {
         let s = store(linear3)
         s.setLanguage(.ko)
         await s.hatch(baseID: 1)
-        s.applyUsage(PokemonBalance.phaseThreshold(rarity: .common, totalForms: 3, stageIndex: 0))
+        s.applyUsage(DigimonBalance.phaseThreshold(rarity: .common, totalForms: 3, stageIndex: 0))
         XCTAssertEqual(s.state.active?.stageIndex, 1, "2단계까지 진화")
 
         let sp = s.dexSpecies
@@ -724,7 +724,7 @@ final class CompanionStoreTests: XCTestCase {
     }
 
     /// 같은 라인을 이미 졸업했어도 현재 다시 키우는 형태에는 Raising 이 선다. 이 뱃지는 기록의
-    /// 영구 보존 여부가 아니라 지금 키우는 포켓몬을 뜻한다.
+    /// 영구 보존 여부가 아니라 지금 키우는 디지몬을 뜻한다.
     func testAlreadyGraduatedLineStillMarksOnlyCurrentStageAsRaising() throws {
         let graduated = DexEntry(baseID: 1, finalID: 3, chainOrder: [1, 2, 3], rarity: .common, caughtAt: fixedNow,
                                  names: [1: ["ko": "포1"], 2: ["ko": "포2"], 3: ["ko": "포3"]])
@@ -989,8 +989,8 @@ final class CompanionStoreTests: XCTestCase {
     func testEggHatchesAtThreshold() async {
         let s = store(linear3)
         base(s)
-        use(s, PokemonBalance.eggHatchThreshold)   // = 1M
-        XCTAssertEqual(s.state.eggUsage, PokemonBalance.eggHatchThreshold)
+        use(s, DigimonBalance.eggHatchThreshold)   // = 1M
+        XCTAssertEqual(s.state.eggUsage, DigimonBalance.eggHatchThreshold)
         await s.hatchIfNeeded()
         XCTAssertNotNil(s.state.active)
         XCTAssertEqual(s.state.eggUsage, 0)
@@ -1008,7 +1008,7 @@ final class CompanionStoreTests: XCTestCase {
         // 항상 false 라 스프라이트 예열 등 네트워크 경로는 이 안에서 타지 않는다.
         let s = CompanionStore(clock: { fixedNow }, fileURL: url, rng: SeededRNG(seed: 7))
         base(s)
-        use(s, PokemonBalance.eggHatchThreshold)
+        use(s, DigimonBalance.eggHatchThreshold)
         await s.hatchIfNeeded()
 
         let active = try XCTUnwrap(s.state.active, "기본 provider 로 부화가 일어나지 않음")
@@ -1020,24 +1020,24 @@ final class CompanionStoreTests: XCTestCase {
             "부화 결과 등급 \(active.rarity) 이 라인 원본 등급 \(line.rarity) 과 다름 — 강등/승격 발생")
     }
 
-    /// [회귀] 부화한 현재 포켓몬은 졸업 전에도 도감에 보여야 한다. 영구 dex 에 미리 저장하지 않고
+    /// [회귀] 부화한 현재 디지몬은 졸업 전에도 도감에 보여야 한다. 영구 dex 에 미리 저장하지 않고
     /// 화면용 엔트리로 합쳐, 진화 경로는 즉시 갱신되고 졸업 시 중복이 생기지 않는다.
     func testActiveCompanionAppearsInDexBeforeGraduationWithoutDuplicate() async {
         let s = store(linear3)
         await s.hatch(baseID: 1)
 
         XCTAssertTrue(s.state.dex.isEmpty, "졸업 전 영구 dex 는 비어 있어야 함")
-        XCTAssertEqual(s.dexEntries.count, 1, "현재 포켓몬도 도감 화면에는 즉시 보여야 함")
+        XCTAssertEqual(s.dexEntries.count, 1, "현재 디지몬도 도감 화면에는 즉시 보여야 함")
         XCTAssertEqual(s.dexEntries[0].chainOrder, [1])
         XCTAssertEqual(s.dexEntries[0].finalID, 1)
 
-        s.applyUsage(PokemonBalance.phaseThreshold(rarity: .common, totalForms: 3, stageIndex: 0))
+        s.applyUsage(DigimonBalance.phaseThreshold(rarity: .common, totalForms: 3, stageIndex: 0))
         XCTAssertEqual(s.dexEntries.count, 1)
         XCTAssertEqual(s.dexEntries[0].chainOrder, [1, 2], "진화한 현재 경로가 도감에 반영돼야 함")
         XCTAssertEqual(s.dexEntries[0].finalID, 2)
 
-        s.applyUsage(PokemonBalance.phaseThreshold(rarity: .common, totalForms: 3, stageIndex: 1))
-        s.applyUsage(PokemonBalance.phaseThreshold(rarity: .common, totalForms: 3, stageIndex: 2))
+        s.applyUsage(DigimonBalance.phaseThreshold(rarity: .common, totalForms: 3, stageIndex: 1))
+        s.applyUsage(DigimonBalance.phaseThreshold(rarity: .common, totalForms: 3, stageIndex: 2))
         XCTAssertNil(s.state.active)
         XCTAssertEqual(s.state.dex.count, 1, "졸업 시 영구 엔트리 하나만 저장")
         XCTAssertEqual(s.dexEntries.count, 1, "화면용 active 가 영구 엔트리와 중복되면 안 됨")
@@ -1059,7 +1059,7 @@ final class CompanionStoreTests: XCTestCase {
         XCTAssertEqual(s.dexCount(.uncommon), 1)
     }
 
-    /// [회귀] 현재 키우는 common 포켓몬은 더 희귀한 졸업 항목보다도 위에 고정된다.
+    /// [회귀] 현재 키우는 common 디지몬은 더 희귀한 졸업 항목보다도 위에 고정된다.
     /// caughtAt 이 없는 구버전 졸업 항목은 active 로 오인하지 않는다.
     func testActiveCompanionPinnedBeforeGraduatedEntries() throws {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("poke-active-sort-\(UUID().uuidString).json")
@@ -1090,7 +1090,7 @@ final class CompanionStoreTests: XCTestCase {
     func testEggOverflowCarriesToHatchedMon() async {
         let s = store(linear3)
         base(s)
-        use(s, PokemonBalance.eggHatchThreshold + 500_000)   // 임계 초과 0.5M
+        use(s, DigimonBalance.eggHatchThreshold + 500_000)   // 임계 초과 0.5M
         await s.hatchIfNeeded()
         XCTAssertEqual(s.state.active?.usedAtStage, 500_000)   // 초과분 이월
     }
@@ -1101,7 +1101,7 @@ final class CompanionStoreTests: XCTestCase {
         let s = CompanionStore(provider: FallbackOnlyProvider(),
                                clock: { fixedNow }, fileURL: url, rng: SeededRNG(seed: 7))
         base(s)
-        use(s, PokemonBalance.eggHatchThreshold)
+        use(s, DigimonBalance.eggHatchThreshold)
         await s.hatchIfNeeded()
         XCTAssertNotNil(s.state.active, "인덱스 장애 시 REST 폴백으로 부화해야 함")
         XCTAssertEqual(s.state.eggUsage, 0)
@@ -1110,10 +1110,10 @@ final class CompanionStoreTests: XCTestCase {
     func testNewEggAfterGraduationReincubates() async {
         let s = store(noEvo)
         base(s)
-        use(s, PokemonBalance.eggHatchThreshold)
+        use(s, DigimonBalance.eggHatchThreshold)
         await s.hatchIfNeeded()
         XCTAssertNotNil(s.state.active)
-        s.applyUsage(PokemonBalance.graduationTotal(.common))   // 무진화 졸업
+        s.applyUsage(DigimonBalance.graduationTotal(.common))   // 무진화 졸업
         XCTAssertNil(s.state.active)
         XCTAssertEqual(s.state.eggUsage, 0)                     // 새 알 인큐베이션 리셋
         await s.hatchIfNeeded()                                 // eggUsage=0 → 즉시 부화 안 함
@@ -1135,12 +1135,12 @@ final class CompanionStoreTests: XCTestCase {
         await s.hatch(baseID: 1)
         XCTAssertEqual(s.currentSpeciesID, 1)
         XCTAssertEqual(s.state.active?.totalForms, 3)
-        s.applyUsage(PokemonBalance.phaseThreshold(rarity: .common, totalForms: 3, stageIndex: 0)) // →2
+        s.applyUsage(DigimonBalance.phaseThreshold(rarity: .common, totalForms: 3, stageIndex: 0)) // →2
         XCTAssertEqual(s.currentSpeciesID, 2)
-        s.applyUsage(PokemonBalance.phaseThreshold(rarity: .common, totalForms: 3, stageIndex: 1)) // →3 (final)
+        s.applyUsage(DigimonBalance.phaseThreshold(rarity: .common, totalForms: 3, stageIndex: 1)) // →3 (final)
         XCTAssertEqual(s.currentSpeciesID, 3)
         XCTAssertTrue(s.isFinalStage)
-        s.applyUsage(PokemonBalance.phaseThreshold(rarity: .common, totalForms: 3, stageIndex: 2)) // 졸업
+        s.applyUsage(DigimonBalance.phaseThreshold(rarity: .common, totalForms: 3, stageIndex: 2)) // 졸업
         XCTAssertNil(s.state.active)
         XCTAssertEqual(s.dexEntries.count, 1)
         XCTAssertEqual(s.dexEntries[0].chainOrder, [1, 2, 3])   // 라인 전체 보존
@@ -1151,7 +1151,7 @@ final class CompanionStoreTests: XCTestCase {
         let s = store(noEvo)
         await s.hatch(baseID: 20)
         XCTAssertTrue(s.isFinalStage)
-        s.applyUsage(PokemonBalance.graduationTotal(.common))   // 무진화: 단일 임계 = T
+        s.applyUsage(DigimonBalance.graduationTotal(.common))   // 무진화: 단일 임계 = T
         XCTAssertEqual(s.dexEntries.count, 1)
         XCTAssertEqual(s.dexEntries[0].chainOrder, [20])
     }
@@ -1208,7 +1208,7 @@ final class CompanionStoreTests: XCTestCase {
         XCTAssertEqual(plan.count, 3)
         guard plan.count == 3 else { return }
 
-        s.applyUsage(PokemonBalance.phaseThreshold(
+        s.applyUsage(DigimonBalance.phaseThreshold(
             rarity: .common, totalForms: plan.count, stageIndex: 0))
 
         XCTAssertEqual(s.lineNodes, [
@@ -1220,8 +1220,8 @@ final class CompanionStoreTests: XCTestCase {
 
     func testBranchingPrefersUncollectedFinals() async {
         let s = store(branch3)
-        let evo = PokemonBalance.phaseThreshold(rarity: .common, totalForms: 2, stageIndex: 0)
-        let grad = PokemonBalance.phaseThreshold(rarity: .common, totalForms: 2, stageIndex: 1)
+        let evo = DigimonBalance.phaseThreshold(rarity: .common, totalForms: 2, stageIndex: 0)
+        let grad = DigimonBalance.phaseThreshold(rarity: .common, totalForms: 2, stageIndex: 1)
         var finals: [Int] = []
         for _ in 0..<3 {
             await s.hatch(baseID: 10)
@@ -1235,8 +1235,8 @@ final class CompanionStoreTests: XCTestCase {
 
     func testRepeatGrowthIsDecidedFromTheCollectedBaseNotThePlannedFinal() async throws {
         let s = store(branch3)
-        let evolution = PokemonBalance.phaseThreshold(rarity: .common, totalForms: 2, stageIndex: 0)
-        let graduation = PokemonBalance.phaseThreshold(rarity: .common, totalForms: 2, stageIndex: 1)
+        let evolution = DigimonBalance.phaseThreshold(rarity: .common, totalForms: 2, stageIndex: 0)
+        let graduation = DigimonBalance.phaseThreshold(rarity: .common, totalForms: 2, stageIndex: 1)
 
         await s.hatch(baseID: 10)
         XCTAssertNil(s.growthMultiplier)
@@ -1249,9 +1249,9 @@ final class CompanionStoreTests: XCTestCase {
         let repeatFinal = try XCTUnwrap(repeatMon.plannedPathIDs.last)
         XCTAssertNotEqual(repeatFinal, firstFinal)
         XCTAssertTrue(repeatMon.hasGrowthBoost)
-        XCTAssertEqual(s.growthMultiplier, PokemonBalance.repeatGrowthMultiplier)
-        XCTAssertEqual(s.threshold, evolution / PokemonBalance.repeatGrowthMultiplier)
-        XCTAssertEqual(s.tokensToNext, evolution / PokemonBalance.repeatGrowthMultiplier)
+        XCTAssertEqual(s.growthMultiplier, DigimonBalance.repeatGrowthMultiplier)
+        XCTAssertEqual(s.threshold, evolution / DigimonBalance.repeatGrowthMultiplier)
+        XCTAssertEqual(s.tokensToNext, evolution / DigimonBalance.repeatGrowthMultiplier)
     }
 
     func testHatchPreselectsWurmpleRouteAndEvolutionDoesNotConsumeRNG() async {
@@ -1270,7 +1270,7 @@ final class CompanionStoreTests: XCTestCase {
         guard plan.count > 1 else { return }
 
         let callsAfterHatch = rng.callCount
-        s.applyUsage(PokemonBalance.phaseThreshold(rarity: hatched.rarity, totalForms: hatched.totalForms, stageIndex: 0))
+        s.applyUsage(DigimonBalance.phaseThreshold(rarity: hatched.rarity, totalForms: hatched.totalForms, stageIndex: 0))
 
         XCTAssertEqual(rng.callCount, callsAfterHatch, "evolution must consume the stored plan without rolling RNG")
         XCTAssertEqual(s.state.active?.pathIDs, Array(plan.prefix(2)))
@@ -1281,7 +1281,7 @@ final class CompanionStoreTests: XCTestCase {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("poke-persist-\(UUID().uuidString).json")
         let s1 = CompanionStore(provider: StubProvider(value: linear3), clock: { fixedNow }, fileURL: url, rng: SeededRNG(seed: 1))
         await s1.hatch(baseID: 1)
-        s1.applyUsage(PokemonBalance.phaseThreshold(rarity: .common, totalForms: 3, stageIndex: 0))
+        s1.applyUsage(DigimonBalance.phaseThreshold(rarity: .common, totalForms: 3, stageIndex: 0))
         s1.setLanguage(.ja)
         let s2 = CompanionStore(provider: StubProvider(value: linear3), clock: { fixedNow }, fileURL: url, rng: SeededRNG(seed: 1))
         XCTAssertEqual(s2.state.active?.currentID, 2)
@@ -1296,7 +1296,7 @@ final class CompanionStoreTests: XCTestCase {
                                 fileURL: url, rng: SeededRNG(seed: 1))
         await s1.hatch(baseID: 1)
         for stage in 0..<3 {
-            s1.applyUsage(PokemonBalance.phaseThreshold(
+            s1.applyUsage(DigimonBalance.phaseThreshold(
                 rarity: .common, totalForms: 3, stageIndex: stage))
         }
         await s1.hatch(baseID: 1)
@@ -1333,7 +1333,7 @@ final class CompanionStoreTests: XCTestCase {
         XCTAssertEqual(s2.state.active?.plannedPathIDs, [1, 2])
         XCTAssertEqual(s2.state.active?.totalForms, 2)
         let callsAfterLoad = rng.callCount
-        s2.applyUsage(PokemonBalance.phaseThreshold(rarity: .common, totalForms: 2, stageIndex: 0))
+        s2.applyUsage(DigimonBalance.phaseThreshold(rarity: .common, totalForms: 2, stageIndex: 0))
         XCTAssertEqual(s2.currentSpeciesID, 2, "persisted route must beat the post-restart RNG branch")
         XCTAssertEqual(rng.callCount, callsAfterLoad, "load and evolution must not reroll the persisted route")
     }
@@ -1467,7 +1467,7 @@ final class CompanionStoreTests: XCTestCase {
         while s.state.active != nil, guardCount < 12 {
             guardCount += 1
             let stage = s.state.active!.stageIndex
-            s.applyUsage(PokemonBalance.phaseThreshold(rarity: .common, totalForms: s.state.active!.totalForms, stageIndex: stage))
+            s.applyUsage(DigimonBalance.phaseThreshold(rarity: .common, totalForms: s.state.active!.totalForms, stageIndex: stage))
         }
         XCTAssertNil(s.state.active, "어느 분기든 최종체에서 졸업(크래시·무한루프 없음)")
         XCTAssertEqual(s.dexEntries.count, 1)
@@ -1535,7 +1535,7 @@ final class DisplayLocaleTests: XCTestCase {
     }
 }
 
-// MARK: 포획 로그 정렬 / 요약
+// MARK: 동행 기록 정렬 / 요약
 
 @MainActor
 final class DexSortingTests: XCTestCase {
@@ -1566,17 +1566,17 @@ final class DexSortingTests: XCTestCase {
         // legendary (가장 먼저 — 희귀도 우선 정렬이면 맨 앞으로 올라온다)
         provider.line = makeLine(base: 200, tree: node(200), rarity: .legendary)
         tick = 1; await s.hatch(baseID: 200)
-        s.applyUsage(PokemonBalance.graduationTotal(.legendary))
+        s.applyUsage(DigimonBalance.graduationTotal(.legendary))
 
         // common #1
         provider.line = makeLine(base: 100, tree: node(100), rarity: .common)
         tick = 2; await s.hatch(baseID: 100)
-        s.applyUsage(PokemonBalance.graduationTotal(.common))
+        s.applyUsage(DigimonBalance.graduationTotal(.common))
 
         // common #2 (가장 나중)
         provider.line = makeLine(base: 101, tree: node(101), rarity: .common)
         tick = 3; await s.hatch(baseID: 101)
-        s.applyUsage(PokemonBalance.graduationTotal(.common))
+        s.applyUsage(DigimonBalance.graduationTotal(.common))
 
         XCTAssertEqual(s.dexEntries.count, 3)
         let sorted = s.dexEntriesSorted
@@ -1592,7 +1592,7 @@ final class DexSortingTests: XCTestCase {
 }
 
 /// 테스트용 — 라인을 호출 전에 갈아끼울 수 있는 provider. 단일 스레드 테스트 한정.
-private final class MutableProvider: PokeProviding, @unchecked Sendable {
+private final class MutableProvider: DigimonLineProviding, @unchecked Sendable {
     nonisolated(unsafe) var line: EvoLine = makeLine(base: 1, tree: node(1))
     func line(baseSpeciesID: Int) async throws -> EvoLine { line }
     func baseSpeciesIndex() async throws -> [BaseSpecies] { [BaseSpecies(id: line.baseID, captureRate: 255)] }
@@ -1657,7 +1657,7 @@ final class CompanionIdentityTests: XCTestCase {
         s.consumeCelebration()
         XCTAssertNil(s.celebration)
         // 1단계 임계 도달 → 진화 연출
-        let thr = PokemonBalance.phaseThreshold(rarity: .common, totalForms: 3, stageIndex: 0)
+        let thr = DigimonBalance.phaseThreshold(rarity: .common, totalForms: 3, stageIndex: 0)
         s.applyUsage(thr)
         XCTAssertEqual(s.celebrationSeq, 2)
         XCTAssertEqual(s.celebration, .evolve)
@@ -1719,16 +1719,16 @@ final class CompanionIdentityTests: XCTestCase {
     /// 희귀도로 고정이고 단계 수로 나눠 갖는 구조라, 절단됐던 세이브가 원래 단계 수를 되찾는 건
     /// 밸런스 인플레가 아니라 교정이다 — 그 사실을 수치로 고정해 임계 공식이 바뀌면 드러나게 한다.
     func testRestoredTotalFormsRedistributesTheSameBudget() {
-        let truncated = PokemonBalance.phaseThreshold(rarity: .common, totalForms: 2, stageIndex: 0)
-        let restored = PokemonBalance.phaseThreshold(rarity: .common, totalForms: 3, stageIndex: 0)
+        let truncated = DigimonBalance.phaseThreshold(rarity: .common, totalForms: 2, stageIndex: 0)
+        let restored = DigimonBalance.phaseThreshold(rarity: .common, totalForms: 3, stageIndex: 0)
         XCTAssertGreaterThan(truncated, restored, "단계가 늘면 단계당 임계는 줄어야 한다(총량 고정)")
 
         // 총량 보존: 각 k 에서 전 단계 임계의 합이 graduationTotal 과 같아야 한다.
         for k in 2...4 {
             let sum = (0..<k).reduce(0) {
-                $0 + PokemonBalance.phaseThreshold(rarity: .common, totalForms: k, stageIndex: $1)
+                $0 + DigimonBalance.phaseThreshold(rarity: .common, totalForms: k, stageIndex: $1)
             }
-            XCTAssertEqual(Double(sum), Double(PokemonBalance.graduationTotal(.common)),
+            XCTAssertEqual(Double(sum), Double(DigimonBalance.graduationTotal(.common)),
                            accuracy: Double(k), "k=\(k): 단계 임계 합이 졸업 총량과 달라졌다")
         }
     }
@@ -1758,7 +1758,7 @@ final class CompanionIdentityTests: XCTestCase {
 
     // MARK: 부화 샘플러 (PokéAPI rejection sampling — 하드코딩 풀 대체)
 
-    private func samplerStore(_ provider: any PokeProviding, seed: UInt64,
+    private func samplerStore(_ provider: any DigimonLineProviding, seed: UInt64,
                               preloadState: CompanionState? = nil) -> CompanionStore {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("poke-\(UUID().uuidString).json")
         if let st = preloadState, let data = try? JSONEncoder().encode(st) { try? data.write(to: url) }
@@ -1770,7 +1770,7 @@ final class CompanionIdentityTests: XCTestCase {
         var st = CompanionState()
         st.installBaselineSet = true
         st.lastDate = "d1"
-        st.eggUsage = PokemonBalance.eggHatchThreshold + 1
+        st.eggUsage = DigimonBalance.eggHatchThreshold + 1
         st.collectedFinals = collected
         return st
     }
@@ -1881,7 +1881,7 @@ final class CompanionIdentityTests: XCTestCase {
         let s = samplerStore(p, seed: 1, preloadState: eggReadyState())
         await s.hatchIfNeeded()
         XCTAssertNil(s.state.active)
-        XCTAssertGreaterThanOrEqual(s.state.eggUsage, PokemonBalance.eggHatchThreshold, "알 진행 보존")
+        XCTAssertGreaterThanOrEqual(s.state.eggUsage, DigimonBalance.eggHatchThreshold, "알 진행 보존")
         XCTAssertFalse(s.isHatching)
     }
 
@@ -1908,7 +1908,7 @@ final class CompanionIdentityTests: XCTestCase {
 
         var state = CompanionState()
         state.installBaselineSet = true
-        state.eggUsage = PokemonBalance.eggHatchThreshold
+        state.eggUsage = DigimonBalance.eggHatchThreshold
         if let data = try? JSONEncoder().encode(state) {
             try? data.write(to: url)
         }
@@ -1938,7 +1938,7 @@ final class CompanionIdentityTests: XCTestCase {
 
         var state = CompanionState()
         state.installBaselineSet = true
-        state.eggUsage = PokemonBalance.eggHatchThreshold
+        state.eggUsage = DigimonBalance.eggHatchThreshold
         if let data = try? JSONEncoder().encode(state) {
             try? data.write(to: url)
         }
@@ -1977,7 +1977,7 @@ final class CompanionIdentityTests: XCTestCase {
         var state = CompanionState()
         state.installBaselineSet = true
         state.lastDate = "d1"
-        state.eggUsage = PokemonBalance.eggHatchThreshold - 1
+        state.eggUsage = DigimonBalance.eggHatchThreshold - 1
         state.claimedTodayTokensByProvider = ["test": 0]
         let store = samplerStore(provider, seed: 42, preloadState: state)
 
@@ -2046,7 +2046,7 @@ final class CompanionIdentityTests: XCTestCase {
     }
 }
 
-private struct FailingPokeProvider: PokeProviding {
+private struct FailingPokeProvider: DigimonLineProviding {
     func line(baseSpeciesID: Int) async throws -> EvoLine {
         throw URLError(.notConnectedToInternet)
     }

@@ -1,26 +1,26 @@
 import SwiftUI
 
-struct PokemonNameItem: Hashable, Sendable {
-    let resource: PokemonNameResource
+struct DigimonNameItem: Hashable, Sendable {
+    let resource: DigimonNameResource
     var suffix = ""
 }
 
 /// A plain Text preserves wrapping of joined ability names and all parent typography.
 @MainActor
-struct PokemonNameText: View {
-    let items: [PokemonNameItem]
+struct DigimonNameText: View {
+    let items: [DigimonNameItem]
     let language: AppLanguage
-    let names: [PokemonNameResource: [String: String]]
-    var failed: Set<PokemonNameResource> = []
+    let names: [DigimonNameResource: [String: String]]
+    var failed: Set<DigimonNameResource> = []
 
     var text: String {
         items.map { item in
             guard let translations = names[item.resource] else {
                 return (failed.contains(item.resource)
-                        ? PokemonNameLocalization.identifier(item.resource.name) : "…") + item.suffix
+                        ? DigimonNameLocalization.identifier(item.resource.name) : "…") + item.suffix
             }
             return (language.resolveName(translations)
-                    ?? PokemonNameLocalization.identifier(item.resource.name)) + item.suffix
+                    ?? DigimonNameLocalization.identifier(item.resource.name)) + item.suffix
         }.joined(separator: " · ")
     }
     var body: some View { Text(text) }
@@ -29,11 +29,11 @@ struct PokemonNameText: View {
 /// Synchronous presentation snapshot: reopening a detail starts with the last translated names.
 /// The API client still owns disk caching, request deduplication, and freshness checks.
 @MainActor @Observable
-final class PokemonNameDisplayStore {
-    static let shared = PokemonNameDisplayStore()
-    private(set) var names: [PokemonNameResource: [String: String]] = [:]
+final class DigimonNameDisplayStore {
+    static let shared = DigimonNameDisplayStore()
+    private(set) var names: [DigimonNameResource: [String: String]] = [:]
 
-    func load(_ resource: PokemonNameResource, provider: any PokemonNameProviding) async -> Bool {
+    func load(_ resource: DigimonNameResource, provider: any DigimonNameProviding) async -> Bool {
         do {
             let translations = try await provider.names(for: resource)
             guard !Task.isCancelled else { return false }
@@ -48,28 +48,28 @@ final class PokemonNameDisplayStore {
 /// Only mounted rows fetch names, following the LazyVStack's lazy row creation.
 /// Language changes resolve the already-loaded multilingual response without restarting I/O.
 @MainActor
-struct PokemonNameLabel: View {
-    let items: [PokemonNameItem]
+struct DigimonNameLabel: View {
+    let items: [DigimonNameItem]
     let language: AppLanguage
-    var provider: any PokemonNameProviding = PokemonNameClient.shared
-    var displayStore = PokemonNameDisplayStore.shared
-    @State private var failed: Set<PokemonNameResource> = []
+    var provider: any DigimonNameProviding = DigimonNameClient.shared
+    var displayStore = DigimonNameDisplayStore.shared
+    @State private var failed: Set<DigimonNameResource> = []
 
-    init(_ kind: PokemonNameResource.Kind, _ name: String, language: AppLanguage, suffix: String = "") {
-        items = [PokemonNameItem(resource: .init(kind: kind, name: name), suffix: suffix)]
+    init(_ kind: DigimonNameResource.Kind, _ name: String, language: AppLanguage, suffix: String = "") {
+        items = [DigimonNameItem(resource: .init(kind: kind, name: name), suffix: suffix)]
         self.language = language
     }
 
-    init(items: [PokemonNameItem], language: AppLanguage) {
+    init(items: [DigimonNameItem], language: AppLanguage) {
         self.items = items
         self.language = language
     }
 
     var body: some View {
-        PokemonNameText(items: items, language: language, names: displayStore.names, failed: failed)
+        DigimonNameText(items: items, language: language, names: displayStore.names, failed: failed)
             .task(id: items.map(\.resource)) {
                 failed.subtract(items.map(\.resource))
-                await withTaskGroup(of: (PokemonNameResource, Bool).self) { group in
+                await withTaskGroup(of: (DigimonNameResource, Bool).self) { group in
                     for resource in Set(items.map(\.resource)) {
                         group.addTask { (resource, await displayStore.load(resource, provider: provider)) }
                     }

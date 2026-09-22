@@ -61,8 +61,8 @@ struct DifficultySettingsSection: View {
         HStack(spacing: 10) {
             Text(label).font(.callout).frame(width: 76, alignment: .leading)
             Slider(value: Binding(
-                get: { PokemonBalance.difficultyPosition(value.wrappedValue) },
-                set: { value.wrappedValue = PokemonBalance.difficulty(atPosition: $0) }), in: 0...1)
+                get: { DigimonBalance.difficultyPosition(value.wrappedValue) },
+                set: { value.wrappedValue = DigimonBalance.difficulty(atPosition: $0) }), in: 0...1)
                 .accessibilityLabel(label)
             Text(l.difficultyValue(value.wrappedValue))
                 .font(.caption).monospacedDigit().frame(width: 52, alignment: .trailing)

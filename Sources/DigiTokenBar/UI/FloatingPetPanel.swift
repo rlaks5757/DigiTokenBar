@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// 데스크톱 위에 떠 있는 컴패니언 포켓몬 오버레이(옵트인, 설정 → 플로팅 펫).
+/// 데스크톱 위에 떠 있는 컴패니언 디지몬 오버레이(옵트인, 설정 → 플로팅 펫).
 /// - 드래그: 커스텀 `mouseDragged` (클릭과 충돌하지 않음).
 /// - 클릭 → 팝오버, 우클릭 → 메뉴, 호버 → 오늘 사용량 콜아웃.
 /// - Limit-alert speech bubbles grow the panel; persisted origin is the *pet*, not the panel.

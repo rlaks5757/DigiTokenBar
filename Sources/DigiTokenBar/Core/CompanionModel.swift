@@ -28,7 +28,7 @@ enum AppLanguage: String, Codable, Sendable, CaseIterable {
 
     /// byLang(langCode→name) 에서 이 언어의 이름을 고른다(apiCodes 첫 매칭 → 영어 폴백).
     func resolveName(_ byLang: [String: String]) -> String? {
-        PokemonNameLocalization.resolve(byLang, preferredCodes: apiCodes)
+        DigimonNameLocalization.resolve(byLang, preferredCodes: apiCodes)
     }
 
     /// 신규 설치 기본 언어 — 시스템 선호 언어에서 유추(글로벌 출시: 한국어 강제 금지).
@@ -55,7 +55,7 @@ enum AppLanguage: String, Codable, Sendable, CaseIterable {
 enum Rarity: String, Codable, Sendable {
     case common, uncommon, rare, legendary
     /// 등급 크기(높을수록 희귀) — 두 `Rarity` 를 비교하기 위한 순위.
-    /// **목록 정렬용이 아니다**: 포획 로그는 기록 시각순, 도감은 도감 번호순이고 희귀도는 필터로만 좁힌다.
+    /// **목록 정렬용이 아니다**: 동행 기록는 기록 시각순, 도감은 도감 번호순이고 희귀도는 필터로만 좁힌다.
     /// 유일한 소비자는 프리미엄 알의 보증 관문(`hatch` 의 `line.rarity.sortRank < tier.sortRank`) —
     /// 뽑힌 등급이 산 보증보다 낮은지 판정한다. 순서가 뒤집히면 고급/희귀 알이 조용히 낮은 등급을
     /// 통과시키므로 `testSortRankOrdersRarityAscendingByValue` 가 순서를 고정한다.
@@ -99,7 +99,7 @@ enum Rarity: String, Codable, Sendable {
 /// 토큰 경제 — 실측 평균(~253M/일) 기준.
 /// 졸업 총량 T 는 같은 희귀도면 진화 단계 수와 무관하게 동일.
 /// 형태 k개 라인에서 i번째 형태 성장 비용 = T·i / (k(k+1)/2) → 합 = T, 단계↑일수록 비용↑.
-enum PokemonBalance {
+enum DigimonBalance {
     /// 알 부화 임계 — 이만큼 토큰을 써야 알이 깨진다(즉시 부화 대신 기대감). 초과분은 부화체 성장에 이월.
     static let eggHatchThreshold = 5_000_000
     static let repeatGrowthMultiplier = 2
@@ -203,7 +203,7 @@ enum ItemKind: String, Codable, Sendable, CaseIterable {
     /// 스프라이트 로딩 전/미제공/실패 시 폴백 이모지.
     var fallbackEmoji: String {
         switch self {
-        case .rareCandy: return "🍬"
+        case .rareCandy: return "⚡"
         case .digimentalCourage: return "🟠"
         case .digimentalSincerity: return "🟢"
         case .digimentalMiracles: return "🔴"
@@ -227,9 +227,9 @@ enum ItemKind: String, Codable, Sendable, CaseIterable {
     }
 }
 
-/// 이상한 사탕 밸런스 상수.
+/// 디지코어 밸런스 상수.
 enum RareCandy {
-    /// 사용 시 현재 포켓몬에 주입하는 XP(토큰 환산). 2× 성장의 최소 임계는 62.5M 이지만,
+    /// 사용 시 현재 디지몬에 주입하는 XP(토큰 환산). 2× 성장의 최소 임계는 62.5M 이지만,
     /// 기본 난이도·첫 부화에서는 초과 이월(<100M)이 다음 임계(125M)보다 작아 최대 1단계만 올린다.
     /// 낮은 난이도나 반복 부화 보너스에서는 여러 단계를 진행할 수 있다.
     static let xp = 100_000_000
@@ -248,7 +248,7 @@ enum DigimentalItem {
     static let price = 1_000_000_000
 }
 
-/// 새 알(리롤) 밸런스 상수 — 상점 구매 시 현재 포켓몬을 폐기하고 새 알로 되돌린다.
+/// 새 알(리롤) 밸런스 상수 — 상점 구매 시 현재 디지몬을 폐기하고 새 알로 되돌린다.
 enum FreshEgg {
     /// 상점 구매가. 마음에 안 드는 부화를 리롤하는 프리미엄(쌓인 토큰의 활용처). 폐기 개체는 졸업이
     /// 아니라 그냥 사라지므로 도감·확률(collectedFinals)에 무영향 — "뽑은 적 없던 것처럼". 새 알은
@@ -269,7 +269,7 @@ enum FreshEgg {
     /// 하위 반복 구매(4.81B)보다 싸다.
     static func price(guaranteeing tier: Rarity?) -> Int {
         guard let tier else { return price }
-        let multiplier = Double(PokemonBalance.graduationTotal(tier)) / Double(PokemonBalance.graduationTotal(.common))
+        let multiplier = Double(DigimonBalance.graduationTotal(tier)) / Double(DigimonBalance.graduationTotal(.common))
         return Int((Double(price) * multiplier).rounded())
     }
 }
@@ -326,7 +326,7 @@ struct CandyGrant: Equatable, Sendable {
 
 /// PokéAPI 에서 조회 가능한 종 ID 범위(전국도감 #1...649) — 부화 rejection sampling 과
 /// base-index REST/GraphQL 조회 상한 산정에 쓰인다.
-enum PokemonAssets {
+enum DigimonAssets {
     static let queryableSpeciesIDs = 1...649
 }
 
@@ -390,7 +390,7 @@ struct EvoLine: Sendable {
     }
 }
 
-/// 현재 키우는 포켓몬.
+/// 현재 키우는 디지몬.
 struct MonState: Codable, Sendable {
     var baseID: Int
     var pathIDs: [Int]      // 실제 진화 경로(분기 선택 반영)
@@ -400,21 +400,21 @@ struct MonState: Codable, Sendable {
     var rarity: Rarity
     var totalForms: Int
     /// 개체 고유 전투 프로필. 구버전 저장은 nil이며 `CompanionStore`가 한 번만 마이그레이션한다.
-    var profile: PokemonProfile?
+    var profile: DigimonProfile?
     var hasGrowthBoost = false
     // pathIDs 가 비면(손상된 상태 파일) baseID 로 폴백 — 렌더마다 읽히므로 out-of-bounds 크래시 방지.
     var currentID: Int { pathIDs.isEmpty ? baseID : pathIDs[min(stageIndex, pathIDs.count - 1)] }
     var phaseThreshold: Int {
-        PokemonBalance.phaseThreshold(
+        DigimonBalance.phaseThreshold(
             rarity: rarity,
             totalForms: totalForms,
             stageIndex: stageIndex,
-            growthMultiplier: hasGrowthBoost ? PokemonBalance.repeatGrowthMultiplier : 1)
+            growthMultiplier: hasGrowthBoost ? DigimonBalance.repeatGrowthMultiplier : 1)
     }
 
     init(baseID: Int, pathIDs: [Int], plannedPathIDs: [Int]? = nil, stageIndex: Int, usedAtStage: Int,
          rarity: Rarity, totalForms: Int,
-         profile: PokemonProfile? = nil, hasGrowthBoost: Bool = false) {
+         profile: DigimonProfile? = nil, hasGrowthBoost: Bool = false) {
         self.baseID = baseID
         self.pathIDs = pathIDs
         if let plannedPathIDs, !plannedPathIDs.isEmpty {
@@ -450,7 +450,7 @@ struct MonState: Codable, Sendable {
         rarity = try c.decode(Rarity.self, forKey: .rarity)
         totalForms = try c.decode(Int.self, forKey: .totalForms)
         // 손상된 신규 프로필 하나 때문에 기존 성장 상태 전체를 잃지 않는다. nil이면 스토어가 재마이그레이션한다.
-        profile = (try? c.decodeIfPresent(PokemonProfile.self, forKey: .profile)) ?? nil
+        profile = (try? c.decodeIfPresent(DigimonProfile.self, forKey: .profile)) ?? nil
         hasGrowthBoost = try c.decodeIfPresent(Bool.self, forKey: .hasGrowthBoost) ?? false
     }
 }
@@ -466,7 +466,7 @@ struct DexEntry: Codable, Sendable, Identifiable {
     var rarity: Rarity
     var caughtAt: Date?
     /// The individual profile at graduation/release. Nil only for pre-profile saves until migration.
-    var profile: PokemonProfile?
+    var profile: DigimonProfile?
     /// 진화 체인 각 종의 다국어 이름(speciesID → langCode → name). 졸업 시 로드된 라인에서 저장 →
     /// 도감의 단계별 스프라이트 밑 이름 표시가 네트워크 없이 즉시 + 언어 전환 대응. 구버전 저장분엔
     /// 없어(nil) 뷰가 line fetch 로 조회 후 백필한다.
@@ -482,13 +482,13 @@ struct DexEntry: Codable, Sendable, Identifiable {
     /// **보유 종**을 접는다. 놓아준 개체를 여기 넣지 않으면 그 종이 도감에서 사라진다 —
     /// 수집 화면이 "쌓이기만 한다"는 약속을 깨는 유일한 경로였다.
     var releasedAt: Date?
-    /// 졸업이 아니라 놓아준 기록인가 — 포획 로그가 뱃지를 가르는 판정.
+    /// 졸업이 아니라 놓아준 기록인가 — 동행 기록이 뱃지를 가르는 판정.
     var isReleased: Bool { releasedAt != nil }
 
     init(id: String = UUID().uuidString,
          baseID: Int, finalID: Int, chainOrder: [Int], rarity: Rarity,
          caughtAt: Date?,
-         profile: PokemonProfile? = nil, names: [Int: [String: String]]? = nil, releasedAt: Date? = nil) {
+         profile: DigimonProfile? = nil, names: [Int: [String: String]]? = nil, releasedAt: Date? = nil) {
         self.id = id
         self.baseID = baseID
         self.finalID = finalID
@@ -512,7 +512,7 @@ struct DexEntry: Codable, Sendable, Identifiable {
         rarity = try c.decode(Rarity.self, forKey: .rarity)
         caughtAt = try c.decodeIfPresent(Date.self, forKey: .caughtAt)
         // 프로필만 손상되면 개체 기록은 보존하고 프로필을 다시 생성한다.
-        profile = (try? c.decodeIfPresent(PokemonProfile.self, forKey: .profile)) ?? nil
+        profile = (try? c.decodeIfPresent(DigimonProfile.self, forKey: .profile)) ?? nil
         // try? — 구버전(최종체 단일 [String:String]) 형식이 남아 있어도 종별 맵 디코딩 실패 시 nil 로
         // 강등(항목 전체 로드는 유지). 뷰가 line 조회로 백필한다.
         names = (try? c.decodeIfPresent([Int: [String: String]].self, forKey: .names)) ?? nil
@@ -579,9 +579,9 @@ struct CompanionState: Codable, Sendable {
     /// 키는 `UsageProvider.id`를 그대로 사용한다.
     var claimedTodayTokensByProvider: [String: Int]? = nil
     var lastDate = ""
-    // 현재 포켓몬(없으면 알)
+    // 현재 디지몬(없으면 알)
     var active: MonState?
-    // 메뉴바와 플로팅 펫에 고정한 대표 종. nil = 현재 키우는 포켓몬(또는 알)을 그대로 따라간다.
+    // 메뉴바와 플로팅 펫에 고정한 대표 종. nil = 현재 키우는 디지몬(또는 알)을 그대로 따라간다.
     // 종 단위 선택이라 성격 같은 개체 정보는 들고 있지 않는다. 선택 가능한 범위는 도감과 동일하게
     // 졸업분 + 현재 개체의 도달 단계이며, 그 범위에서 빠지면 reconcileRepresentativeSelection 이 nil 로 복구한다.
     var representativeSpeciesID: Int? = nil
@@ -647,7 +647,7 @@ struct CompanionState: Codable, Sendable {
         collectedFinals.contains { $0.hasPrefix("\(baseID):") }
     }
 
-    /// 대표 포켓몬은 사용자가 현재 보유한 종만 가리킨다. Fresh Egg·손편집 세이브가
+    /// 대표 디지몬은 사용자가 현재 보유한 종만 가리킨다. Fresh Egg·손편집 세이브가
     /// 유령 종을 메뉴바와 플로팅 펫에 영구히 남기지 않게 한다.
     mutating func reconcileRepresentativeSelection() {
         guard let selected = representativeSpeciesID else { return }

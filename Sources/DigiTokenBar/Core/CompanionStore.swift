@@ -2,8 +2,8 @@ import Foundation
 import Observation
 import UserNotifications
 
-/// 게임 상태의 출처. 설치 이후 토큰 사용량으로 포켓몬을 진화시키고, 최종체 + 추가 임계 도달 시
-/// 도감(라인 전체)에 보존 + 새 알. 진화 트리/희귀도/이름은 PokeProviding 으로 런타임 주입.
+/// 게임 상태의 출처. 설치 이후 토큰 사용량으로 디지몬을 진화시키고, 최종체 + 추가 임계 도달 시
+/// 도감(라인 전체)에 보존 + 새 알. 진화 트리/희귀도/이름은 DigimonLineProviding 으로 런타임 주입.
 @MainActor
 @Observable
 final class CompanionStore {
@@ -31,17 +31,17 @@ final class CompanionStore {
     /// 홈으로 재진입할 때(CompanionHeader 재마운트) @State 가 초기화돼 같은 값이 다시 떠오른다(회귀).
     func consumeCandyFeedback() { candyFeedbackAmount = 0 }
 
-    private let provider: any PokeProviding
+    private let provider: any DigimonLineProviding
     private var dexNameRequests: [Int: Task<EvoLine, Error>] = [:]
-    private let detailProvider: (any PokemonDetailProviding)?
+    private let detailProvider: (any DigimonDetailProviding)?
     private let clock: () -> Date
     private let fileURL: URL
     private var rng: any RandomNumberGenerator
-    private(set) var pokemonDetailsByID: [Int: PokemonDetails] = [:]
-    private(set) var loadingPokemonDetailIDs: Set<Int> = []
-    private(set) var failedPokemonDetailIDs: Set<Int> = []
+    private(set) var digimonDetailsByID: [Int: DigimonDetails] = [:]
+    private(set) var loadingDigimonDetailIDs: Set<Int> = []
+    private(set) var failedDigimonDetailIDs: Set<Int> = []
     /// `loadCurrentLine` 이 provider.line 실패를 로그로 남기되, update 틱마다 같은 baseID 로 재시도해도
-    /// 로그가 범람하지 않게 baseID 당 1회만 기록한다(UI 는 이 값을 읽지 않으므로 failedPokemonDetailIDs
+    /// 로그가 범람하지 않게 baseID 당 1회만 기록한다(UI 는 이 값을 읽지 않으므로 failedDigimonDetailIDs
     /// 와 달리 private(set) 아님).
     private var failedLineBaseIDs: Set<Int> = []
     private let defaults: UserDefaults
@@ -60,25 +60,25 @@ final class CompanionStore {
     /// 상점 배율 — 아이템·알 가격에 곱한다. 낮을수록 싸다.
     private(set) var shopDifficulty: Double
 
-    init(provider: any PokeProviding = DigimonLineProvider(),
-         detailProvider: (any PokemonDetailProviding)? = nil,
+    init(provider: any DigimonLineProviding = DigimonLineProvider(),
+         detailProvider: (any DigimonDetailProviding)? = nil,
          clock: @escaping () -> Date = Date.init,
          fileURL: URL? = nil,
          rng: any RandomNumberGenerator = SystemRandomNumberGenerator(),
          defaults: UserDefaults = .standard) {
         self.provider = provider
-        self.detailProvider = detailProvider ?? (provider as? any PokemonDetailProviding)
+        self.detailProvider = detailProvider ?? (provider as? any DigimonDetailProviding)
         self.clock = clock
         self.fileURL = fileURL ?? Self.defaultURL()
         self.rng = rng
         self.defaults = defaults
-        let storedGrowth = defaults.object(forKey: "growthDifficulty") as? Double ?? PokemonBalance.defaultDifficulty
+        let storedGrowth = defaults.object(forKey: "growthDifficulty") as? Double ?? DigimonBalance.defaultDifficulty
         // Previous releases accepted 0.01%–2000%. Reprice their banked progress before
         // persisting the narrower range, otherwise an upgrade silently changes completion.
         let previousGrowth = storedGrowth.isFinite ? min(20, max(0.0001, storedGrowth)) : 1
-        growthDifficulty = PokemonBalance.clampDifficulty(storedGrowth)
-        shopDifficulty = PokemonBalance.clampDifficulty(
-            defaults.object(forKey: "shopDifficulty") as? Double ?? PokemonBalance.defaultDifficulty)
+        growthDifficulty = DigimonBalance.clampDifficulty(storedGrowth)
+        shopDifficulty = DigimonBalance.clampDifficulty(
+            defaults.object(forKey: "shopDifficulty") as? Double ?? DigimonBalance.defaultDifficulty)
         load()
         if previousGrowth != growthDifficulty {
             rescaleBankedGrowth(from: previousGrowth, to: growthDifficulty)
@@ -86,7 +86,7 @@ final class CompanionStore {
         }
         defaults.set(growthDifficulty, forKey: "growthDifficulty")
         defaults.set(shopDifficulty, forKey: "shopDifficulty")
-        migratePokemonProfilesIfNeeded()
+        migrateDigimonProfilesIfNeeded()
         refreshRepresentativeSubject()
         if state.active != nil { displayState = .idle }
     }
@@ -108,7 +108,7 @@ final class CompanionStore {
     /// Keep the earned fraction of this egg/stage. These are progression credits,
     /// not actual usage: lifetime tokens, provider ledgers and wallet never change here.
     func setGrowthDifficulty(_ value: Double) {
-        let clamped = PokemonBalance.clampDifficulty(value)
+        let clamped = DigimonBalance.clampDifficulty(value)
         guard clamped != growthDifficulty else { return }
         rescaleBankedGrowth(from: growthDifficulty, to: clamped)
         growthDifficulty = clamped
@@ -131,13 +131,13 @@ final class CompanionStore {
             active.usedAtStage = rescaled(active.usedAtStage, base: active.phaseThreshold)
             state.active = active
         } else {
-            state.eggUsage = rescaled(state.eggUsage, base: PokemonBalance.eggHatchThreshold)
+            state.eggUsage = rescaled(state.eggUsage, base: DigimonBalance.eggHatchThreshold)
         }
     }
 
     /// 상점 배율 변경 — 가격은 순수 읽기(파생값)라 재평가할 상태가 없다.
     func setShopDifficulty(_ value: Double) {
-        let clamped = PokemonBalance.clampDifficulty(value)
+        let clamped = DigimonBalance.clampDifficulty(value)
         guard clamped != shopDifficulty else { return }
         shopDifficulty = clamped
         defaults.set(clamped, forKey: "shopDifficulty")
@@ -145,23 +145,23 @@ final class CompanionStore {
 
     /// 난이도를 반영한 알 부화 임계.
     private var eggHatchThreshold: Int {
-        PokemonBalance.scaled(PokemonBalance.eggHatchThreshold, by: growthDifficulty)
+        DigimonBalance.scaled(DigimonBalance.eggHatchThreshold, by: growthDifficulty)
     }
 
-    /// 난이도를 반영한 단계 임계. **`PokemonBalance.phaseThreshold` 를 직접 부르지 않는다** —
+    /// 난이도를 반영한 단계 임계. **`DigimonBalance.phaseThreshold` 를 직접 부르지 않는다** —
     /// 배율을 빠뜨린 호출부가 생기면 그 경로만 조용히 기본 난이도로 돌아간다.
     private func stageThreshold(for mon: MonState) -> Int {
-        PokemonBalance.scaled(mon.phaseThreshold, by: growthDifficulty)
+        DigimonBalance.scaled(mon.phaseThreshold, by: growthDifficulty)
     }
 
     /// 상점 표시·결제에 쓰는 실제 가격 — 기본가 × 상점 난이도. 미판매면 nil.
     func price(of kind: ItemKind) -> Int? {
-        kind.shopPrice.map { PokemonBalance.scaled($0, by: shopDifficulty) }
+        kind.shopPrice.map { DigimonBalance.scaled($0, by: shopDifficulty) }
     }
 
     /// 알을 포함한 상점 한 줄의 실제 가격.
     func price(of entry: ShopEntry) -> Int {
-        PokemonBalance.scaled(entry.price, by: shopDifficulty)
+        DigimonBalance.scaled(entry.price, by: shopDifficulty)
     }
     /// 앱 전체 UI 문자열 — language 변경 시 자동 재렌더.
     var l: L { L(language) }
@@ -169,7 +169,7 @@ final class CompanionStore {
     var hasActive: Bool { state.active != nil }
     var rarity: Rarity? { state.active?.rarity }
     var growthMultiplier: Int? {
-        state.active?.hasGrowthBoost == true ? PokemonBalance.repeatGrowthMultiplier : nil
+        state.active?.hasGrowthBoost == true ? DigimonBalance.repeatGrowthMultiplier : nil
     }
 
     /// 메뉴바와 플로팅 펫이 그릴 대표 종. nil 선택은 기존 동작(현재 개체/알)을 보존한다.
@@ -205,7 +205,7 @@ final class CompanionStore {
         state.representativeSpeciesID == species.id
     }
 
-    /// Settings describe the selected form, even though the main Pokédex aggregates the species.
+    /// Settings describe the selected form, even though the main Digidex aggregates the species.
     var representativeDexSpecies: DexSpecies? {
         dexSpecies.first { isRepresentative($0) }
     }
@@ -270,7 +270,7 @@ final class CompanionStore {
             EvoLineItem(.species(id), i == stageIndex ? .current : .done)
         }
     }
-    /// 도감에는 영구 보존된 졸업 개체와 현재 키우는 포켓몬을 함께 표시한다.
+    /// 도감에는 영구 보존된 졸업 개체와 현재 키우는 디지몬을 함께 표시한다.
     /// 현재 개체는 영속 dex 에 중복 저장하지 않고 화면용 항목으로 합성한다. 졸업 시 active 가 사라지고
     /// 같은 개체의 영구 DexEntry 가 추가되므로 목록 개수는 그대로 유지된다.
     private var activeDexEntry: DexEntry? {
@@ -296,7 +296,7 @@ final class CompanionStore {
     /// 같아야 놓아준 뒤에도 칸 구성이 그대로 유지된다 — `plannedPathIDs` 나 `pathIDs` 전체를 쓰면
     /// 도달한 적 없는 진화형까지 보유로 잡힌다(`dexSpecies` 가 같은 prefix 규칙을 쓴다).
     ///
-    /// `caughtAt` 은 놓아준 시각이다: 포획 로그가 그 값으로 정렬하므로 기록이 남은 시점과 일치해야 한다.
+    /// `caughtAt` 은 놓아준 시각이다: 동행 기록이 그 값으로 정렬하므로 기록이 남은 시점과 일치해야 한다.
     private func releasedDexEntry(from a: MonState) -> DexEntry {
         // stageIndex 가 음수·범위 밖이어도 최소 한 형태는 남긴다(손상 상태 파일 방어 — MonState.currentID 와 같은 태도).
         let reached = Array(a.pathIDs.prefix(max(1, a.stageIndex + 1)))
@@ -322,12 +322,12 @@ final class CompanionStore {
         return state.dex + [activeDexEntry]
     }
 
-    /// 합성된 현재 포켓몬 항목인지 판별한다. caughtAt 이 없는 구버전 졸업 항목과 혼동하지 않는다.
+    /// 합성된 현재 디지몬 항목인지 판별한다. caughtAt 이 없는 구버전 졸업 항목과 혼동하지 않는다.
     func isActiveDexEntry(_ entry: DexEntry) -> Bool {
         entry.id == activeDexEntry?.id
     }
 
-    /// 포획 로그 표시 순서 — 현재 키우는 포켓몬을 맨 앞에 고정하고, 졸업 항목은 **기록 시각 최신순**.
+    /// 동행 기록 표시 순서 — 현재 키우는 디지몬을 맨 앞에 고정하고, 졸업 항목은 **기록 시각 최신순**.
     ///
     /// 과거에는 희귀도 내림차순이 먼저였다(종 단위 도감의 규칙). 로그는 시간순 기록이라 희귀도로
     /// 먼저 묶으면 방금 졸업한 개체가 며칠 전에 잡은 상위 희귀도 밑에 묻힌다. 희귀도로 좁히는 일은
@@ -342,11 +342,11 @@ final class CompanionStore {
         return [activeDexEntry] + graduated
     }
 
-    /// 희귀도별 포획 로그 개수(요약 헤더용) — 개체 수 기준. 도감(종 단위)은 dexSpecies 를 쓴다.
+    /// 희귀도별 동행 기록 개수(요약 헤더용) — 개체 수 기준. 도감(종 단위)은 dexSpecies 를 쓴다.
     func dexCount(_ rarity: Rarity) -> Int { dexEntries.lazy.filter { $0.rarity == rarity }.count }
 
     /// 도감 한 칸 — 메인 목록은 종별, 안농 상세 목록은 폼별로 중복 기록을 합친다.
-    /// **종 정보만 담는다** — 성격·획득 횟수처럼 개체에 딸린 것은 포획 로그가 개체 단위로 보여준다.
+    /// **종 정보만 담는다** — 성격·획득 횟수처럼 개체에 딸린 것은 동행 기록이 개체 단위로 보여준다.
     struct DexSpecies: Sendable {
         let id: Int                     // speciesID = 도감 번호(정렬 키)
         let name: String
@@ -399,7 +399,7 @@ final class CompanionStore {
 
     /// Refresh legacy names once, including saves that retained only app-supported languages.
     ///
-    /// 격자는 저장된 이름만 읽으므로 백필이 없으면 칸이 종 번호(`#41`)로 남는다. 포획 로그는 행이
+    /// 격자는 저장된 이름만 읽으므로 백필이 없으면 칸이 종 번호(`#41`)로 남는다. 동행 기록는 행이
     /// 뜰 때 행 단위로 같은 일을 해 왔지만, 로그를 한 번도 안 열면 격자는 계속 번호다.
     /// 라인 조회는 `PokeAPIClient` 가 base 단위로 캐시하므로 같은 라인이 여러 항목이어도 네트워크는 1회.
     /// 오프라인이면 `dexResolveChainNames` 가 저장 없이 폴백만 돌려주므로 다음 진입에서 다시 시도한다.
@@ -586,7 +586,7 @@ final class CompanionStore {
         save()
     }
 
-    /// 토큰 증분을 현재 포켓몬에 적용 — 임계 도달 시 진화/졸업.
+    /// 토큰 증분을 현재 디지몬에 적용 — 임계 도달 시 진화/졸업.
     /// 라인 미로딩(재시작 직후·오프라인)이어도 사용량은 항상 적립한다 — 여기서 드롭하면
     /// 프로바이더별 ledger 는 이미 전진해 델타가 영구 유실된다. 진화 판정만 라인 로드 후로 미룬다.
     func applyUsage(_ delta: Int) {
@@ -621,10 +621,10 @@ final class CompanionStore {
                 state.active!.pathIDs = Array(a.pathIDs.prefix(a.stageIndex + 1)) + [next.speciesID]
                 state.active!.stageIndex += 1
                 state.active!.usedAtStage = a.usedAtStage - thr   // 초과분 이월
-                if let details = pokemonDetailsByID[next.speciesID] {
+                if let details = digimonDetailsByID[next.speciesID] {
                     state.active!.profile?.enrich(with: details)
                 } else if detailProvider != nil {
-                    Task { await self.loadPokemonDetails(speciesID: next.speciesID) }
+                    Task { await self.loadDigimonDetails(speciesID: next.speciesID) }
                 }
                 let newName = line.localizedName(next.speciesID, state.language)
                 justEvolvedTo = newName
@@ -703,8 +703,8 @@ final class CompanionStore {
 
     private func graduate() {
         guard var a = state.active else { return }
-        a.profile?.advanceGrowth(to: PokemonBalance.graduationTotal(a.rarity), rarity: a.rarity)
-        if let details = pokemonDetailsByID[a.currentID] { a.profile?.enrich(with: details) }
+        a.profile?.advanceGrowth(to: DigimonBalance.graduationTotal(a.rarity), rarity: a.rarity)
+        if let details = digimonDetailsByID[a.currentID] { a.profile?.enrich(with: details) }
         let finalID = a.currentID
         state.collectedFinals.insert("\(a.baseID):\(finalID)")
         state.dex.append(DexEntry(id: a.profile?.instanceID ?? UUID().uuidString,
@@ -725,7 +725,7 @@ final class CompanionStore {
         currentLine = nil
         state.eggUsage = 0   // 새 알은 처음부터 인큐베이션
         isHatchRetryDelayed = false
-        // eggTier 는 손대지 않는다 — 여기 도달했다는 건 활성 포켓몬이 있었다는 뜻이라 보증은 이미 nil 이다
+        // eggTier 는 손대지 않는다 — 여기 도달했다는 건 활성 디지몬이 있었다는 뜻이라 보증은 이미 nil 이다
         // (부화가 소비, 디스크/불러오기는 sanitized 가 정규화). 소비 지점은 hatchCore 한 곳으로 유지한다.
         // "알을 받는 순간" 즉시 프리패칭 시작 — 다음 부화의 종·라인·스프라이트 예열.
         Task { await self.ensureEggPrefetch() }
@@ -744,7 +744,7 @@ final class CompanionStore {
         }
     }
 
-    /// 이상한 사탕 사용 가능 — 활성 포켓몬 + 라인 로딩 완료 + 재고>0.
+    /// 이상한 사탕 사용 가능 — 활성 디지몬 + 라인 로딩 완료 + 재고>0.
     /// 라인 미로딩(재시작 직후·오프라인)이면 비활성 — 사탕이 진화 없이 적립만 되는 것 방지.
     var canUseRareCandy: Bool { maxRareCandyUseCount > 0 }
 
@@ -832,7 +832,7 @@ final class CompanionStore {
 
     /// 상점 표시 순서 — 판매 아이템 + 알 3종을 하나의 가격 오름차순 목록으로 병합.
     ///
-    /// 알은 활성 포켓몬이 없어도(알 상태) 목록에 남는다 — 구매는 `canBuyEgg` 의 `hasActive` 게이트가
+    /// 알은 활성 디지몬이 없어도(알 상태) 목록에 남는다 — 구매는 `canBuyEgg` 의 `hasActive` 게이트가
     /// 막고, EggCard 가 비활성 버튼 + 사유 한 줄로 보여준다. 목록에서 통째로 빼면 "상점에 알이 원래
     /// 없다"로 읽혀서, 게이트는 유지하되 존재는 계속 보이게 한다.
     var shopEntries: [ShopEntry] {
@@ -865,12 +865,12 @@ final class CompanionStore {
     @discardableResult
     func buyRareCandy() -> Bool { buy(.rareCandy) }
 
-    // MARK: 알 (리롤 — 현재 포켓몬 폐기, 도감·확률 무영향)
+    // MARK: 알 (리롤 — 현재 디지몬 폐기, 도감·확률 무영향)
 
-    /// 현재 알이 보증하는 등급 하한(UI 표시용). 활성 포켓몬이 있으면 알이 없으므로 nil.
+    /// 현재 알이 보증하는 등급 하한(UI 표시용). 활성 디지몬이 있으면 알이 없으므로 nil.
     var eggGuarantee: Rarity? { state.active == nil ? state.eggTier : nil }
 
-    /// 알 구매 가능 — 폐기할 활성 포켓몬이 있고 지갑이 그 티어 가격 이상일 때만.
+    /// 알 구매 가능 — 폐기할 활성 디지몬이 있고 지갑이 그 티어 가격 이상일 때만.
     /// 알 상태에서도 살 수 있게 하는 안은 채택하지 않았다(기존 새 알과 게이트 통일) — 알끼리 교체하는
     /// 동작을 새로 만들지 않고, 상점의 알은 언제나 "지금 개체를 놓아주고 다시 뽑는다"는 한 가지 의미만 갖는다.
     /// 항목 자체는 알 상태에서도 상점에 남는다(shopEntries) — 이 게이트는 구매만 막는다.
@@ -883,7 +883,7 @@ final class CompanionStore {
         return hasActive && availableTokens >= price(of: .egg(tier))
     }
 
-    /// 알 구매 — 현재 포켓몬을 놓아주고 처음부터 인큐베이션하는 새 알로. 지갑에서 가격 차감.
+    /// 알 구매 — 현재 디지몬을 놓아주고 처음부터 인큐베이션하는 새 알로. 지갑에서 가격 차감.
     /// graduate() 의 알-리셋을 미러링하되, 놓아준 개체는 **도감에 남긴다**(`releasedDexEntry`).
     /// 도감은 "쌓이기만 한다"는 약속을 주는데, 여기가 종이 사라질 수 있던 유일한 경로였다.
     /// `collectedFinals`(최종체 완성·분기 가중)는 여전히 손대지 않는다 — 끝까지 키운 게 아니다.
@@ -907,7 +907,7 @@ final class CompanionStore {
         state.eggUsage = 0            // 새 알은 처음부터 인큐베이션(재부화에 5M 필요)
         isHatchRetryDelayed = false
         state.eggTier = tier          // 등급 보증(nil = 보증 없음)
-        state.pendingHatchID = nil    // 새 보증으로 처음부터 롤(활성 포켓몬이 있는 동안엔 원래 비어 있다)
+        state.pendingHatchID = nil    // 새 보증으로 처음부터 롤(활성 디지몬이 있는 동안엔 원래 비어 있다)
         prefetchedLineID = nil
         justGraduated = nil; justEvolvedTo = nil; eventUntil = nil
         AppLog.write("egg purchased: discarded active, tier=\(tier?.rawValue ?? "none")")
@@ -1141,8 +1141,8 @@ final class CompanionStore {
         state.eggUsage = 0
         state.eggTier = nil   // 보증은 이 부화로 소비된다(다음 알은 다시 무보증)
         let evolutionPlan = makeEvolutionPlan(from: line.tree, baseID: line.baseID)
-        var profile = PokemonProfile.generate(seed: rng.next())
-        if let details = pokemonDetailsByID[line.baseID] { profile.enrich(with: details) }
+        var profile = DigimonProfile.generate(seed: rng.next())
+        if let details = digimonDetailsByID[line.baseID] { profile.enrich(with: details) }
         let hasGrowthBoost = state.hasCollectedFinal(forBaseID: line.baseID)
         activeGeneration += 1
         state.active = MonState(baseID: line.baseID, pathIDs: [line.baseID], plannedPathIDs: evolutionPlan,
@@ -1157,7 +1157,7 @@ final class CompanionStore {
         if overflow > 0 { applyUsage(overflow) }   // 이월분 즉시 반영(필요 시 진화까지)
         if state.active != nil { fireCelebration(.hatch) }
         save()
-        if detailProvider != nil { Task { await self.loadPokemonDetails(speciesID: line.baseID) } }
+        if detailProvider != nil { Task { await self.loadDigimonDetails(speciesID: line.baseID) } }
     }
 
     private func loadCurrentLine() async {
@@ -1189,7 +1189,7 @@ final class CompanionStore {
         // Path normalization can change currentID without entering the regular evolution branch.
         isHatching = false   // Do not hold the line-load lock across detail HTTP requests.
         if let speciesID = state.active?.currentID, detailProvider != nil {
-            await loadPokemonDetails(speciesID: speciesID)
+            await loadDigimonDetails(speciesID: speciesID)
         }
     }
 
@@ -1242,12 +1242,12 @@ final class CompanionStore {
     /// 무작위 id 를 뽑아 base 인지 확인(rejection sampling). GraphQL 인덱스가 죽어도 부화가 되게 한다.
     /// 가중치(capture_rate)는 생략 — 희귀도는 부화 후 line() 이 실제 capture_rate 로 계산하므로
     /// 결과 개체의 등급은 정확하다. 인덱스 복구 시 가중 선택 재개.
-    /// `PokemonAssets.queryableSpeciesIDs`(1...649)도 PokéAPI 전용 범위라 기본 provider 경로에서는
+    /// `DigimonAssets.queryableSpeciesIDs`(1...649)도 PokéAPI 전용 범위라 기본 provider 경로에서는
     /// 마찬가지로 의미가 없다.
     private func chooseBaseViaREST() async -> Int? {
         let tier = state.eggTier
         for attempt in 1...16 {
-            let ids = PokemonAssets.queryableSpeciesIDs
+            let ids = DigimonAssets.queryableSpeciesIDs
             let id = Int(rng.next() % UInt64(ids.count)) + ids.lowerBound
             do {
                 if let bs = try await provider.baseSpecies(id: id) {
@@ -1318,10 +1318,10 @@ final class CompanionStore {
         // 개체에 대한 "+XP" 가 새 개체 위에 떠오른다.
         candyFeedbackAmount = 0
         displayState = state.active != nil ? .idle : .egg
-        migratePokemonProfilesIfNeeded()
+        migrateDigimonProfilesIfNeeded()
         save()
         if state.active != nil { Task { await loadCurrentLine() } }
-        if detailProvider != nil { Task { await preparePokemonProfiles() } }
+        if detailProvider != nil { Task { await prepareDigimonProfiles() } }
         AppLog.write("save imported from \(envelope.sourceDevice): dex=\(state.dex.count) lifetime=\(state.usedSinceInstall)")
     }
 
@@ -1353,41 +1353,41 @@ final class CompanionStore {
         }
     }
 
-    // MARK: Pokémon combat profiles / details
+    // MARK: 디지몬 combat profiles / details
 
-    /// Exact current/final individuals for a Pokédex species. Earlier evolution stages remain
+    /// Exact current/final individuals for a Digidex species. Earlier evolution stages remain
     /// species reference pages; the same evolved individual is not duplicated as a second creature.
-    func pokemonIndividuals(speciesID: Int) -> [DexEntry] {
+    func digimonIndividuals(speciesID: Int) -> [DexEntry] {
         dexEntriesSorted.filter { $0.finalID == speciesID && $0.profile != nil }
     }
 
     /// Loads immutable PokéAPI metadata and persists any deferred profile fields exactly once.
-    func loadPokemonDetails(speciesID: Int) async {
-        if let details = pokemonDetailsByID[speciesID] {
+    func loadDigimonDetails(speciesID: Int) async {
+        if let details = digimonDetailsByID[speciesID] {
             enrichProfiles(for: speciesID, with: details)
             return
         }
-        guard let detailProvider, !loadingPokemonDetailIDs.contains(speciesID) else { return }
-        loadingPokemonDetailIDs.insert(speciesID)
-        failedPokemonDetailIDs.remove(speciesID)
-        defer { loadingPokemonDetailIDs.remove(speciesID) }
+        guard let detailProvider, !loadingDigimonDetailIDs.contains(speciesID) else { return }
+        loadingDigimonDetailIDs.insert(speciesID)
+        failedDigimonDetailIDs.remove(speciesID)
+        defer { loadingDigimonDetailIDs.remove(speciesID) }
         do {
-            let details = try await detailProvider.pokemonDetails(speciesID: speciesID)
-            pokemonDetailsByID[speciesID] = details
+            let details = try await detailProvider.digimonDetails(speciesID: speciesID)
+            digimonDetailsByID[speciesID] = details
             enrichProfiles(for: speciesID, with: details)
         } catch {
-            failedPokemonDetailIDs.insert(speciesID)
-            AppLog.write("pokemon details fetch failed id=\(speciesID): \(error)")
+            failedDigimonDetailIDs.insert(speciesID)
+            AppLog.write("digimon details fetch failed id=\(speciesID): \(error)")
         }
     }
 
     /// Startup/background warmup for the only profile needed before a detail page is opened.
-    func preparePokemonProfiles() async {
+    func prepareDigimonProfiles() async {
         guard let speciesID = state.active?.currentID else { return }
-        await loadPokemonDetails(speciesID: speciesID)
+        await loadDigimonDetails(speciesID: speciesID)
     }
 
-    private func enrichProfiles(for speciesID: Int, with details: PokemonDetails) {
+    private func enrichProfiles(for speciesID: Int, with details: DigimonDetails) {
         var changed = false
         if var active = state.active, active.currentID == speciesID, var profile = active.profile {
             let before = profile
@@ -1412,11 +1412,11 @@ final class CompanionStore {
 
     /// Additive migration for pre-profile saves. It never needs network and therefore cannot block launch.
     /// Deferred fields (gender/ability/moves) are filled after the cached/detail fetch succeeds.
-    private func migratePokemonProfilesIfNeeded() {
+    private func migrateDigimonProfilesIfNeeded() {
         var changed = false
         if var active = state.active, active.profile == nil {
             let key = "active:\(active.baseID):\(active.pathIDs.map(String.init).joined(separator: ",")):\(state.lastDate)"
-            active.profile = PokemonProfile.generate(seed: PokemonProfileMigration.seed(key))
+            active.profile = DigimonProfile.generate(seed: DigimonProfileMigration.seed(key))
             state.active = active
             changed = true
         }
@@ -1428,12 +1428,12 @@ final class CompanionStore {
                 // planned form count. Treating that count as `totalForms` is the best recoverable
                 // estimate, but it is an upper bound when release happened before the planned final.
                 let growth = graduated
-                    ? PokemonBalance.graduationTotal(entry.rarity)
+                    ? DigimonBalance.graduationTotal(entry.rarity)
                     : Self.reconstructedGrowthTokens(
                         rarity: entry.rarity, totalForms: max(1, entry.chainOrder.count),
                         completedStages: max(0, entry.chainOrder.count - 1), currentStageUsage: 0)
-                var profile = PokemonProfile.generate(
-                    seed: PokemonProfileMigration.seed("dex:\(entry.id):\(entry.finalID)"),
+                var profile = DigimonProfile.generate(
+                    seed: DigimonProfileMigration.seed("dex:\(entry.id):\(entry.finalID)"),
                     growthTokens: growth,
                     instanceID: entry.id)
                 profile.applyGrowth(0, rarity: entry.rarity)
@@ -1456,7 +1456,7 @@ final class CompanionStore {
             try? FileManager.default.copyItem(at: fileURL, to: backup)
         }
         save()
-        AppLog.write("pokemon profile migration complete — previous state kept as \(backup.lastPathComponent)")
+        AppLog.write("digimon profile migration complete — previous state kept as \(backup.lastPathComponent)")
     }
 
     /// Completed phases retain their earned credit. Only the current raw phase is repriced
@@ -1466,13 +1466,13 @@ final class CompanionStore {
         let completed = Self.reconstructedGrowthTokens(
             rarity: active.rarity, totalForms: active.totalForms,
             completedStages: active.stageIndex, currentStageUsage: 0)
-        let standardPhase = PokemonBalance.phaseThreshold(
+        let standardPhase = DigimonBalance.phaseThreshold(
             rarity: active.rarity, totalForms: active.totalForms, stageIndex: active.stageIndex)
         let fraction = min(1, max(0, Double(active.usedAtStage) / Double(max(1, stageThreshold(for: active)))))
-        let candidate = min(PokemonBalance.graduationTotal(active.rarity),
+        let candidate = min(DigimonBalance.graduationTotal(active.rarity),
                             completed + Int((Double(standardPhase) * fraction).rounded(.down)))
         profile.advanceGrowth(to: candidate, rarity: active.rarity)
-        if let details = pokemonDetailsByID[active.currentID] { profile.enrich(with: details) }
+        if let details = digimonDetailsByID[active.currentID] { profile.enrich(with: details) }
         active.profile = profile
         state.active = active
     }
@@ -1482,7 +1482,7 @@ final class CompanionStore {
         let forms = max(1, totalForms)
         let completed = min(max(0, completedStages), forms)
         let completedGrowth = (0..<completed).reduce(0) { total, stage in
-            total + PokemonBalance.phaseThreshold(rarity: rarity, totalForms: forms, stageIndex: stage)
+            total + DigimonBalance.phaseThreshold(rarity: rarity, totalForms: forms, stageIndex: stage)
         }
         return min(SaveTransfer.maxTokenValue,
                    completedGrowth + min(SaveTransfer.maxTokenValue, max(0, currentStageUsage)))

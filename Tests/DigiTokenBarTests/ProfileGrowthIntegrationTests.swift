@@ -1,7 +1,7 @@
 import XCTest
 @testable import DigiTokenBar
 
-private struct GrowthProfileProvider: PokeProviding, PokemonDetailProviding {
+private struct GrowthProfileProvider: DigimonLineProviding, DigimonDetailProviding {
     var forms = 3
     func line(baseSpeciesID: Int) async throws -> EvoLine {
         var node = EvoNode(speciesID: forms, children: [])
@@ -13,11 +13,11 @@ private struct GrowthProfileProvider: PokeProviding, PokemonDetailProviding {
     }
     func baseSpeciesIndex() async throws -> [BaseSpecies] { [] }
     func baseSpecies(id: Int) async throws -> BaseSpecies? { nil }
-    func pokemonDetails(speciesID: Int) async throws -> PokemonDetails {
-        PokemonDetails(speciesID: speciesID, name: "p", height: 1, weight: 1,
+    func digimonDetails(speciesID: Int) async throws -> DigimonDetails {
+        DigimonDetails(speciesID: speciesID, name: "p", height: 1, weight: 1,
                        baseExperience: nil, genderRate: -1, types: [], baseStats: [:], abilities: [],
-                       moves: [PokemonMoveOption(name: "final-\(speciesID)", learnMethods: [
-                        PokemonMoveLearnMethod(method: "level-up", level: 100)])])
+                       moves: [DigimonMoveOption(name: "final-\(speciesID)", learnMethods: [
+                        DigimonMoveLearnMethod(method: "level-up", level: 100)])])
     }
 }
 
@@ -53,7 +53,7 @@ final class ProfileGrowthIntegrationTests: XCTestCase {
                     await s.hatch(baseID: 1)
                     XCTAssertEqual(s.state.active?.hasGrowthBoost, repeated)
                     XCTAssertEqual(s.state.active?.profile?.level, 5)
-                    await s.loadPokemonDetails(speciesID: forms)
+                    await s.loadDigimonDetails(speciesID: forms)
                     for _ in 0..<forms { s.applyUsage(s.tokensToNext) }
                     XCTAssertNil(s.state.active)
                     XCTAssertEqual(s.state.dex.last?.profile?.level, 100)
@@ -152,7 +152,7 @@ final class ProfileGrowthIntegrationTests: XCTestCase {
         seed.inventory[ItemKind.rareCandy.rawValue] = 1
         let (s, _, _) = try fixture(seed, difficulty: 0.1)
         await s.hatch(baseID: 1)
-        await s.loadPokemonDetails(speciesID: 3)
+        await s.loadDigimonDetails(speciesID: 3)
         _ = s.useRareCandy()
         XCTAssertNil(s.state.active)
         XCTAssertEqual(s.state.dex.last?.profile?.level, 100)

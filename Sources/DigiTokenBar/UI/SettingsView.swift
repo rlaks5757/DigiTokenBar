@@ -8,7 +8,7 @@ struct SettingsView: View {
     @Environment(UpdateChecker.self) private var updater
     /// 팝오버 내부 화면 전환 방식 — sheet/dismiss 를 쓰지 않는다 (PopoverView 의 NOTE 참조)
     var onClose: () -> Void
-    /// 기존 컬렉션의 도감으로 돌아가 대표 포켓몬을 고르게 한다.
+    /// 기존 컬렉션의 도감으로 돌아가 대표 디지몬을 고르게 한다.
     var onChooseRepresentative: () -> Void
     /// 고급 섹션을 펼친 채로 열지. 세션 키 만료 안내에서 들어온 경우에만 true —
     /// 접힌 채로 열면 고칠 입력란이 안 보여 안내가 막다른 길이 된다.
@@ -152,7 +152,7 @@ struct SettingsView: View {
             }
             Divider()
             groupRow {
-                Text(l.representativePokemonLabel)
+                Text(l.representativeDigimonLabel)
                     .lineLimit(1).minimumScaleFactor(0.75)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Menu {

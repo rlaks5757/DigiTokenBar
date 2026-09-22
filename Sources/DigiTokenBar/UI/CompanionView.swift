@@ -9,7 +9,7 @@ func rarityColor(_ r: Rarity?) -> Color {
     }
 }
 
-/// 희귀도 캡슐을 늘어놓는 순서(귀한 것부터) — 포획 로그 요약 헤더와 도감 헤더가 공유한다.
+/// 희귀도 캡슐을 늘어놓는 순서(귀한 것부터) — 동행 기록 요약 헤더와 도감 헤더가 공유한다.
 /// 순수 표시 순서다. 목록 정렬에는 쓰지 않는다.
 let rarityDisplayOrder: [Rarity] = [.legendary, .rare, .uncommon, .common]
 
@@ -159,7 +159,7 @@ struct SpriteView: View {
                 // 폴백하고, 네트워크 왕복이 끝나면 일러스트로 교체된다(정상 동작, 조건부 실패가 아니다
                 // — `SpriteStore.eggData()` 주석 참고).
                 // 종 → 알(졸업·새 알)이면 이전 개체 이미지를 버려야 한다 — img 는 뷰 identity 가 살아있는 동안
-                // 유지되고 플로팅 펫 패널은 졸업 때 재생성되지 않아, 안 버리면 옛 포켓몬이 계속 떠 있다.
+                // 유지되고 플로팅 펫 패널은 졸업 때 재생성되지 않아, 안 버리면 옛 디지몬이 계속 떠 있다.
                 apply(subject.becomingEgg(cachedEgg: SpriteLoader.cachedEggImage()))
                 if subject.image == nil {
                     let egg = await SpriteLoader.eggImage()
@@ -393,7 +393,7 @@ struct EvoLineView: View {
     }
 }
 
-/// 팝오버 상단 — 현재 포켓몬 + 진화 진행 + 부화/진화 연출.
+/// 팝오버 상단 — 현재 디지몬 + 진화 진행 + 부화/진화 연출.
 @MainActor
 struct CompanionHeader: View {
     let store: CompanionStore
@@ -591,7 +591,7 @@ struct RarityTally: View {
     }
 }
 
-/// 포획 로그 요약 헤더 — 총 개체 수 + 희귀도별 개체 수 캡슐.
+/// 동행 기록 요약 헤더 — 총 개체 수 + 희귀도별 개체 수 캡슐.
 /// 개수 단위가 개체(store.dexCount)라 종 단위인 도감 헤더와 공유하지 않는다.
 @MainActor
 struct DexSummaryHeader: View {
@@ -622,7 +622,7 @@ struct DexSummaryHeader: View {
     }
 }
 
-/// 컬렉션 탭 — 도감과 포획 로그를 하위 세그먼트로 전환한다.
+/// 컬렉션 탭 — 도감과 동행 기록을 하위 세그먼트로 전환한다.
 ///
 /// 두 화면은 같은 데이터를 다른 축으로 본다:
 ///  - **도감**: 종 1개 = 1칸. 안농의 28개 글자는 상세 화면에서 모아 본다.
@@ -667,7 +667,7 @@ struct CollectionView: View {
         }
     }
 
-    /// 포획 로그 — 개체 단위 기록. 필터(요약 헤더)는 고정, 목록만 스크롤한다
+    /// 동행 기록 — 개체 단위 기록. 필터(요약 헤더)는 고정, 목록만 스크롤한다
     /// (아래로 내리는 중에도 희귀도 필터를 토글할 수 있다).
     private var catchLog: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -767,7 +767,7 @@ private struct DexGridView: View {
         let slice = Array(visible.dropFirst(current * Self.pageSize).prefix(Self.pageSize))
         Group {
             if let id = detailCollectionID, let species = all.first(where: { $0.collectionID == id }) {
-                PokemonDetailView(store: store, species: species) { detailCollectionID = nil }
+                DigimonDetailView(store: store, species: species) { detailCollectionID = nil }
                     .id(species.collectionID)
             } else {
                 VStack(alignment: .leading, spacing: 8) {
@@ -882,17 +882,17 @@ private struct DexGridView: View {
     }
 }
 
-/// Scrollable species + individual page. A Pokédex species may aggregate several catches, so the
+/// Scrollable species + individual page. A Digidex species may aggregate several catches, so the
 /// picker selects the exact persisted profile while the immutable PokéAPI section stays shared.
 @MainActor
-private struct PokemonDetailView: View {
+private struct DigimonDetailView: View {
     let store: CompanionStore
     let species: CompanionStore.DexSpecies
     let onBack: () -> Void
     @State private var selectedInstanceID = ""
 
     private var individuals: [DexEntry] {
-        store.pokemonIndividuals(speciesID: species.id)
+        store.digimonIndividuals(speciesID: species.id)
     }
     private var individual: DexEntry? {
         individuals.first { $0.id == selectedInstanceID } ?? individuals.first
@@ -912,7 +912,7 @@ private struct PokemonDetailView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     identityHeader
                     if individuals.count > 1 { individualPicker }
-                    if let details = store.pokemonDetailsByID[species.id] {
+                    if let details = store.digimonDetailsByID[species.id] {
                         if let individual, let profile = individual.profile {
                             individualSection(entry: individual, profile: profile, details: details)
                         } else {
@@ -920,14 +920,14 @@ private struct PokemonDetailView: View {
                         }
                         speciesSection(details)
                         movesSection(details)
-                    } else if store.failedPokemonDetailIDs.contains(species.id) {
+                    } else if store.failedDigimonDetailIDs.contains(species.id) {
                         VStack(spacing: 8) {
-                            Text(store.l.pokemonDetailsUnavailable).foregroundStyle(.secondary)
-                            Button(store.l.retry) { Task { await store.loadPokemonDetails(speciesID: species.id) } }
+                            Text(store.l.digimonDetailsUnavailable).foregroundStyle(.secondary)
+                            Button(store.l.retry) { Task { await store.loadDigimonDetails(speciesID: species.id) } }
                         }
                         .frame(maxWidth: .infinity).padding(.vertical, 24)
                     } else {
-                        HStack { Spacer(); ProgressView(); Text(store.l.loadingPokemonDetails); Spacer() }
+                        HStack { Spacer(); ProgressView(); Text(store.l.loadingDigimonDetails); Spacer() }
                             .foregroundStyle(.secondary).padding(.vertical, 30)
                     }
                 }
@@ -936,7 +936,7 @@ private struct PokemonDetailView: View {
         }
         .task {
             if selectedInstanceID.isEmpty { selectedInstanceID = individuals.first?.id ?? "" }
-            await store.loadPokemonDetails(speciesID: species.id)
+            await store.loadDigimonDetails(speciesID: species.id)
         }
     }
 
@@ -959,7 +959,7 @@ private struct PokemonDetailView: View {
     }
 
     private var individualPicker: some View {
-        Picker(store.l.pokemonIndividual, selection: Binding(
+        Picker(store.l.digimonIndividual, selection: Binding(
             get: { individual?.id ?? "" }, set: { selectedInstanceID = $0 })) {
             ForEach(Array(individuals.enumerated()), id: \.element.id) { index, entry in
                 Text("#\(index + 1) · Lv. \(entry.profile?.level ?? 5)").tag(entry.id)
@@ -968,10 +968,10 @@ private struct PokemonDetailView: View {
         .pickerStyle(.menu)
     }
 
-    private func individualSection(entry: DexEntry, profile: PokemonProfile,
-                                   details: PokemonDetails) -> some View {
+    private func individualSection(entry: DexEntry, profile: DigimonProfile,
+                                   details: DigimonDetails) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            detailTitle(store.l.pokemonIndividual)
+            detailTitle(store.l.digimonIndividual)
             HStack(spacing: 12) {
                 valuePair(store.l.level, "\(profile.level)")
                 valuePair(store.l.gender, store.l.genderLabel(profile.gender))
@@ -979,21 +979,21 @@ private struct PokemonDetailView: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(store.l.ability).font(.system(size: 9)).foregroundStyle(.secondary)
                 if let name = profile.abilityName {
-                    PokemonNameLabel(.ability, name, language: store.language,
+                    DigimonNameLabel(.ability, name, language: store.language,
                                      suffix: profile.abilityIsHidden ? " · " + store.l.hiddenAbility : "")
                         .font(.caption.weight(.semibold))
                 } else {
                     Text("—").font(.caption.weight(.semibold))
                 }
             }
-            statsSection(PokemonStatCalculator.stats(details: details, profile: profile))
+            statsSection(DigimonStatCalculator.stats(details: details, profile: profile))
             detailTitle(store.l.activeMoves)
             if profile.moves.isEmpty {
                 Text(store.l.noLevelMoves).font(.caption).foregroundStyle(.secondary)
             } else {
                 ForEach(profile.moves) { move in
                     HStack {
-                        PokemonNameLabel(.move, move.name, language: store.language)
+                        DigimonNameLabel(.move, move.name, language: store.language)
                         Spacer()
                         Text("Lv. \(move.learnedAtLevel)").foregroundStyle(.secondary)
                     }
@@ -1004,10 +1004,10 @@ private struct PokemonDetailView: View {
         .detailCard()
     }
 
-    private func baseStatsSection(_ details: PokemonDetails) -> some View {
+    private func baseStatsSection(_ details: DigimonDetails) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             detailTitle(store.l.baseStats)
-            ForEach(PokemonStatCalculator.order, id: \.self) { stat in
+            ForEach(DigimonStatCalculator.order, id: \.self) { stat in
                 if let value = details.baseStats[stat] {
                     statRow(name: stat, value: value, iv: nil, scaleMaximum: 300)
                 }
@@ -1016,8 +1016,8 @@ private struct PokemonDetailView: View {
         .detailCard()
     }
 
-    private func statsSection(_ stats: [PokemonComputedStat]) -> some View {
-        let scaleMaximum = PokemonStatCalculator.displayScaleMaximum(for: stats.map(\.value))
+    private func statsSection(_ stats: [DigimonComputedStat]) -> some View {
+        let scaleMaximum = DigimonStatCalculator.displayScaleMaximum(for: stats.map(\.value))
         return VStack(alignment: .leading, spacing: 5) {
             detailTitle(store.l.actualStats)
             ForEach(stats) { stat in
@@ -1036,12 +1036,12 @@ private struct PokemonDetailView: View {
         .font(.system(size: 10))
     }
 
-    private func speciesSection(_ details: PokemonDetails) -> some View {
+    private func speciesSection(_ details: DigimonDetails) -> some View {
         VStack(alignment: .leading, spacing: 7) {
             detailTitle(store.l.speciesData)
             HStack(spacing: 5) {
                 ForEach(details.types, id: \.self) { type in
-                    PokemonNameLabel(.type, type, language: store.language).textCase(.uppercase)
+                    DigimonNameLabel(.type, type, language: store.language).textCase(.uppercase)
                         .font(.system(size: 9, weight: .bold))
                         .padding(.horizontal, 6).padding(.vertical, 3)
                         .background(Color.accentColor.opacity(0.16), in: Capsule())
@@ -1053,8 +1053,8 @@ private struct PokemonDetailView: View {
                 valuePair(store.l.baseStatTotal, "\(details.baseStatTotal)")
             }
             detailTitle(store.l.possibleAbilities)
-            PokemonNameLabel(items: details.abilities.map { option in
-                PokemonNameItem(resource: .init(kind: .ability, name: option.name),
+            DigimonNameLabel(items: details.abilities.map { option in
+                DigimonNameItem(resource: .init(kind: .ability, name: option.name),
                                 suffix: option.isHidden ? " (\(store.l.hidden))" : "")
             }, language: store.language)
             .font(.caption).foregroundStyle(.secondary)
@@ -1062,12 +1062,12 @@ private struct PokemonDetailView: View {
         .detailCard()
     }
 
-    private func movesSection(_ details: PokemonDetails) -> some View {
+    private func movesSection(_ details: DigimonDetails) -> some View {
         LazyVStack(alignment: .leading, spacing: 6) {
             detailTitle(store.l.completeMoveList(details.moves.count))
             ForEach(details.moves) { move in
                 HStack(alignment: .firstTextBaseline) {
-                    PokemonNameLabel(.move, move.name, language: store.language)
+                    DigimonNameLabel(.move, move.name, language: store.language)
                     Spacer()
                     Text(move.learnMethods.map(store.l.moveMethod).uniqued().joined(separator: " · "))
                         .foregroundStyle(.secondary).multilineTextAlignment(.trailing)
@@ -1210,7 +1210,7 @@ private struct DexSpeciesCell: View {
     }
 }
 
-/// 포획 로그 한 항목 — 희귀도·성격 헤더 + 진화 체인 스프라이트(각 밑에 종 이름) + 잡은 시각.
+/// 동행 기록 한 항목 — 희귀도·성격 헤더 + 진화 체인 스프라이트(각 밑에 종 이름) + 잡은 시각.
 /// 체인 각 종의 이름은 저장분이 있으면 body 에서 즉시(플래시 없음), 없으면(구버전) .task 로 조회 후 백필.
 @MainActor
 private struct DexEntryRow: View {

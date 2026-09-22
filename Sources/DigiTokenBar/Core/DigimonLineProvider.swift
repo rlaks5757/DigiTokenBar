@@ -1,15 +1,15 @@
 import Foundation
 
-/// `DigimonData`(번들 JSON) 기반 `PokeProviding` 구현체. `CompanionStore` 가 이걸 기본 provider 로 써서
+/// `DigimonData`(번들 JSON) 기반 `DigimonLineProviding` 구현체. `CompanionStore` 가 이걸 기본 provider 로 써서
 /// PokéAPI 네트워크 호출 없이 진화 라인·부화 후보를 제공한다.
 ///
 /// **트리는 죠그레스·아머·체인을 담지 않는다(선형 사슬만).** 이유: `EvoLine.totalForms` 는
-/// `tree.depth` 로 계산되고, 이 값이 `PokemonBalance.phaseThreshold` 를 거쳐 모든 단계 임계값과
+/// `tree.depth` 로 계산되고, 이 값이 `DigimonBalance.phaseThreshold` 를 거쳐 모든 단계 임계값과
 /// 세이브 스키마(`MonState.totalForms`)에 그대로 들어간다. 죠그레스는 부모가 둘이고 아머는 아이템
 /// 키가 있어야 도달하므로, "부모 1개 → 자식 1개"인 선형 depth 로 표현할 수 없다 — 트리에 넣으려면
 /// 도달 방식이 다른 분기를 depth 계산에 어떻게 반영할지부터 정해야 한다(다음 단계: UI 분기 렌더링).
 /// 그때까지 이 provider 는 `DigiLine.stages` 를 그대로 선형 사슬로만 변환한다.
-struct DigimonLineProvider: PokeProviding {
+struct DigimonLineProvider: DigimonLineProviding {
 
     /// speciesID 가 라인의 base(정규 진화 시작점)일 때 그 라인, 아니면 nil.
     private func line(forBaseID id: Int) -> DigiLine? {
@@ -31,7 +31,7 @@ struct DigimonLineProvider: PokeProviding {
                 preconditionFailure("DigimonDataLoader already guarantees a name for every line stage id")
             }
             // "en" 은 PokéAPI 언어코드 관례(AppLanguage.en.apiCodes)와 동일한 키이자
-            // PokemonNameLocalization.resolve 의 최종 폴백 코드이므로, 언어 무관하게 항상 이 이름이 뜬다.
+            // DigimonNameLocalization.resolve 의 최종 폴백 코드이므로, 언어 무관하게 항상 이 이름이 뜬다.
             names[stage.id] = ["en": name.apiName]
         }
         return EvoLine(baseID: digiLine.baseID, tree: tree, rarity: digiLine.rarity, names: names)

@@ -1,9 +1,9 @@
 import XCTest
 @testable import DigiTokenBar
 
-// MARK: 새 알 (리롤 — 현재 포켓몬 폐기, 도감·확률 무영향)
+// MARK: 새 알 (리롤 — 현재 디지몬 폐기, 도감·확률 무영향)
 
-private struct FreshEggNoProvider: PokeProviding {
+private struct FreshEggNoProvider: DigimonLineProviding {
     func line(baseSpeciesID: Int) async throws -> EvoLine { throw URLError(.notConnectedToInternet) }
     func baseSpeciesIndex() async throws -> [BaseSpecies] { [] }
     func baseSpecies(id: Int) async throws -> BaseSpecies? { nil }
@@ -13,7 +13,7 @@ private struct FreshEggNoProvider: PokeProviding {
 final class FreshEggTests: XCTestCase {
     private let now = Date(timeIntervalSince1970: 1_700_000_000)
 
-    /// 활성 포켓몬(baseID 10, common 3형태, 성장 200M) + 도감 1개 + 수집기록 1개(1:3) + 지갑.
+    /// 활성 디지몬(baseID 10, common 3형태, 성장 200M) + 도감 1개 + 수집기록 1개(1:3) + 지갑.
     /// active=false 면 알(활성 없음) 상태.
     private func store(active: Bool = true, used: Int = 5_000_000_000,
                        spent: Int = 0) -> CompanionStore {
@@ -37,10 +37,10 @@ final class FreshEggTests: XCTestCase {
         let persistedDexBefore = s.state.dex
         let collectedBefore = s.state.collectedFinals
         XCTAssertEqual(s.dexEntries.count, persistedDexBefore.count + 1,
-                       "현재 포켓몬은 졸업 전에도 도감 화면에 표시")
+                       "현재 디지몬은 졸업 전에도 도감 화면에 표시")
         XCTAssertTrue(s.hasActive)
         XCTAssertTrue(s.buyFreshEgg())
-        XCTAssertNil(s.state.active, "현재 포켓몬은 더 이상 활성이 아니다")
+        XCTAssertNil(s.state.active, "현재 디지몬은 더 이상 활성이 아니다")
         XCTAssertTrue(s.isEgg)
         XCTAssertEqual(s.state.eggUsage, 0, "새 알은 처음부터 인큐베이션")
         XCTAssertNil(s.state.pendingHatchID)

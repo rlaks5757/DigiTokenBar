@@ -37,11 +37,11 @@ final class DifficultyTests: XCTestCase {
 
     func testRepeatBoostComposesWithDifficultyAndLiveChanges() async {
         let s = await hatched(growth: 0.5)
-        s.applyUsage(PokemonBalance.graduationTotal(.common) / 2)
+        s.applyUsage(DigimonBalance.graduationTotal(.common) / 2)
         XCTAssertNil(s.state.active)
         await s.hatch(baseID: 1)
         XCTAssertEqual(s.state.active?.hasGrowthBoost, true)
-        let base = PokemonBalance.phaseThreshold(rarity: .common, totalForms: 3, stageIndex: 0)
+        let base = DigimonBalance.phaseThreshold(rarity: .common, totalForms: 3, stageIndex: 0)
         XCTAssertEqual(s.threshold, base / 4)
         s.applyUsage(base / 4 - 1)
         XCTAssertEqual(s.state.active?.stageIndex, 0)
@@ -64,7 +64,7 @@ final class DifficultyTests: XCTestCase {
     // MARK: 1. 진화 — 같은 토큰, 다른 결과 (표시가 아니라 상태 전이)
 
     func testSameTokensEvolveOnlyWhenDifficultyLowered() async {
-        let baseThreshold = PokemonBalance.phaseThreshold(rarity: .common, totalForms: 3, stageIndex: 0)
+        let baseThreshold = DigimonBalance.phaseThreshold(rarity: .common, totalForms: 3, stageIndex: 0)
         let half = baseThreshold / 2
 
         let normal = await hatched(growth: 1.0)
@@ -79,7 +79,7 @@ final class DifficultyTests: XCTestCase {
     }
 
     func testHarderDifficultyBlocksEvolutionThatWouldOtherwiseHappen() async {
-        let baseThreshold = PokemonBalance.phaseThreshold(rarity: .common, totalForms: 3, stageIndex: 0)
+        let baseThreshold = DigimonBalance.phaseThreshold(rarity: .common, totalForms: 3, stageIndex: 0)
 
         let normal = await hatched(growth: 1.0)
         normal.applyUsage(baseThreshold)
@@ -95,7 +95,7 @@ final class DifficultyTests: XCTestCase {
     func testDisplayedTokensToNextMatchesTheThresholdThatActuallyEvolves() async {
         let s = await hatched(growth: 0.5)
         let shown = s.tokensToNext
-        XCTAssertEqual(shown, PokemonBalance.phaseThreshold(rarity: .common, totalForms: 3, stageIndex: 0) / 2,
+        XCTAssertEqual(shown, DigimonBalance.phaseThreshold(rarity: .common, totalForms: 3, stageIndex: 0) / 2,
                        "표시값이 배율을 반영")
         // 표시된 양보다 1 적게 주면 진화 안 하고, 딱 맞추면 진화한다 → 표시 = 실제 임계.
         s.applyUsage(shown - 1)
@@ -108,7 +108,7 @@ final class DifficultyTests: XCTestCase {
     // MARK: 2. 부화 — 알이 실제로 깨지는 지점이 바뀌는가
 
     func testEggHatchPointMovesWithDifficulty() async {
-        let half = PokemonBalance.eggHatchThreshold / 2
+        let half = DigimonBalance.eggHatchThreshold / 2
 
         let normal = store(growth: 1.0)
         normal.update(todayTokensByProvider: ["t": 0], todayDate: "d1", monthTotal: 0,
@@ -158,7 +158,7 @@ final class DifficultyTests: XCTestCase {
 
         let shopOnly = await hatched(growth: 1.0, shop: 0.1)
         XCTAssertEqual(shopOnly.tokensToNext,
-                       PokemonBalance.phaseThreshold(rarity: .common, totalForms: 3, stageIndex: 0),
+                       DigimonBalance.phaseThreshold(rarity: .common, totalForms: 3, stageIndex: 0),
                        "상점 배율이 성장 임계를 건드리면 안 된다")
     }
 
@@ -174,7 +174,7 @@ final class DifficultyTests: XCTestCase {
 
     func testLoweringDifficultyPreservesIncompleteStage() async {
         let s = await hatched(growth: 1.0)
-        let baseThreshold = PokemonBalance.phaseThreshold(rarity: .common, totalForms: 3, stageIndex: 0)
+        let baseThreshold = DigimonBalance.phaseThreshold(rarity: .common, totalForms: 3, stageIndex: 0)
         s.applyUsage(baseThreshold - 1)
         XCTAssertEqual(s.state.active?.stageIndex, 0, "아직 진화 전")
 
@@ -206,34 +206,34 @@ final class DifficultyTests: XCTestCase {
 
     /// 경계값은 상수에서 파생한다 — 범위를 조정해도 테스트가 같이 따라오게(하드코딩 드리프트 방지).
     func testGarbageDefaultsAreClamped() {
-        let lo = PokemonBalance.difficultyRange.lowerBound
-        let hi = PokemonBalance.difficultyRange.upperBound
-        XCTAssertEqual(PokemonBalance.clampDifficulty(0), lo, accuracy: 1e-9)
-        XCTAssertEqual(PokemonBalance.clampDifficulty(-5), lo, accuracy: 1e-9)
-        XCTAssertEqual(PokemonBalance.clampDifficulty(hi * 10), hi, accuracy: 1e-9)
+        let lo = DigimonBalance.difficultyRange.lowerBound
+        let hi = DigimonBalance.difficultyRange.upperBound
+        XCTAssertEqual(DigimonBalance.clampDifficulty(0), lo, accuracy: 1e-9)
+        XCTAssertEqual(DigimonBalance.clampDifficulty(-5), lo, accuracy: 1e-9)
+        XCTAssertEqual(DigimonBalance.clampDifficulty(hi * 10), hi, accuracy: 1e-9)
         // 유한하지 않은 값은 "아주 어려움"이 아니라 손상된 값 → 상·하한이 아니라 기본값으로 되돌린다.
-        XCTAssertEqual(PokemonBalance.clampDifficulty(.nan), PokemonBalance.defaultDifficulty, accuracy: 1e-9)
-        XCTAssertEqual(PokemonBalance.clampDifficulty(.infinity), PokemonBalance.defaultDifficulty, accuracy: 1e-9)
-        XCTAssertEqual(PokemonBalance.clampDifficulty(-.infinity), PokemonBalance.defaultDifficulty, accuracy: 1e-9)
+        XCTAssertEqual(DigimonBalance.clampDifficulty(.nan), DigimonBalance.defaultDifficulty, accuracy: 1e-9)
+        XCTAssertEqual(DigimonBalance.clampDifficulty(.infinity), DigimonBalance.defaultDifficulty, accuracy: 1e-9)
+        XCTAssertEqual(DigimonBalance.clampDifficulty(-.infinity), DigimonBalance.defaultDifficulty, accuracy: 1e-9)
     }
 
     /// 배율 0 이 저장돼 있어도 임계가 0 이 되지 않는다(진행률 0 나눗셈·퇴화 루프 방지).
     func testZeroInDefaultsCannotProduceZeroThreshold() async {
         let s = await hatched(growth: 0)
-        XCTAssertEqual(s.growthDifficulty, PokemonBalance.difficultyRange.lowerBound, accuracy: 1e-9)
+        XCTAssertEqual(s.growthDifficulty, DigimonBalance.difficultyRange.lowerBound, accuracy: 1e-9)
         XCTAssertGreaterThan(s.tokensToNext, 0)
         XCTAssertGreaterThan(s.eggTokensToHatch, 0)
     }
 
     /// 가장 낮은 배율에서도 어떤 임계·가격도 0 으로 무너지지 않는다(가장 작은 기준값이 알 5M).
     func testNothingCollapsesToZeroAtMinimumDifficulty() async {
-        let lo = PokemonBalance.difficultyRange.lowerBound
-        XCTAssertGreaterThan(PokemonBalance.scaled(PokemonBalance.eggHatchThreshold, by: lo), 0)
+        let lo = DigimonBalance.difficultyRange.lowerBound
+        XCTAssertGreaterThan(DigimonBalance.scaled(DigimonBalance.eggHatchThreshold, by: lo), 0)
         for rarity in [Rarity.common, .uncommon, .rare, .legendary] {
             for k in 1...3 {
                 for i in 0..<k {
-                    let t = PokemonBalance.scaled(
-                        PokemonBalance.phaseThreshold(rarity: rarity, totalForms: k, stageIndex: i), by: lo)
+                    let t = DigimonBalance.scaled(
+                        DigimonBalance.phaseThreshold(rarity: rarity, totalForms: k, stageIndex: i), by: lo)
                     XCTAssertGreaterThan(t, 0, "rarity=\(rarity) k=\(k) i=\(i)")
                 }
             }
@@ -246,34 +246,34 @@ final class DifficultyTests: XCTestCase {
 
     func testPositionRoundTripsThroughDifficulty() {
         for value in [0.1, 0.25, 0.5, 1.0, 1.5, 2.0] {
-            let back = PokemonBalance.difficulty(atPosition: PokemonBalance.difficultyPosition(value))
+            let back = DigimonBalance.difficulty(atPosition: DigimonBalance.difficultyPosition(value))
             XCTAssertEqual(back, value, accuracy: value * 0.02, "value=\(value)")
         }
     }
 
     func testPositionEndpointsMapToRangeBounds() {
-        XCTAssertEqual(PokemonBalance.difficulty(atPosition: 0),
-                       PokemonBalance.difficultyRange.lowerBound, accuracy: 1e-9)
-        XCTAssertEqual(PokemonBalance.difficulty(atPosition: 1),
-                       PokemonBalance.difficultyRange.upperBound, accuracy: 1e-6)
-        XCTAssertEqual(PokemonBalance.difficultyPosition(PokemonBalance.difficultyRange.lowerBound), 0, accuracy: 1e-9)
-        XCTAssertEqual(PokemonBalance.difficultyPosition(PokemonBalance.difficultyRange.upperBound), 1, accuracy: 1e-9)
+        XCTAssertEqual(DigimonBalance.difficulty(atPosition: 0),
+                       DigimonBalance.difficultyRange.lowerBound, accuracy: 1e-9)
+        XCTAssertEqual(DigimonBalance.difficulty(atPosition: 1),
+                       DigimonBalance.difficultyRange.upperBound, accuracy: 1e-6)
+        XCTAssertEqual(DigimonBalance.difficultyPosition(DigimonBalance.difficultyRange.lowerBound), 0, accuracy: 1e-9)
+        XCTAssertEqual(DigimonBalance.difficultyPosition(DigimonBalance.difficultyRange.upperBound), 1, accuracy: 1e-9)
     }
 
     /// 로그 슬라이더에서도 기본값(100%)으로 되돌릴 수 있어야 한다 — 스냅이 없으면 도달 불가.
     func testDefaultIsReachableByDragging() {
-        let exactPosition = PokemonBalance.difficultyPosition(1.0)
+        let exactPosition = DigimonBalance.difficultyPosition(1.0)
         for offset in [-0.009, -0.005, 0.0, 0.005, 0.009] {
-            XCTAssertEqual(PokemonBalance.difficulty(atPosition: exactPosition + offset), 1.0,
+            XCTAssertEqual(DigimonBalance.difficulty(atPosition: exactPosition + offset), 1.0,
                            accuracy: 1e-9, "offset=\(offset) 에서 100% 로 붙어야 한다")
         }
     }
 
     /// 스냅 결과는 유효숫자 2자리 — 표시가 1.0473 같은 값으로 지저분해지지 않는다.
     func testSnapKeepsTwoSignificantDigits() {
-        XCTAssertEqual(PokemonBalance.snapDifficulty(1.234), 1.2, accuracy: 1e-9)
-        XCTAssertEqual(PokemonBalance.snapDifficulty(15.7), 16, accuracy: 1e-9)
-        XCTAssertEqual(PokemonBalance.snapDifficulty(0.0123), 0.012, accuracy: 1e-9)
+        XCTAssertEqual(DigimonBalance.snapDifficulty(1.234), 1.2, accuracy: 1e-9)
+        XCTAssertEqual(DigimonBalance.snapDifficulty(15.7), 16, accuracy: 1e-9)
+        XCTAssertEqual(DigimonBalance.snapDifficulty(0.0123), 0.012, accuracy: 1e-9)
     }
 
     func testPercentFormatting() {
@@ -290,7 +290,7 @@ final class DifficultyTests: XCTestCase {
 
 // MARK: 스텁
 
-private struct StubDiffProvider: PokeProviding {
+private struct StubDiffProvider: DigimonLineProviding {
     let value: EvoLine
     func line(baseSpeciesID: Int) async throws -> EvoLine { value }
     func baseSpeciesIndex() async throws -> [BaseSpecies] { [BaseSpecies(id: value.baseID, captureRate: 255)] }

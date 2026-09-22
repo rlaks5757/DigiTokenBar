@@ -5,7 +5,7 @@ import AppKit
 // SpriteView 가 그리는 주체의 전이 규칙.
 //
 // 두 가지를 잠근다:
-//  1) 주체가 알로 바뀌면 이전 개체의 픽셀을 버린다 (#135 — 졸업·Fresh Egg 후에도 옛 포켓몬이 떠 있던 회귀).
+//  1) 주체가 알로 바뀌면 이전 개체의 픽셀을 버린다 (#135 — 졸업·Fresh Egg 후에도 옛 디지몬이 떠 있던 회귀).
 //  2) **취소된 로드는 어떤 상태도 건드리지 않는다.** Swift 의 취소는 협조적이라 `.task(id:)` 가 취소돼도
 //     await 뒤 코드는 계속 실행된다 — 후속 task 가 이미 새 주체로 잡아 둔 상태를 뒤늦게 덮어쓸 수 있다.
 //
@@ -52,7 +52,7 @@ final class SpriteSubjectTests: XCTestCase {
     func testBecomingEggDropsPreviousSpeciesPixels() {
         let species = image(4), egg = image(2)
         let next = SpriteSubject(image: species, loadedID: 25).becomingEgg(cachedEgg: egg)
-        XCTAssertTrue(next.image === egg, "옛 개체 이미지가 남으면 플로팅 펫이 졸업 후에도 그 포켓몬을 그린다")
+        XCTAssertTrue(next.image === egg, "옛 개체 이미지가 남으면 플로팅 펫이 졸업 후에도 그 디지몬을 그린다")
         XCTAssertNil(next.loadedID)
     }
 
@@ -75,7 +75,7 @@ final class SpriteSubjectTests: XCTestCase {
 
     /// [트리거] 취소된 정적 로드는 이미지도 loadedID 도 건드리지 않는다.
     /// 반영하면 (a) 알 위에 옛 개체가 되살아나고 (b) loadedID 가 오염돼 다음에 그 종이 활성일 때
-    /// "이미 로드됨"으로 판단해 살아있는 포켓몬 자리에 🥚 글리프가 고정된다.
+    /// "이미 로드됨"으로 판단해 살아있는 디지몬 자리에 🥚 글리프가 고정된다.
     func testCancelledLoadLeavesSubjectUntouched() {
         let species = image(4)
         XCTAssertNil(SpriteSubject(image: image(2), loadedID: nil).applyingLoad(species, for: 26, cancelled: true),

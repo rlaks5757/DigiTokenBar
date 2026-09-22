@@ -17,11 +17,11 @@ private actor NameServer {
     }
 }
 
-private actor DelayedNameProvider: PokemonNameProviding {
+private actor DelayedNameProvider: DigimonNameProviding {
     private var continuation: CheckedContinuation<[String: String], Never>?
     private var result: [String: String]?
     private(set) var started = false
-    func names(for resource: PokemonNameResource) async throws -> [String: String] {
+    func names(for resource: DigimonNameResource) async throws -> [String: String] {
         started = true
         if let result { return result }
         return await withCheckedContinuation { continuation = $0 }
@@ -34,13 +34,13 @@ private actor DelayedNameProvider: PokemonNameProviding {
     }
 }
 
-final class PokemonNameLocalizationTests: XCTestCase {
-    private let resource = PokemonNameResource(kind: .move, name: "tackle")
+final class DigimonNameLocalizationTests: XCTestCase {
+    private let resource = DigimonNameResource(kind: .move, name: "tackle")
     private func response(_ values: [String: String]) throws -> Data {
         try JSONSerialization.data(withJSONObject: ["names": values.map { ["name": $0.value, "language": ["name": $0.key]] }])
     }
     private func tempDirectory() throws -> URL {
-        let path = FileManager.default.temporaryDirectory.appendingPathComponent("PokemonNames-\(UUID().uuidString)")
+        let path = FileManager.default.temporaryDirectory.appendingPathComponent("DigimonNames-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: path, withIntermediateDirectories: true)
         return path
     }
@@ -62,27 +62,27 @@ final class PokemonNameLocalizationTests: XCTestCase {
         struct Envelope: Decodable { let names: [NameDTO] }
         let data = try response(["ko": "몸통박치기", "en": "Tackle", "it": "Azione", "pt_BR": "Investida", "": "Bad", "fr": " "])
         let decoded = try JSONDecoder().decode(Envelope.self, from: data)
-        let names = PokemonNameLocalization.collect(decoded.names)
+        let names = DigimonNameLocalization.collect(decoded.names)
         XCTAssertEqual(names["it"], "Azione", "Keep languages outside the current AppLanguage enum")
         XCTAssertEqual(names["pt-br"], "Investida")
         XCTAssertNil(names[""])
         XCTAssertNil(names["fr"])
-        XCTAssertEqual(PokemonNameLocalization.resolve(names, preferredCodes: ["it"]), "Azione")
-        XCTAssertEqual(PokemonNameLocalization.resolve(names, preferredCodes: ["not-yet-supported"]), "Tackle")
+        XCTAssertEqual(DigimonNameLocalization.resolve(names, preferredCodes: ["it"]), "Azione")
+        XCTAssertEqual(DigimonNameLocalization.resolve(names, preferredCodes: ["not-yet-supported"]), "Tackle")
     }
 
     func testMemoryAndDiskCacheKeepAllLanguagesWithoutRefetchOnLanguageChange() async throws {
         let directory = try tempDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
         let server = NameServer(try response(["en": "Tackle", "ko": "몸통박치기", "it": "Azione"]))
-        let client = PokemonNameClient(directory: directory, fetch: { try await server.fetch($0) })
+        let client = DigimonNameClient(directory: directory, fetch: { try await server.fetch($0) })
         let first = try await client.names(for: resource)
         XCTAssertEqual(AppLanguage.ko.resolveName(first), "몸통박치기")
         let second = try await client.names(for: resource)
         XCTAssertEqual(AppLanguage.en.resolveName(second), "Tackle")
-        let restored = PokemonNameClient(directory: directory, fetch: { try await server.fetch($0) })
+        let restored = DigimonNameClient(directory: directory, fetch: { try await server.fetch($0) })
         let disk = try await restored.names(for: resource)
-        XCTAssertEqual(PokemonNameLocalization.resolve(disk, preferredCodes: ["it"]), "Azione")
+        XCTAssertEqual(DigimonNameLocalization.resolve(disk, preferredCodes: ["it"]), "Azione")
         let calls = await server.calls
         XCTAssertEqual(calls, 1)
     }
@@ -90,7 +90,7 @@ final class PokemonNameLocalizationTests: XCTestCase {
     func testDuplicateVisibleRowsShareOneRequest() async throws {
         let resource = self.resource
         let server = NameServer(try response(["en": "Tackle", "ko": "몸통박치기"]))
-        let client = PokemonNameClient(directory: nil, fetch: { try await server.fetch($0) })
+        let client = DigimonNameClient(directory: nil, fetch: { try await server.fetch($0) })
         async let a = client.names(for: resource)
         async let b = client.names(for: resource)
         let values = try await (a, b)
@@ -104,10 +104,10 @@ final class PokemonNameLocalizationTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: directory) }
         let time = Date(timeIntervalSince1970: 1_800_000_000)
         let server = NameServer(try response(["en": "Tackle", "ko": "몸통박치기"]))
-        let initial = PokemonNameClient(directory: directory, now: { time }, fetch: { try await server.fetch($0) })
+        let initial = DigimonNameClient(directory: directory, now: { time }, fetch: { try await server.fetch($0) })
         _ = try await initial.names(for: resource)
         await server.setFailure(true)
-        let stale = PokemonNameClient(directory: directory, now: { time.addingTimeInterval(31 * 86400) }, fetch: { try await server.fetch($0) })
+        let stale = DigimonNameClient(directory: directory, now: { time.addingTimeInterval(31 * 86400) }, fetch: { try await server.fetch($0) })
         let offline = try await stale.names(for: resource)
         XCTAssertEqual(AppLanguage.ko.resolveName(offline), "몸통박치기")
         await server.setFailure(false)
@@ -119,7 +119,7 @@ final class PokemonNameLocalizationTests: XCTestCase {
     func testColdFailureCanRetryAndInvalidResourceNeverFetches() async throws {
         let server = NameServer(try response(["en": "Tackle"]))
         await server.setFailure(true)
-        let client = PokemonNameClient(directory: nil, fetch: { try await server.fetch($0) })
+        let client = DigimonNameClient(directory: nil, fetch: { try await server.fetch($0) })
         do { _ = try await client.names(for: resource); XCTFail("Expected network failure") } catch { }
         await server.setFailure(false)
         let recovered = try await client.names(for: resource)
@@ -139,7 +139,7 @@ final class PokemonNameLocalizationTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: directory) }
         try Data("broken".utf8).write(to: directory.appendingPathComponent("move-tackle.json"))
         let server = NameServer(try response(["en": "Tackle"]))
-        let client = PokemonNameClient(directory: directory, fetch: { try await server.fetch($0) })
+        let client = DigimonNameClient(directory: directory, fetch: { try await server.fetch($0) })
         _ = try await client.names(for: resource)
         _ = try await client.names(for: .init(kind: .ability, name: "tackle"))
         _ = try await client.names(for: .init(kind: .type, name: "tackle"))
@@ -150,8 +150,8 @@ final class PokemonNameLocalizationTests: XCTestCase {
     @MainActor
     func testMountedLabelLoadsTranslationsAndReopensWithoutEnglishFrame() async throws {
         let provider = DelayedNameProvider()
-        let store = PokemonNameDisplayStore()
-        var label = PokemonNameLabel(.move, "tackle", language: .ko)
+        let store = DigimonNameDisplayStore()
+        var label = DigimonNameLabel(.move, "tackle", language: .ko)
         label.provider = provider
         label.displayStore = store
         let root = label.frame(width: 320, height: 80).foregroundStyle(.black).background(Color.white)
@@ -200,7 +200,7 @@ final class PokemonNameLocalizationTests: XCTestCase {
     @MainActor
     func testCancelledLoadDoesNotPublishSnapshot() async throws {
         let provider = DelayedNameProvider()
-        let store = PokemonNameDisplayStore()
+        let store = DigimonNameDisplayStore()
         let resource = self.resource
         let task = Task { await store.load(resource, provider: provider) }
         for _ in 0..<200 {
@@ -217,54 +217,54 @@ final class PokemonNameLocalizationTests: XCTestCase {
     @MainActor
     func testLoadingNamesNeverShowsEnglishAndReopeningUsesSnapshot() async throws {
         let server = NameServer(try response(["en": "Tackle", "ko": "몸통박치기"]))
-        let client = PokemonNameClient(directory: nil, fetch: { try await server.fetch($0) })
-        let store = PokemonNameDisplayStore()
-        let items = [PokemonNameItem(resource: resource)]
-        let pending = PokemonNameText(items: items, language: .ko, names: store.names)
+        let client = DigimonNameClient(directory: nil, fetch: { try await server.fetch($0) })
+        let store = DigimonNameDisplayStore()
+        let items = [DigimonNameItem(resource: resource)]
+        let pending = DigimonNameText(items: items, language: .ko, names: store.names)
         XCTAssertEqual(pending.text, "…")
         let loaded = await store.load(resource, provider: client)
         XCTAssertTrue(loaded)
         // A newly created view can resolve the snapshot synchronously, before its .task runs.
-        XCTAssertEqual(PokemonNameText(items: items, language: .ko, names: store.names).text, "몸통박치기")
-        XCTAssertEqual(PokemonNameText(items: items, language: .en, names: store.names).text, "Tackle")
-        XCTAssertEqual(PokemonNameText(items: items, language: .pt, names: store.names).text, "Tackle")
-        let joined = items + [PokemonNameItem(resource: .init(kind: .type, name: "grass"))]
-        XCTAssertEqual(PokemonNameText(items: joined, language: .ko, names: store.names).text, "몸통박치기 · …")
+        XCTAssertEqual(DigimonNameText(items: items, language: .ko, names: store.names).text, "몸통박치기")
+        XCTAssertEqual(DigimonNameText(items: items, language: .en, names: store.names).text, "Tackle")
+        XCTAssertEqual(DigimonNameText(items: items, language: .pt, names: store.names).text, "Tackle")
+        let joined = items + [DigimonNameItem(resource: .init(kind: .type, name: "grass"))]
+        XCTAssertEqual(DigimonNameText(items: joined, language: .ko, names: store.names).text, "몸통박치기 · …")
     }
 
     @MainActor
     func testFailedNameLoadFallsBackAndRetryRestoresTranslation() async throws {
         let server = NameServer(try response(["en": "Tackle", "ko": "몸통박치기"]))
         await server.setFailure(true)
-        let client = PokemonNameClient(directory: nil, fetch: { try await server.fetch($0) })
-        let store = PokemonNameDisplayStore()
-        let items = [PokemonNameItem(resource: resource)]
+        let client = DigimonNameClient(directory: nil, fetch: { try await server.fetch($0) })
+        let store = DigimonNameDisplayStore()
+        let items = [DigimonNameItem(resource: resource)]
         let loaded = await store.load(resource, provider: client)
         XCTAssertFalse(loaded)
         XCTAssertNil(store.names[resource], "A failed request must not poison the shared snapshot")
-        XCTAssertEqual(PokemonNameText(items: items, language: .ko, names: store.names, failed: [resource]).text, "Tackle")
+        XCTAssertEqual(DigimonNameText(items: items, language: .ko, names: store.names, failed: [resource]).text, "Tackle")
         await server.setFailure(false)
         let retried = await store.load(resource, provider: client)
         XCTAssertTrue(retried)
-        XCTAssertEqual(PokemonNameText(items: items, language: .ko, names: store.names, failed: [resource]).text, "몸통박치기")
+        XCTAssertEqual(DigimonNameText(items: items, language: .ko, names: store.names, failed: [resource]).text, "몸통박치기")
     }
 
     @MainActor
     func testRenderedNamesResolveLanguageAndEnglishFallbackWithoutChangingKeys() throws {
-        let ability = PokemonNameResource(kind: .ability, name: "overgrow")
-        let type = PokemonNameResource(kind: .type, name: "grass")
+        let ability = DigimonNameResource(kind: .ability, name: "overgrow")
+        let type = DigimonNameResource(kind: .type, name: "grass")
         let maps = [resource: ["en": "Tackle", "ko": "몸통박치기", "ja-hrkt": "たいあたり", "es": "Placaje", "fr": "Charge", "de": "Tackle"],
                     ability: ["en": "Overgrow", "ko": "심록"], type: ["en": "Grass", "ko": "풀"]]
-        let items = [PokemonNameItem(resource: ability), PokemonNameItem(resource: resource), PokemonNameItem(resource: type)]
-        let korean = PokemonNameText(items: items, language: .ko, names: maps)
+        let items = [DigimonNameItem(resource: ability), DigimonNameItem(resource: resource), DigimonNameItem(resource: type)]
+        let korean = DigimonNameText(items: items, language: .ko, names: maps)
         XCTAssertEqual(korean.text, "심록 · 몸통박치기 · 풀")
-        XCTAssertEqual(PokemonNameText(items: items, language: .pt, names: maps).text, "Overgrow · Tackle · Grass")
-        XCTAssertEqual(PokemonNameText(items: items, language: .ko, names: [:]).text, "… · … · …")
-        let hidden = PokemonNameText(items: [.init(resource: ability, suffix: " (숨겨진 특성)")], language: .ko, names: maps)
+        XCTAssertEqual(DigimonNameText(items: items, language: .pt, names: maps).text, "Overgrow · Tackle · Grass")
+        XCTAssertEqual(DigimonNameText(items: items, language: .ko, names: [:]).text, "… · … · …")
+        let hidden = DigimonNameText(items: [.init(resource: ability, suffix: " (숨겨진 특성)")], language: .ko, names: maps)
         XCTAssertEqual(hidden.text, "심록 (숨겨진 특성)")
         XCTAssertEqual(items[0].resource.name, "overgrow", "Translated labels never replace persistent identifiers")
         for language in AppLanguage.allCases {
-            let view = PokemonNameText(items: items, language: language, names: maps)
+            let view = DigimonNameText(items: items, language: language, names: maps)
                 .padding(16).frame(width: 320).foregroundStyle(.black).background(Color.white)
             let renderer = ImageRenderer(content: view)
             renderer.scale = 2

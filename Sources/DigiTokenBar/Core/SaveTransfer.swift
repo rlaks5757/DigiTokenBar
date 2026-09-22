@@ -9,7 +9,7 @@ import Foundation
 /// 봉투의 `format`/`schema` 는 관대 디코딩 대상이 아니라(기본값 없음) 이 오인을 먼저 차단한다.
 struct SaveEnvelope: Codable, Sendable {
     static let formatID = "digitokenbar.save"
-    /// v2 adds persistent generated Pokémon profiles (IVs, gender, ability, level and moves).
+    /// v2 adds persistent generated Digimon profiles (IVs, gender, ability, level and moves).
     /// v3: 본문 CompanionState 의 종 식별자 세대(saveVersion)가 바뀌었다 — 구버전 앱이 새 세대로
     /// 내보낸 파일을 받았을 때 이 스키마 번호만으로도 먼저 걸러내기 위해 올린다. 로컬 로드 게이트
     /// (CompanionState.currentSaveVersion)와 별개로, "구버전 앱이 새 세대를 수입"하는 경로를 막는다.
@@ -177,7 +177,7 @@ enum SaveTransfer {
         s.claimedTodayTokensByProvider = s.claimedTodayTokensByProvider?.reduce(into: [:]) { result, entry in
             result[entry.key] = clampToken(entry.value)
         }
-        // 알 보증은 "지금 품고 있는 알"에만 붙는 값이라 활성 포켓몬과 공존할 수 없다. 손편집·구버전
+        // 알 보증은 "지금 품고 있는 알"에만 붙는 값이라 활성 디지몬과 공존할 수 없다. 손편집·구버전
         // 조합으로 둘 다 들어오면 그 보증이 다음 알로 새어 영구 프리미엄이 되므로 여기서 떨군다.
         // 그 보증으로 미리 뽑아둔 종(pendingHatchID)도 함께 버린다 — 보증만 지우면 졸업 후 받는 **무료**
         // 알이 그 pre-roll 로 부화해, 아무도 사지 않은 프리미엄 결과가 나온다.
@@ -190,7 +190,7 @@ enum SaveTransfer {
         if s.eggTier?.captureRateCeiling == nil { s.eggTier = nil }
         if var active = s.active {
             active.usedAtStage = clampToken(active.usedAtStage)
-            // totalForms 는 `kk * (kk + 1)` 형태로 쓰여(PokemonBalance.phaseThreshold) 큰 값이 그 자체로 트랩이다.
+            // totalForms 는 `kk * (kk + 1)` 형태로 쓰여(DigimonBalance.phaseThreshold) 큰 값이 그 자체로 트랩이다.
             active.totalForms = min(max(1, active.totalForms), 12)
             active.stageIndex = min(max(0, active.stageIndex), max(0, active.pathIDs.count - 1))
             active.profile?.sanitize()

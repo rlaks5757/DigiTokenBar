@@ -7,7 +7,7 @@ private enum TransferStubError: Error { case unavailable }
 
 /// 세이브 이전 테스트는 진화 라인을 필요로 하지 않는다 — 사용량 적립은 라인 미로딩에서도
 /// 동작해야 하기 때문(CompanionStore.applyUsage 주석). 전부 실패시켜 그 경로를 강제한다.
-private struct OfflineProvider: PokeProviding {
+private struct OfflineProvider: DigimonLineProviding {
     func line(baseSpeciesID: Int) async throws -> EvoLine { throw TransferStubError.unavailable }
     func baseSpeciesIndex() async throws -> [BaseSpecies] { throw TransferStubError.unavailable }
     func baseSpecies(id: Int) async throws -> BaseSpecies? { throw TransferStubError.unavailable }
@@ -36,7 +36,7 @@ private actor TransferSignal {
 
 /// **종 롤**(`baseSpeciesIndex`)에서 멈추는 provider — `hatchIfNeeded` 의 첫 await 창을 재현한다.
 /// 라인 fetch 창(`GatedProvider`)과는 다른 지점이라 별도 스텁이 필요하다.
-private struct GatedIndexProvider: PokeProviding {
+private struct GatedIndexProvider: DigimonLineProviding {
     let entered: TransferSignal
     let release: TransferSignal
     let result: EvoLine
@@ -50,7 +50,7 @@ private struct GatedIndexProvider: PokeProviding {
 }
 
 /// 라인 fetch 에서 멈춰 있다가 신호를 받고 반환하는 provider — 부화 중 상태 교체를 재현한다.
-private struct GatedProvider: PokeProviding {
+private struct GatedProvider: DigimonLineProviding {
     let entered: TransferSignal
     let release: TransferSignal
     let result: EvoLine
@@ -109,7 +109,7 @@ final class SaveTransferTests: XCTestCase {
         XCTAssertEqual(envelope.state.inventory, original.inventory)
         XCTAssertEqual(envelope.state.dex.count, 1)
         XCTAssertEqual(envelope.state.collectedFinals, original.collectedFinals)
-        XCTAssertEqual(envelope.state.representativeSpeciesID, 2, "대표 포켓몬 선택도 세이브와 함께 이동")
+        XCTAssertEqual(envelope.state.representativeSpeciesID, 2, "대표 디지몬 선택도 세이브와 함께 이동")
     }
 
     func testRoundTripPreservesActiveRepeatGrowthBoost() throws {
@@ -383,7 +383,7 @@ final class SaveTransferTests: XCTestCase {
         XCTAssertEqual(s.state.spentTokens, 3_500_000_000)
         XCTAssertEqual(s.state.dex.count, 1)
         XCTAssertEqual(s.state.inventory["rareCandy"], 2)
-        XCTAssertEqual(s.state.representativeSpeciesID, 2, "대표 포켓몬은 진행 상태와 함께 보존")
+        XCTAssertEqual(s.state.representativeSpeciesID, 2, "대표 디지몬은 진행 상태와 함께 보존")
         XCTAssertEqual(s.state.candyGrantTier["five_hour|2026-08-03T00:00:00Z"], 100,
                        "사탕 지급 원장 보존 — 버리면 같은 창에서 재지급된다")
         XCTAssertTrue(s.state.candyFeatureSeeded)
@@ -456,7 +456,7 @@ final class SaveTransferTests: XCTestCase {
         // 알 상태 + 부화 임계 도달 + pre-roll 없음 → `chooseBase()` 로 들어간다.
         var egg = CompanionState()
         egg.installBaselineSet = true
-        egg.eggUsage = PokemonBalance.eggHatchThreshold
+        egg.eggUsage = DigimonBalance.eggHatchThreshold
         try JSONEncoder().encode(egg).write(to: url)
 
         let s = CompanionStore(provider: GatedIndexProvider(entered: entered, release: release, result: evo),

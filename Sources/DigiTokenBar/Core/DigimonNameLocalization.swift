@@ -2,7 +2,7 @@ import Foundation
 
 /// Shared by species names and battle metadata. Keep every language returned by the API;
 /// adding an app language must not require changing a second allowlist or redownloading names.
-enum PokemonNameLocalization {
+enum DigimonNameLocalization {
     static func languageCode(_ raw: String) -> String {
         raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased().replacingOccurrences(of: "_", with: "-")
     }
@@ -36,7 +36,7 @@ enum PokemonNameLocalization {
     }
 }
 
-struct PokemonNameResource: Hashable, Sendable {
+struct DigimonNameResource: Hashable, Sendable {
     enum Kind: String, Sendable { case type, ability, move }
     let kind: Kind
     let name: String
@@ -47,14 +47,14 @@ struct PokemonNameResource: Hashable, Sendable {
     }
 }
 
-protocol PokemonNameProviding: Sendable {
-    func names(for resource: PokemonNameResource) async throws -> [String: String]
+protocol DigimonNameProviding: Sendable {
+    func names(for resource: DigimonNameResource) async throws -> [String: String]
 }
 
 /// On-demand metadata names, independent of battle-data/profile loading.
 /// Shared resources (e.g. the same move on two species) share their request and 30-day cache.
-actor PokemonNameClient: PokemonNameProviding {
-    static let shared = PokemonNameClient()
+actor DigimonNameClient: DigimonNameProviding {
+    static let shared = DigimonNameClient()
     private struct Snapshot: Codable, Sendable {
         let fetchedAt: Date
         let names: [String: String]
@@ -63,12 +63,12 @@ actor PokemonNameClient: PokemonNameProviding {
     private let directory: URL?
     private let fetch: @Sendable (URL) async throws -> Data
     private let now: @Sendable () -> Date
-    private var cache: [PokemonNameResource: Snapshot] = [:]
-    private var inFlight: [PokemonNameResource: Task<Snapshot, Error>] = [:]
+    private var cache: [DigimonNameResource: Snapshot] = [:]
+    private var inFlight: [DigimonNameResource: Task<Snapshot, Error>] = [:]
 
     init(directory: URL? = AppStatePaths.directory().appendingPathComponent("pokemon-names-v1", isDirectory: true),
          now: @escaping @Sendable () -> Date = Date.init,
-         fetch: @escaping @Sendable (URL) async throws -> Data = PokemonNameClient.download) {
+         fetch: @escaping @Sendable (URL) async throws -> Data = DigimonNameClient.download) {
         self.directory = directory
         self.now = now
         self.fetch = fetch
@@ -82,7 +82,7 @@ actor PokemonNameClient: PokemonNameProviding {
         return data
     }
 
-    func names(for resource: PokemonNameResource) async throws -> [String: String] {
+    func names(for resource: DigimonNameResource) async throws -> [String: String] {
         guard resource.isValid else { throw URLError(.badURL) }
         if let pending = inFlight[resource] { return try await pending.value.names }
         let file = directory?.appendingPathComponent(resource.cacheKey + ".json")
@@ -98,7 +98,7 @@ actor PokemonNameClient: PokemonNameProviding {
         let task = Task<Snapshot, Error> {
             do {
                 let response = try await fetch(url)
-                let names = PokemonNameLocalization.collect(try JSONDecoder().decode(NamesDTO.self, from: response).names)
+                let names = DigimonNameLocalization.collect(try JSONDecoder().decode(NamesDTO.self, from: response).names)
                 return Snapshot(fetchedAt: clock(), names: names)
             } catch {
                 if let previous { return previous }

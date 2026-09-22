@@ -1,8 +1,8 @@
 import Foundation
 
-/// Immutable PokéAPI combat metadata for one default Pokémon form.
-/// This is cached separately from the user's save; only rolled individual values live in `PokemonProfile`.
-struct PokemonDetails: Codable, Sendable, Equatable {
+/// Immutable PokéAPI combat metadata for one default Digimon form.
+/// This is cached separately from the user's save; only rolled individual values live in `DigimonProfile`.
+struct DigimonDetails: Codable, Sendable, Equatable {
     let speciesID: Int
     let name: String
     let height: Int                 // PokéAPI decimetres
@@ -11,17 +11,17 @@ struct PokemonDetails: Codable, Sendable, Equatable {
     let genderRate: Int             // female eighths; -1 = genderless
     let types: [String]
     let baseStats: [String: Int]
-    let abilities: [PokemonAbilityOption]
-    let moves: [PokemonMoveOption]
+    let abilities: [DigimonAbilityOption]
+    let moves: [DigimonMoveOption]
 
     var baseStatTotal: Int { baseStats.values.reduce(0, +) }
 
-    /// Invariant: hatchable species are bounded by `PokemonAssets.queryableSpeciesIDs`
+    /// Invariant: hatchable species are bounded by `DigimonAssets.queryableSpeciesIDs`
     /// (the PokéAPI query range — no longer an animated-sprite constraint; that axis was
     /// removed 2026-09-22). Keep this learnset selection in sync if that bound is ever raised.
     static let preferredVersionGroup = "black-2-white-2"
 
-    func levelUpMoves(through level: Int) -> [PokemonKnownMove] {
+    func levelUpMoves(through level: Int) -> [DigimonKnownMove] {
         var bestByName: [String: Int] = [:]
         for move in moves {
             let matching = move.learnMethods.filter {
@@ -30,7 +30,7 @@ struct PokemonDetails: Codable, Sendable, Equatable {
             guard let learnedAt = matching.map(\.level).min() else { continue }
             bestByName[move.name] = min(bestByName[move.name] ?? learnedAt, learnedAt)
         }
-        return bestByName.map { PokemonKnownMove(name: $0.key, learnedAtLevel: $0.value) }
+        return bestByName.map { DigimonKnownMove(name: $0.key, learnedAtLevel: $0.value) }
             .sorted {
                 if $0.learnedAtLevel != $1.learnedAtLevel { return $0.learnedAtLevel < $1.learnedAtLevel }
                 return $0.name < $1.name
@@ -38,30 +38,30 @@ struct PokemonDetails: Codable, Sendable, Equatable {
     }
 }
 
-struct PokemonAbilityOption: Codable, Sendable, Equatable {
+struct DigimonAbilityOption: Codable, Sendable, Equatable {
     let name: String
     let slot: Int
     let isHidden: Bool
 }
 
-struct PokemonMoveOption: Codable, Sendable, Equatable, Identifiable {
+struct DigimonMoveOption: Codable, Sendable, Equatable, Identifiable {
     var id: String { name }
     let name: String
-    let learnMethods: [PokemonMoveLearnMethod]
+    let learnMethods: [DigimonMoveLearnMethod]
 }
 
-struct PokemonMoveLearnMethod: Codable, Sendable, Equatable {
+struct DigimonMoveLearnMethod: Codable, Sendable, Equatable {
     let method: String
     let level: Int
 }
 
-enum PokemonGender: String, Codable, Sendable, CaseIterable {
+enum DigimonGender: String, Codable, Sendable, CaseIterable {
     case male
     case female
     case genderless
 }
 
-struct PokemonIVs: Codable, Sendable, Equatable {
+struct DigimonIVs: Codable, Sendable, Equatable {
     var hp: Int
     var attack: Int
     var defense: Int
@@ -82,38 +82,38 @@ struct PokemonIVs: Codable, Sendable, Equatable {
     }
 }
 
-struct PokemonKnownMove: Codable, Sendable, Equatable, Identifiable {
+struct DigimonKnownMove: Codable, Sendable, Equatable, Identifiable {
     var id: String { name }
     let name: String
     let learnedAtLevel: Int
 }
 
-/// Values that make one caught Pokémon distinct from another.
+/// Values that make one caught Digimon distinct from another.
 /// `seed` keeps deferred/offline enrichment deterministic; explicit results are persisted once resolved.
-struct PokemonProfile: Codable, Sendable, Equatable {
+struct DigimonProfile: Codable, Sendable, Equatable {
     var instanceID: String
     var seed: UInt64
-    var gender: PokemonGender?
-    var ivs: PokemonIVs
+    var gender: DigimonGender?
+    var ivs: DigimonIVs
     var abilitySlot: Int?
     var abilityName: String?
     var abilityIsHidden: Bool
     var level: Int
     /// Earned growth in standard-balance units, independent of difficulty and repeat boosts.
     var growthTokens: Int
-    var moves: [PokemonKnownMove]
+    var moves: [DigimonKnownMove]
 
     static func generate(seed: UInt64, growthTokens: Int = 0,
-                         instanceID: String = UUID().uuidString) -> PokemonProfile {
+                         instanceID: String = UUID().uuidString) -> DigimonProfile {
         var random = ProfileRNG(seed: seed)
-        let ivs = PokemonIVs(
+        let ivs = DigimonIVs(
             hp: Int(random.next() % 32),
             attack: Int(random.next() % 32),
             defense: Int(random.next() % 32),
             specialAttack: Int(random.next() % 32),
             specialDefense: Int(random.next() % 32),
             speed: Int(random.next() % 32))
-        return PokemonProfile(
+        return DigimonProfile(
             instanceID: instanceID,
             seed: seed,
             gender: nil,
@@ -129,8 +129,8 @@ struct PokemonProfile: Codable, Sendable, Equatable {
     /// Ditto's disguise is a different species identity, not an evolution. Keep the individual
     /// values, but reroll every species-dependent field once Ditto's own metadata is available.
     mutating func rebaseForSpeciesIdentity(from oldRarity: Rarity, to rarity: Rarity) {
-        let fraction = min(1, Double(max(0, growthTokens)) / Double(PokemonBalance.graduationTotal(oldRarity)))
-        let rebasedGrowth = Int((fraction * Double(PokemonBalance.graduationTotal(rarity))).rounded(.down))
+        let fraction = min(1, Double(max(0, growthTokens)) / Double(DigimonBalance.graduationTotal(oldRarity)))
+        let rebasedGrowth = Int((fraction * Double(DigimonBalance.graduationTotal(rarity))).rounded(.down))
         gender = nil
         abilitySlot = nil
         abilityName = nil
@@ -140,7 +140,7 @@ struct PokemonProfile: Codable, Sendable, Equatable {
         advanceGrowth(to: rebasedGrowth, rarity: rarity)
     }
 
-    mutating func enrich(with details: PokemonDetails) {
+    mutating func enrich(with details: DigimonDetails) {
         var random = ProfileRNG(seed: seed ^ 0xA11B_1E5D_9EED)
         if gender == nil {
             if details.genderRate < 0 {
@@ -183,7 +183,7 @@ struct PokemonProfile: Codable, Sendable, Equatable {
     /// Difficulty changes and imports cannot undo an already-earned level.
     mutating func advanceGrowth(to candidate: Int, rarity: Rarity) {
         growthTokens = min(SaveTransfer.maxTokenValue, max(growthTokens, max(0, candidate)))
-        let total = max(1, PokemonBalance.graduationTotal(rarity))
+        let total = max(1, DigimonBalance.graduationTotal(rarity))
         let progress = min(1, Double(growthTokens) / Double(total))
         level = min(100, max(level, max(5, 5 + Int((progress * 95).rounded(.down)))))
     }
@@ -198,13 +198,13 @@ struct PokemonProfile: Codable, Sendable, Equatable {
         ivs.specialDefense = min(31, max(0, ivs.specialDefense))
         ivs.speed = min(31, max(0, ivs.speed))
         moves = Array(moves.prefix(4)).map {
-            PokemonKnownMove(name: String($0.name.prefix(80)), learnedAtLevel: min(100, max(0, $0.learnedAtLevel)))
+            DigimonKnownMove(name: String($0.name.prefix(80)), learnedAtLevel: min(100, max(0, $0.learnedAtLevel)))
         }
         if instanceID.isEmpty { instanceID = UUID().uuidString }
     }
 }
 
-struct PokemonComputedStat: Identifiable, Sendable, Equatable {
+struct DigimonComputedStat: Identifiable, Sendable, Equatable {
     var id: String { name }
     let name: String
     let base: Int
@@ -212,7 +212,7 @@ struct PokemonComputedStat: Identifiable, Sendable, Equatable {
     let value: Int
 }
 
-enum PokemonStatCalculator {
+enum DigimonStatCalculator {
     static let order = ["hp", "attack", "defense", "special-attack", "special-defense", "speed"]
 
     static func displayScaleMaximum(for values: [Int]) -> Int {
@@ -221,7 +221,7 @@ enum PokemonStatCalculator {
         return remainder == 0 ? highest : highest + (100 - remainder)
     }
 
-    static func stats(details: PokemonDetails, profile: PokemonProfile) -> [PokemonComputedStat] {
+    static func stats(details: DigimonDetails, profile: DigimonProfile) -> [DigimonComputedStat] {
         order.compactMap { name in
             guard let base = details.baseStats[name] else { return nil }
             let iv = profile.ivs[name]
@@ -232,7 +232,7 @@ enum PokemonStatCalculator {
             } else {
                 value = ((2 * base + iv) * level) / 100 + 5
             }
-            return PokemonComputedStat(name: name, base: base, iv: iv, value: value)
+            return DigimonComputedStat(name: name, base: base, iv: iv, value: value)
         }
     }
 }
@@ -249,7 +249,7 @@ private struct ProfileRNG: RandomNumberGenerator {
     }
 }
 
-enum PokemonProfileMigration {
+enum DigimonProfileMigration {
     /// Stable across processes (unlike Swift's randomized `Hasher`).
     static func seed(_ text: String) -> UInt64 {
         text.utf8.reduce(0xcbf2_9ce4_8422_2325) { hash, byte in

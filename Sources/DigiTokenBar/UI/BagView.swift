@@ -105,7 +105,7 @@ private struct ItemCard: View {
     private func unavailableReason(_ l: L) -> String {
         switch kind {
         case .rareCandy:
-            return store.isEgg ? l.useAfterHatch : l.useNeedsPokemon
+            return store.isEgg ? l.useAfterHatch : l.useNeedsDigimon
         case .digimentalCourage, .digimentalSincerity, .digimentalMiracles, .digimentalLove,
              .digimentalPurity, .digimentalKnowledge, .digimentalHope, .digimentalLight,
              .digimentalFriendship:

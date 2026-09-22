@@ -1,7 +1,7 @@
 import XCTest
 @testable import DigiTokenBar
 
-/// `DigimonLineProvider`(DigimonData 기반 PokeProviding 구현) 회귀 가드.
+/// `DigimonLineProvider`(DigimonData 기반 DigimonLineProviding 구현) 회귀 가드.
 /// 개수만 세는 단언은 구성원 교체를 못 잡으므로(§ count-assertions-hide-membership),
 /// 12개 라인 전체의 실제 baseID·rarity·captureRate 대응을 하나씩 고정한다.
 final class DigimonLineProviderTests: XCTestCase {
