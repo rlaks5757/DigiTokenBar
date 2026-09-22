@@ -132,10 +132,15 @@ enum SpriteLoader {
             let f = directory.appendingPathComponent(filename)
             let imageKey = f.path as NSString
             if let img = imageCache.object(forKey: imageKey) { return img }
-            if let d = try? Data(contentsOf: f), let img = NSImage(data: d) {
-                imageCache.setObject(img, forKey: imageKey)
-                return img
-            }
+            guard let d = try? Data(contentsOf: f), let img = NSImage(data: d) else { continue }
+            // 알파 없는 자산(흰 배경 JPEG)은 여기서 캐싱하지 않고 건너뛴다. 원본을 캐시에 넣으면 이후
+            // 모든 조회가 그 흰 배경 원본을 돌려받아 **누끼가 영영 적용되지 않는다** — 이게 건너뛰는
+            // 주된 이유다. 부차적으로, 이 경로는 **동기**이고 `ItemIconView.init` 의
+            // `State(initialValue:)` 안에서 불려 flood-fill(900×900 기준 15~21ms) 만큼 뷰 init 이
+            // 멈춘다. async 경로에 넘긴다.
+            guard NSBitmapImageRep(data: d)?.hasAlpha ?? true else { continue }
+            imageCache.setObject(img, forKey: imageKey)
+            return img
         }
         return nil
     }
@@ -150,7 +155,13 @@ enum SpriteLoader {
             guard let d = await store.data(filename: filename) else { continue }
             // await 중 같은 파일명의 다른 행이 로드를 끝냈으면 그 객체를 재사용한다.
             if let img = imageCache.object(forKey: imageKey) { return img }
-            guard let img = NSImage(data: d) else { continue }   // 디코드 실패 시 다음 후보로 폴백
+            // 흰 배경 JPEG 이면 여기서 누끼를 딴다 — 동기 경로(`cachedImage`)가 이 자산을 캐싱하지 않고
+            // 넘기므로, 처리된 픽셀을 캐시에 넣는 건 이 경로의 책임이다. `Task.detached` 인 이유:
+            // `SpriteLoader` 는 @MainActor 라 `nonisolated` 만으로는 호출자(메인 액터)에서 그대로 돌아
+            // 대상 10종 전부 합쳐 174ms(한 장 15~21ms, 800×800 이 28ms 로 최대)를 메인 스레드에서
+            // 쓴다. NSImage 는 Sendable 이 아니라 경계를 `Data` 로 둔다.
+            let filled = await Task.detached { fillingWhiteBackdrop(d) }.value
+            guard let img = NSImage(data: filled ?? d) else { continue }   // 디코드 실패 시 다음 후보로 폴백
             imageCache.setObject(img, forKey: imageKey)
             return img
         }
@@ -173,10 +184,9 @@ enum SpriteLoader {
 
     /// 콘텐츠 경계로 1회 크롭해 캐시 → 상점·홈 등 모든 크기에서 재사용한다.
     ///
-    /// ⚠️ `Digitama.jpg`(550×550, 실측)는 JPEG 라 알파 채널이 없다 — `cropToContent` 가 `hasAlpha`
-    /// 로 조기 반환해 캔버스 전체(흰 배경 포함)가 그대로 반환된다(실측: 코너 픽셀 RGB(255,255,255),
-    /// hasAlpha=no). 이전 96×96 PNG(콘텐츠 29%, 투명 여백)를 전제로 한 크롭 로직이라 이 자산에는
-    /// 적용되지 않음 — 흰 배경 제거는 제품 결정이 필요한 지점(보고서 참고).
+    /// `Digitama.jpg`(550×550, 실측)는 JPEG 라 알파 채널이 없어 예전에는 `cropToContent` 가 조기
+    /// 반환하고 캔버스 전체(흰 배경 포함)가 그대로 나왔다. 이제 `eggImage` 가 크롭 전에
+    /// `fillingWhiteBackdrop` 로 알파를 입히므로 크롭과 정사각 정규화가 정상 동작한다.
     private static var croppedEgg: NSImage?
 
     /// 크롭 완료분만 동기 반환(미준비면 nil — 동기 크롭 안 함, 히치 방지). 첫 표시 때만 🥚 폴백 후 eggImage 로 교체.
@@ -186,17 +196,103 @@ enum SpriteLoader {
     /// 비어 🥚 이모지로 폴백하고, 이 async 경로의 네트워크 왕복이 끝나면 일러스트로 교체된다.
     static func eggImage(store: SpriteStore = .shared) async -> NSImage? {
         if let c = croppedEgg { return c }
-        guard let d = await store.eggData(), let img = NSImage(data: d) else { return nil }
+        guard let d = await store.eggData() else { return nil }
+        // 알 아트도 흰 배경 JPEG 이다. 여기서 알파를 입히면 `cropToContent` 의 `hasAlpha` 가드가 저절로
+        // 통과해 콘텐츠 bbox 크롭 + 정사각 정규화가 **수정 없이** 그대로 돈다(그 가드는 누수 폴백으로
+        // 원본이 돌아온 경우의 degrade 경로로 계속 살아 있다).
+        let filled = await Task.detached { fillingWhiteBackdrop(d) }.value
+        guard let img = NSImage(data: filled ?? d) else { return nil }
         croppedEgg = cropToContent(img)
         return croppedEgg
     }
 
+    /// 흰 배경 일러스트(JPEG)에 알파를 입히는 순수 변환 — **모서리에서 시작하는 flood-fill** 이다.
+    /// 전역 흰색 키잉이 아니다: 알 몸통이 흰색/크림색이고 `Digimental_light` 는 화면의 67.9% 가 흰색이라,
+    /// 밝기만 보고 전부 지우면 피사체에 구멍이 뚫린다. 네 모서리에서만 번지고 어두운 윤곽선에서 멈추므로
+    /// 윤곽선 **안쪽**의 흰색은 보존된다.
+    ///
+    /// 경계는 `Data -> Data?` 다(`NSImage` 가 아니다). 호출부가 `Task.detached` 로 메인 액터 밖에 내보내는데
+    /// `NSImage` 는 Sendable 이 아니라 그 경계를 넘지 못한다 — `Data` 는 양방향 모두 Sendable 이라
+    /// Swift 6.1.2(CI)/6.3.3(로컬) 어느 쪽에서도 같은 진단을 받는다.
+    ///
+    /// 이미 알파가 있는 입력(디지몬 vpet PNG 52종)은 `nil` 을 반환해 호출부가 원본 바이트를 그대로 쓰게 한다.
+    nonisolated static func fillingWhiteBackdrop(_ data: Data) -> Data? {
+        guard let rep = NSBitmapImageRep(data: data), !rep.hasAlpha else { return nil }
+        let w = rep.pixelsWide, h = rep.pixelsHigh
+        guard w > 0, h > 0, let src = rep.bitmapData else { return nil }
+        // planar rep 는 `bitmapData` 레이아웃이 완전히 달라 아래 포인터 산술이 통하지 않는다.
+        // 8비트 샘플도 전제 — 16비트 rep 이면 채널당 2바이트라 임계값 비교가 무의미해진다.
+        guard !rep.isPlanar, rep.bitsPerSample == 8 else { return nil }
+        // 아래 `p[0..2]` = R,G,B 는 **skip-last 8비트 정수** 레이아웃을 전제한다. alphaFirst 면 같은
+        // 자리가 A,R,G 라 색이 통째로 밀리고, floatingPointSamples 면 바이트가 float 조각이라 임계값
+        // 비교 자체가 무의미하다. 둘 다 flood-fill 마스크로는 드러나지 않는다(흰색은 채널이 밀려도
+        // 밝게 읽혀 경계가 멀쩡해 보인다) — 여기서 막지 않으면 출력에서야 발견된다. 기존 폴백대로 nil.
+        guard !rep.bitmapFormat.contains(.alphaFirst),
+              !rep.bitmapFormat.contains(.floatingPointSamples) else { return nil }
+        // ⚠️ 픽셀 stride 는 `samplesPerPixel`(샘플 **개수**)이 아니라 `bitsPerPixel / 8`(바이트 수)다.
+        // ImageIO 는 3샘플 JPEG 을 워드 정렬해 돌려준다 — 실측: 대상 자산 10개 전부 spp=3 인데
+        // bitsPerPixel=32(stride 4)다. spp 로 걸으면 픽셀마다 1바이트씩 오른쪽으로 밀려 엉뚱한
+        // 바이트를 읽는다(윤곽선을 배경으로 오판해 피사체가 지워진다).
+        let srcStride = rep.bitsPerPixel / 8, srcRow = rep.bytesPerRow
+        guard srcStride >= 3 else { return nil }
+
+        // 배경 후보 판정 — RGB 세 채널이 전부 임계값 이상. JPEG 링잉 때문에 `== 255` 로는 테두리 한 줄도
+        // 걸러지지 않는다(실측). 250~210 구간에서 결과가 거의 같아 중앙값 240 을 쓴다.
+        let threshold: UInt8 = 240
+        func isBright(_ x: Int, _ y: Int) -> Bool {
+            let p = src + y * srcRow + x * srcStride
+            return p[0] >= threshold && p[1] >= threshold && p[2] >= threshold
+        }
+
+        // 네 모서리를 시드로 하는 BFS. 방문 배열은 Bool 한 장이면 충분하다 — 큐에 들어간 시점에
+        // 방문 표시를 해 같은 픽셀이 중복으로 큐에 쌓이지 않게 한다.
+        var background = [Bool](repeating: false, count: w * h)
+        var queue: [Int] = []
+        for (x, y) in [(0, 0), (w - 1, 0), (0, h - 1), (w - 1, h - 1)] where isBright(x, y) {
+            let i = y * w + x
+            if !background[i] { background[i] = true; queue.append(i) }
+        }
+        var head = 0
+        while head < queue.count {
+            let i = queue[head]; head += 1
+            let x = i % w, y = i / w
+            for (nx, ny) in [(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)]
+            where nx >= 0 && nx < w && ny >= 0 && ny < h {
+                let ni = ny * w + nx
+                if !background[ni], isBright(nx, ny) { background[ni] = true; queue.append(ni) }
+            }
+        }
+
+        // 누수 폴백 — 채워진 픽셀이 캔버스의 85% 를 넘으면 테두리가 열려 있어 피사체까지 먹은 것이다.
+        // 현재 자산 10개는 전부 닫혀 있지만(실측), 앞으로 열린 자산이 들어오면 아이콘이 통째로 사라지는 대신
+        // 오늘과 같은 동작(흰 배경)으로 degrade 한다.
+        guard queue.count <= (w * h) * 85 / 100 else { return nil }
+
+        // ⚠️ 원본 rep 는 `samplesPerPixel == 3` 이라 알파를 쓸 자리가 없다 — `p[3] = 0` 은 **다음 픽셀의
+        // red** 를 덮어쓴다(출력이 노이즈가 될 때까지 드러나지 않는다). 4 샘플 rep 를 새로 할당해 RGB 를
+        // 복사하고 알파는 거기에만 쓴다.
+        guard let out = NSBitmapImageRep(
+            bitmapDataPlanes: nil, pixelsWide: w, pixelsHigh: h, bitsPerSample: 8,
+            samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB,
+            bytesPerRow: 0, bitsPerPixel: 0), let dst = out.bitmapData else { return nil }
+        let dstRow = out.bytesPerRow, dstStride = out.bitsPerPixel / 8
+        for y in 0..<h {
+            for x in 0..<w {
+                let s = src + y * srcRow + x * srcStride
+                let d = dst + y * dstRow + x * dstStride
+                d[0] = s[0]; d[1] = s[1]; d[2] = s[2]
+                d[3] = background[y * w + x] ? 0 : 255
+            }
+        }
+        return out.representation(using: .png, properties: [:])
+    }
+
     /// 비투명(alpha>0) 콘텐츠 경계로 크롭 — 큰 투명 여백 제거. 1회만 수행(메모이즈). 알파 채널이 없는
     /// 이미지(JPEG 등)는 전 픽셀이 불투명으로 읽혀 크롭이 수학적으로 불가능하므로, 픽셀 스캔을 시작하기
-    /// 전에 원본을 그대로 조기 반환한다(`croppedEgg` 주석 참고) — 550×550 전수 스캔 낭비 방지.
-    /// 주의: 이 조기 반환은 아래 정사각 정규화(210번 줄 근처)까지 함께 건너뛴다. 현재 자산(`Digitama.jpg`)이
-    /// 550×550 정사각이라 정사각 정규화가 항등이라 오늘은 무해하지만, 알파 없는 비정사각 자산이 추가되면
-    /// (예전 같으면 중앙 정사각 크롭을 받았을 것이) 레터박스로 떨어지므로 이 가드를 재검토해야 한다.
+    /// 전에 원본을 그대로 조기 반환한다 — 전수 스캔 낭비 방지.
+    /// 이 가드는 호출부가 `fillingWhiteBackdrop` 를 먼저 태우게 된 뒤로도 살아 있다: 누수 폴백(85% 초과)이나
+    /// 디코드 실패로 **알파가 안 입혀진 원본이 그대로 넘어오는** 경우가 남아 있고, 그때는 오늘과 같은
+    /// 동작(크롭 없이 원본)으로 degrade 해야 한다.
     private static func cropToContent(_ image: NSImage) -> NSImage {
         guard let tiff = image.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff) else { return image }
         guard rep.hasAlpha else { return image }
