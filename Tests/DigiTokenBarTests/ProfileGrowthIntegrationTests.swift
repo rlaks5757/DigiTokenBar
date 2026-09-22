@@ -42,7 +42,7 @@ final class ProfileGrowthIntegrationTests: XCTestCase {
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defaults.set(difficulty, forKey: "growthDifficulty")
         return (CompanionStore(provider: GrowthProfileProvider(forms: forms), fileURL: file,
-                               dittoDisguiseRollingEnabled: false, defaults: defaults), file, defaults)
+                               defaults: defaults), file, defaults)
     }
 
     func testEveryDifficultyAndRepeatHatchGraduatesAtLevel100() async throws {

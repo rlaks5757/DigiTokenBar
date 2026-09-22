@@ -75,7 +75,7 @@ final class PremiumEggTests: XCTestCase {
                              at file: URL? = nil) -> CompanionStore {
         let f = file ?? url()
         let mon = "{\"baseID\":10,\"pathIDs\":[10],\"stageIndex\":0,\"usedAtStage\":200000000,"
-            + "\"rarity\":\"common\",\"totalForms\":3,\"isShiny\":false}"
+            + "\"rarity\":\"common\",\"totalForms\":3}"
         let json = "{\"saveVersion\":\(CompanionState.currentSaveVersion),\"installBaselineSet\":true,\"usedSinceInstall\":\(used),\"spentTokens\":0,"
             + "\"lastDate\":\"d\",\"active\":\(mon),\"dex\":[],\"collectedFinals\":[]}"
         try? json.data(using: .utf8)!.write(to: f)

@@ -56,10 +56,8 @@ private struct ItemCard: View {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 6) {
                         Text(l.itemName(kind)).font(.callout.weight(.semibold))
-                        if !kind.isPassive {   // 보유형은 개수 개념이 없음(1회 구매·영구)
-                            Text("×\(count)").font(.caption.weight(.bold))
-                                .foregroundStyle(.secondary).monospacedDigit()
-                        }
+                        Text("×\(count)").font(.caption.weight(.bold))
+                            .foregroundStyle(.secondary).monospacedDigit()
                         Spacer(minLength: 4)
                         if kind == .rareCandy, store.canUseRareCandy {
                             Stepper(value: $candyCount, in: 1...max(1, store.maxRareCandyUseCount)) {
@@ -97,40 +95,22 @@ private struct ItemCard: View {
         }
     }
 
-    /// 이 아이템을 지금 쓸 수 있나 (kind 별 — 사탕은 라인 로딩 필요, 민트는 활성 포켓몬만).
+    /// 이 아이템을 지금 쓸 수 있나 — 사탕은 라인 로딩 필요. 디지멘탈은 아머 진화(추후 구현) 전용이라
+    /// 아직 사용 동작이 없다.
     private var canUse: Bool {
-        switch kind {
-        case .rareCandy: return store.canUseRareCandy
-        case .mint:      return store.canUseMint
-        case .shinyCharm: return false   // 보유형 — 사용 개념 없음(상시 효과)
-        }
+        kind == .rareCandy && store.canUseRareCandy
     }
-    /// 사용 컨트롤 효과 힌트 ("+XP" / "성격 랜덤 변경").
+    /// 사용 컨트롤 효과 힌트 ("+XP").
     private func effectHint(_ l: L) -> String {
-        switch kind {
-        case .rareCandy: return "+\(TokenFormatter.compact(selectedCandyCount * RareCandy.xp)) XP"
-        case .mint:      return l.mintEffectHint
-        case .shinyCharm: return l.shinyCharmEffectHint
-        }
+        "+\(TokenFormatter.compact(selectedCandyCount * RareCandy.xp)) XP"
     }
     private func performUse() {
-        switch kind {
-        case .rareCandy: _ = store.useRareCandy(count: selectedCandyCount)
-        case .mint:      _ = store.useMint()
-        case .shinyCharm: break   // 보유형 — 사용 동작 없음
-        }
+        if kind == .rareCandy { _ = store.useRareCandy(count: selectedCandyCount) }
     }
 
     @ViewBuilder
     private func useControls(_ l: L) -> some View {
-        if kind.isPassive {
-            // 보유형(이로치 부적) — 사용 버튼 대신 상시 효과 표시.
-            HStack(spacing: 6) {
-                Image(systemName: "checkmark.seal.fill").font(.caption2).foregroundStyle(.green)
-                Text(l.shinyCharmEffectHint).font(.caption2.weight(.semibold)).foregroundStyle(.green)
-                Spacer()
-            }
-        } else if canUse {
+        if canUse {
             if confirming {
                 HStack(spacing: 8) {
                     Text(l.useOnCurrent(store.displayName))

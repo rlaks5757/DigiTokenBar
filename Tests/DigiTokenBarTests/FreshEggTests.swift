@@ -15,11 +15,11 @@ final class FreshEggTests: XCTestCase {
 
     /// 활성 포켓몬(baseID 10, common 3형태, 성장 200M) + 도감 1개 + 수집기록 1개(1:3) + 지갑.
     /// active=false 면 알(활성 없음) 상태.
-    private func store(active: Bool = true, shiny: Bool = false, used: Int = 5_000_000_000,
+    private func store(active: Bool = true, used: Int = 5_000_000_000,
                        spent: Int = 0) -> CompanionStore {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("egg-\(UUID().uuidString).json")
         let mon = "{\"baseID\":10,\"pathIDs\":[10],\"stageIndex\":0,\"usedAtStage\":200000000,"
-            + "\"rarity\":\"common\",\"totalForms\":3,\"isShiny\":\(shiny)}"
+            + "\"rarity\":\"common\",\"totalForms\":3}"
         let dex = "{\"baseID\":1,\"finalID\":3,\"chainOrder\":[1,2,3],\"rarity\":\"common\"}"
         let json = "{\"saveVersion\":\(CompanionState.currentSaveVersion),\"installBaselineSet\":true,\"usedSinceInstall\":\(used),\"spentTokens\":\(spent),"
             + "\"lastDate\":\"d\",\"active\":\(active ? mon : "null"),\"dex\":[\(dex)],\"collectedFinals\":[\"1:3\"]}"
@@ -100,12 +100,4 @@ final class FreshEggTests: XCTestCase {
         XCTAssertEqual(s.state.spentTokens, 0)
     }
 
-    /// 이로치도 폐기 가능(추가 경고는 UI 단계, 로직은 동일) — 리롤 후 흔적 없음.
-    func testShinyCanBeRerolled() {
-        let s = store(shiny: true)
-        XCTAssertTrue(s.currentIsShiny)
-        XCTAssertTrue(s.buyFreshEgg())
-        XCTAssertNil(s.state.active)
-        XCTAssertFalse(s.currentIsShiny)
-    }
 }

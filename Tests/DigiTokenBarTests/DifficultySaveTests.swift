@@ -27,7 +27,7 @@ final class DifficultySaveTests: XCTestCase {
         defaults.set(difficulty, forKey: "growthDifficulty")
         defaults.set(20.0, forKey: "shopDifficulty")
         let store = CompanionStore(provider: DifficultySaveProvider(), fileURL: url,
-                                   dittoDisguiseRollingEnabled: false, defaults: defaults)
+                                   defaults: defaults)
         return (store, url, defaults)
     }
 

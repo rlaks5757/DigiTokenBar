@@ -241,35 +241,31 @@ final class FloatingPetEnergyTests: XCTestCase {
     func testLowPowerToggleChangesMenuSpriteKeyForFasterPresets() {
         let smooth = UsageStore.AnimationQuality.smooth
         XCTAssertNotEqual(
-            AppDelegate.menuSpriteKey(id: 41, shiny: false,
-                                      floor: smooth.effectiveFrameFloor(lowPower: true)),
-            AppDelegate.menuSpriteKey(id: 41, shiny: false,
-                                      floor: smooth.effectiveFrameFloor(lowPower: false)),
+            AppDelegate.menuSpriteKey(id: 41, floor: smooth.effectiveFrameFloor(lowPower: true)),
+            AppDelegate.menuSpriteKey(id: 41, floor: smooth.effectiveFrameFloor(lowPower: false)),
             "smooth: 저전력 토글이 키를 못 바꾸면 재구성이 일어나지 않는다")
         // powerSaver 선택자는 저전력 전후 키가 같아야 한다 — 이미 그 프레임률이라 재구성 자체가 낭비.
         let saver = UsageStore.AnimationQuality.powerSaver
         XCTAssertEqual(
-            AppDelegate.menuSpriteKey(id: 41, shiny: false,
-                                      floor: saver.effectiveFrameFloor(lowPower: true)),
-            AppDelegate.menuSpriteKey(id: 41, shiny: false,
-                                      floor: saver.effectiveFrameFloor(lowPower: false)))
+            AppDelegate.menuSpriteKey(id: 41, floor: saver.effectiveFrameFloor(lowPower: true)),
+            AppDelegate.menuSpriteKey(id: 41, floor: saver.effectiveFrameFloor(lowPower: false)))
     }
 
     /// [회귀] 설정을 바꾸면 **즉시** 반영돼야 한다. 두 표면 모두 "정체성이 바뀌면 재로딩" 기계로
     /// 프레임을 갱신하는데, 그 정체성 키에 하한이 빠져 있으면 종이 바뀔 때까지 옛 fps 로 계속 돈다
-    /// (`menuSpriteKey` = "id-shiny", `SpriteView.task(id:)` = "id-shiny" 였다 — 설계 시 확인된 함정).
+    /// (`menuSpriteKey` = "id", `SpriteView.task(id:)` = "id" 였다 — 설계 시 확인된 함정).
     func testIdentityKeysIncludeTheFrameFloor() {
-        XCTAssertNotEqual(AppDelegate.menuSpriteKey(id: 41, shiny: false, floor: 0.4),
-                          AppDelegate.menuSpriteKey(id: 41, shiny: false, floor: 0.1),
+        XCTAssertNotEqual(AppDelegate.menuSpriteKey(id: 41, floor: 0.4),
+                          AppDelegate.menuSpriteKey(id: 41, floor: 0.1),
                           "메뉴바: 하한이 키에 없으면 설정 변경이 안 먹는다")
-        XCTAssertNotEqual(SpriteView.frameTaskID(speciesID: 41, shiny: false, floor: 0.4),
-                          SpriteView.frameTaskID(speciesID: 41, shiny: false, floor: 0.1),
+        XCTAssertNotEqual(SpriteView.frameTaskID(speciesID: 41, floor: 0.4),
+                          SpriteView.frameTaskID(speciesID: 41, floor: 0.1),
                           "펫: 하한이 task id 에 없으면 설정 변경이 안 먹는다")
-        // 종·이로치 구분은 그대로 유지(하한 추가가 기존 판정을 덮어쓰지 않는다).
-        XCTAssertNotEqual(AppDelegate.menuSpriteKey(id: 41, shiny: false, floor: 0.2),
-                          AppDelegate.menuSpriteKey(id: 41, shiny: true, floor: 0.2))
-        XCTAssertNotEqual(SpriteView.frameTaskID(speciesID: 41, shiny: true, floor: 0.2),
-                          SpriteView.frameTaskID(speciesID: 42, shiny: true, floor: 0.2))
+        // 종 구분은 그대로 유지(하한 추가가 기존 판정을 덮어쓰지 않는다).
+        XCTAssertNotEqual(AppDelegate.menuSpriteKey(id: 41, floor: 0.2),
+                          AppDelegate.menuSpriteKey(id: 42, floor: 0.2))
+        XCTAssertNotEqual(SpriteView.frameTaskID(speciesID: 41, floor: 0.2),
+                          SpriteView.frameTaskID(speciesID: 42, floor: 0.2))
     }
 
     /// 두 상시 표시 표면(메뉴바·펫)은 이제 **같은 설정값**을 읽는다(`animationQuality.frameFloor`)

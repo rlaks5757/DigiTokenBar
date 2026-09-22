@@ -19,36 +19,25 @@ actor SpriteStore {
         try? FileManager.default.createDirectory(at: d, withIntermediateDirectories: true)
     }
 
-    /// A/기존 종은 구캐시 그대로 유지. 다른 안농은 폼·이로치·애니메이션을 모두 구분한다.
-    static func cacheKey(speciesID: Int, animated: Bool, shiny: Bool, unownForm: UnownForm? = nil) -> String {
-        "\(assetName(speciesID: speciesID, unownForm: unownForm))-\(shiny ? "sh" : "")\(animated ? "a" : "s")"
+    static func cacheKey(speciesID: Int, animated: Bool) -> String {
+        "\(speciesID)-\(animated ? "a" : "s")"
     }
 
-    /// PokeAPI는 A를 `201`, 나머지 폼을 `201-b`/`201-exclamation`/`201-question`으로 제공한다.
-    private static func assetName(speciesID: Int, unownForm: UnownForm?) -> String {
-        guard let form = UnownForm.resolved(speciesID: speciesID, form: unownForm), form != .a else {
-            return String(speciesID)
-        }
-        return "\(speciesID)-\(form.rawValue)"
-    }
-
-    /// 캐시와 다운로드가 같은 폼 이름을 사용한다. 네트워크 없이 요청 경로를 검증할 수 있다.
-    static func spriteURL(speciesID: Int, animated: Bool, shiny: Bool, unownForm: UnownForm? = nil) -> URL {
-        let name = assetName(speciesID: speciesID, unownForm: unownForm)
+    /// 캐시와 다운로드가 같은 이름을 사용한다. 네트워크 없이 요청 경로를 검증할 수 있다.
+    static func spriteURL(speciesID: Int, animated: Bool) -> URL {
         let path = animated ? "versions/generation-v/black-white/animated/" : ""
-        let color = shiny ? "shiny/" : ""
         let ext = animated ? "gif" : "png"
-        return URL(string: "\(base)/\(path)\(color)\(name).\(ext)")!
+        return URL(string: "\(base)/\(path)\(speciesID).\(ext)")!
     }
 
-    func data(speciesID: Int, animated: Bool, shiny: Bool = false, unownForm: UnownForm? = nil) async -> Data? {
+    func data(speciesID: Int, animated: Bool) async -> Data? {
         if animated, !PokemonAssets.hasAnimatedSprite(speciesID: speciesID) { return nil }
-        let key = Self.cacheKey(speciesID: speciesID, animated: animated, shiny: shiny, unownForm: unownForm)
+        let key = Self.cacheKey(speciesID: speciesID, animated: animated)
         if let d = mem[key] { touch(key); return d }
         let ext = animated ? "gif" : "png"
         let file = directory.appendingPathComponent("\(key).\(ext)")
         if let d = try? Data(contentsOf: file) { remember(key, d); return d }
-        let url = Self.spriteURL(speciesID: speciesID, animated: animated, shiny: shiny, unownForm: unownForm)
+        let url = Self.spriteURL(speciesID: speciesID, animated: animated)
         guard let (d, resp) = try? await URLSession.shared.data(from: url),
               (resp as? HTTPURLResponse)?.statusCode == 200, !d.isEmpty else { return nil }
         try? d.write(to: file, options: .atomic)   // torn write 방지 — 크래시/강제종료 시 손상 캐시가 남지 않게
@@ -117,11 +106,9 @@ enum SpriteLoader {
     }()
 
     /// 메모리·디스크 캐시에 이미 있으면 동기 반환(네트워크 없음). 없으면 nil.
-    /// shiny 캐시 미스는 일반 캐시로 폴백 — 오프라인에서 live mon 이 알 글리프로 보이는 것 방지.
-    static func cachedImage(speciesID: Int, animated: Bool = false, shiny: Bool = false,
-                            directory: URL = cacheDir, unownForm: UnownForm? = nil) -> NSImage? {
+    static func cachedImage(speciesID: Int, animated: Bool = false, directory: URL = cacheDir) -> NSImage? {
         let ext = animated ? "gif" : "png"
-        let key = SpriteStore.cacheKey(speciesID: speciesID, animated: animated, shiny: shiny, unownForm: unownForm)
+        let key = SpriteStore.cacheKey(speciesID: speciesID, animated: animated)
         let f = directory.appendingPathComponent("\(key).\(ext)")
         let imageKey = f.path as NSString
         if let img = imageCache.object(forKey: imageKey) { return img }
@@ -129,10 +116,7 @@ enum SpriteLoader {
             imageCache.setObject(img, forKey: imageKey)
             return img
         }
-        guard shiny else { return nil }
-        // 폴백은 일반색 키에만 저장한다 — 나중에 받은 이로치 이미지를 가리지 않게.
-        return cachedImage(speciesID: speciesID, animated: animated, shiny: false,
-                           directory: directory, unownForm: unownForm)
+        return nil
     }
 
     private final class AnimationFrames {
@@ -147,9 +131,9 @@ enum SpriteLoader {
     }()
 
     /// First render and playback share the exact GIF pixels, including its canvas and delays.
-    static func cachedFrames(speciesID: Int, shiny: Bool, directory: URL = cacheDir, unownForm: UnownForm? = nil)
+    static func cachedFrames(speciesID: Int, directory: URL = cacheDir)
         -> [(image: NSImage, delay: TimeInterval)] {
-        let key = SpriteStore.cacheKey(speciesID: speciesID, animated: true, shiny: shiny, unownForm: unownForm)
+        let key = SpriteStore.cacheKey(speciesID: speciesID, animated: true)
         let file = directory.appendingPathComponent("\(key).gif")
         if let cached = animationCache.object(forKey: file.path as NSString) { return cached.frames }
         guard let data = try? Data(contentsOf: file) else { return [] }
@@ -162,21 +146,13 @@ enum SpriteLoader {
         return frames
     }
 
-    static func animationFrames(speciesID: Int, shiny: Bool, store: SpriteStore = .shared,
-                                unownForm: UnownForm? = nil) async
+    static func animationFrames(speciesID: Int, store: SpriteStore = .shared) async
         -> [(image: NSImage, delay: TimeInterval)] {
-        for variant in shiny ? [true, false] : [false] {
-            let cached = cachedFrames(speciesID: speciesID, shiny: variant,
-                                      directory: store.directory, unownForm: unownForm)
-            if !cached.isEmpty { return cached }
-            guard let data = await store.data(speciesID: speciesID, animated: true,
-                                             shiny: variant, unownForm: unownForm) else { continue }
-            let key = SpriteStore.cacheKey(speciesID: speciesID, animated: true,
-                                            shiny: variant, unownForm: unownForm)
-            let frames = rememberFrames(data, file: store.directory.appendingPathComponent("\(key).gif"))
-            if !frames.isEmpty { return frames }
-        }
-        return []
+        let cached = cachedFrames(speciesID: speciesID, directory: store.directory)
+        if !cached.isEmpty { return cached }
+        guard let data = await store.data(speciesID: speciesID, animated: true) else { return [] }
+        let key = SpriteStore.cacheKey(speciesID: speciesID, animated: true)
+        return rememberFrames(data, file: store.directory.appendingPathComponent("\(key).gif"))
     }
 
     /// The static PNG has a 96px padded canvas; animated GIFs are tightly framed.
@@ -194,25 +170,20 @@ enum SpriteLoader {
     }
 
     /// 정적 스프라이트. animated=true 면 Gen-V 움직이는 스프라이트(없으면 정적으로 폴백).
-    /// shiny=true 는 색이 다른 스프라이트 — 미제공 종이면 일반으로 폴백.
-    static func image(speciesID: Int, animated: Bool = false, shiny: Bool = false,
-                      store: SpriteStore = .shared, unownForm: UnownForm? = nil) async -> NSImage? {
+    static func image(speciesID: Int, animated: Bool = false, store: SpriteStore = .shared) async -> NSImage? {
         for moving in animated ? [true, false] : [false] {
-            let key = SpriteStore.cacheKey(speciesID: speciesID, animated: moving, shiny: shiny, unownForm: unownForm)
+            let key = SpriteStore.cacheKey(speciesID: speciesID, animated: moving)
             let ext = moving ? "gif" : "png"
             let imageKey = store.directory.appendingPathComponent("\(key).\(ext)").path as NSString
             if let img = imageCache.object(forKey: imageKey) { return img }
-            guard let d = await store.data(speciesID: speciesID, animated: moving,
-                                          shiny: shiny, unownForm: unownForm) else { continue }
+            guard let d = await store.data(speciesID: speciesID, animated: moving) else { continue }
             // await 중 같은 종의 다른 행이 로드를 끝냈으면 그 객체를 재사용한다.
             if let img = imageCache.object(forKey: imageKey) { return img }
             guard let img = NSImage(data: d) else { continue }
             imageCache.setObject(img, forKey: imageKey)
             return img
         }
-        // shiny 미제공 → 일반 폴백
-        guard shiny else { return nil }
-        return await image(speciesID: speciesID, animated: animated, shiny: false, store: store, unownForm: unownForm)
+        return nil
     }
 
     /// 아이템 스프라이트 — 메모리·디스크 캐시 동기 조회(없으면 nil). 아이콘 즉시 표시용.

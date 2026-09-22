@@ -27,7 +27,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
     // 메뉴바 캐릭터 애니메이션 — 단일 타이머로 프레임 순환.
     // 프레임 = 이미 22px 로 합성된 이미지 + delay. egg/static 은 2프레임 bob, animated 는 GIF 실제 프레임.
-    private var menuSpriteKey: String?   // menuSpriteKey(id:shiny:floor:) 결과 — 바뀌면 재로딩
+    private var menuSpriteKey: String?   // menuSpriteKey(id:floor:) 결과 — 바뀌면 재로딩
     private var menuFrames: [(image: NSImage, delay: TimeInterval)] = []
     /// `menuFrames` 와 인덱스 대응하는 레이어용 비트맵. 프레임 준비 시 한 번만 변환한다.
     /// 비어 있으면(변환 실패) `setStatusImage` 가 `button.image` 폴백 경로를 탄다.
@@ -270,9 +270,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private func ensureMenuAnimation() {
         let subject = companion.representativeSubject
         let id = subject.speciesID
-        let shiny = subject.isShiny
-        let unownForm = subject.unownForm
-        let key = id.map { Self.menuSpriteKey(id: $0, shiny: shiny, floor: menuFrameFloor, unownForm: unownForm) }
+        let key = id.map { Self.menuSpriteKey(id: $0, floor: menuFrameFloor) }
         if key == menuSpriteKey, !menuFrames.isEmpty { return }   // 이미 이 개체로 애니메이션 중
         menuSpriteKey = key
         menuLoadGen += 1
@@ -283,13 +281,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             return
         }
         // 정적 스프라이트 bob 을 먼저(없으면 받아와서). GIF 가 받아지면 아래에서 교체.
-        if let cached = SpriteLoader.cachedImage(speciesID: id, shiny: shiny, unownForm: unownForm) {
+        if let cached = SpriteLoader.cachedImage(speciesID: id) {
             setMenuFrames(Self.bobFrames(from: cached))
         } else {
             setMenuFrames(Self.eggFrames())
             Task { @MainActor [weak self] in
                 guard let self, gen == self.menuLoadGen,
-                      let sprite = await SpriteLoader.image(speciesID: id, shiny: shiny, unownForm: unownForm) else { return }
+                      let sprite = await SpriteLoader.image(speciesID: id) else { return }
                 guard gen == self.menuLoadGen else { return }
                 self.setMenuFrames(Self.bobFrames(from: sprite))
             }
@@ -299,12 +297,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         // powerSaver 로 캡되므로(GIF 생략 대신) 실제 애니메이션을 유지한 채 절전한다.
         Task { @MainActor [weak self] in
             guard let self, gen == self.menuLoadGen else { return }
-            // shiny GIF 미제공 종이면 일반 GIF 폴백
-            var data = await SpriteStore.shared.data(speciesID: id, animated: true, shiny: shiny, unownForm: unownForm)
-            if data == nil, shiny {
-                data = await SpriteStore.shared.data(speciesID: id, animated: true, shiny: false, unownForm: unownForm)
-            }
-            guard let data else { return }
+            guard let data = await SpriteStore.shared.data(speciesID: id, animated: true) else { return }
             let raw = GIFDecoder.frames(from: data)
             guard raw.count > 1, gen == self.menuLoadGen else { return }
             // fps 캡 = `menuFrameFloor`. 프레임마다 상태바 재합성(CA 커밋 → 디스플레이 사이클
@@ -453,11 +446,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     /// 메뉴바 프레임 캐시의 정체성 — 이 값이 바뀌면 프레임을 다시 만든다.
     ///
     /// **하한(fps 설정)이 반드시 들어가야 한다.** 프레임은 하한에 맞춰 솎아낸 결과물이라, 키가
-    /// 종·이로치만 담으면 설정을 바꿔도 다음 진화까지 옛 fps 로 계속 돈다(설계 시 확인된 함정).
+    /// 종만 담으면 설정을 바꿔도 다음 진화까지 옛 fps 로 계속 돈다(설계 시 확인된 함정).
     /// 순수·테스트용: `testIdentityKeysIncludeTheFrameFloor`.
-    static func menuSpriteKey(id: Int, shiny: Bool, floor: TimeInterval, unownForm: UnownForm? = nil) -> String {
-        let form = UnownForm.resolved(speciesID: id, form: unownForm)
-        return "\(id)-\(shiny)-\(floor)-\(form?.rawValue ?? "")"
+    static func menuSpriteKey(id: Int, floor: TimeInterval) -> String {
+        "\(id)-\(floor)"
     }
 
     // MARK: 프레임 합성 (22px)

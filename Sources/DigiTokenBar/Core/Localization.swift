@@ -719,17 +719,6 @@ struct L {
     var catchLogTitle: String { t("포획 로그", "Catch log", "捕獲ログ", "Registro de capturas", "Journal de captures", "Registro de capturas", "Fangprotokoll") }
     /// 도감 총계는 개체가 아니라 종 수 — 로그의 dexTotal("총 N마리")과 단위가 다르다.
     func dexSpeciesTotal(_ n: Int) -> String { t("\(n)종", "\(n) species", "\(n)種", "\(n) especies", "\(n) espèces", "\(n) espécies", "\(n) Spezies") }
-    func unownFormsCollected(_ count: Int) -> String {
-        t("안농 글자 \(count)/28", "Unown forms \(count)/28", "アンノーン \(count)/28文字",
-          "Formas Unown \(count)/28", "Formes Zarbi \(count)/28", "Formas Unown \(count)/28",
-          "Icognito-Formen \(count)/28")
-    }
-    var unownChooseForm: String {
-        t("글자 선택", "Choose form", "フォルムを選択", "Elegir forma", "Choisir une forme", "Escolher forma", "Form auswählen")
-    }
-    var unownNotCollected: String {
-        t("미수집", "Not collected", "未収集", "Sin conseguir", "Non collectionnée", "Não coletada", "Noch nicht gesammelt")
-    }
     func dexPageLabel(_ page: Int, _ total: Int) -> String {
         t("\(total)페이지 중 \(page)페이지", "Page \(page) of \(total)", "\(total)ページ中 \(page)ページ", "Página \(page) de \(total)", "Page \(page) sur \(total)", "Página \(page) de \(total)", "Seite \(page) von \(total)")
     }
@@ -743,15 +732,12 @@ struct L {
     var rarityRare: String { t("희귀", "Rare", "レア", "Raro", "Rare", "Raro", "Selten") }
     var rarityLegendary: String { t("전설", "Legendary", "伝説", "Legendario", "Légendaire", "Lendário", "Legendär") }
     var dexFilterHint: String { t("탭하면 이 희귀도만 보기 · 다시 탭하면 전체", "Tap to show only this rarity · tap again to clear", "タップでこの希少度のみ表示・再タップで全体", "Toca para ver solo esta rareza · toca de nuevo para ver todo", "Touche pour n'afficher que cette rareté · touche à nouveau pour tout afficher", "Toque para ver só esta raridade · toque de novo para ver tudo", "Tippe, um nur diese Seltenheit zu sehen · tippe erneut für alle") }
-    /// 도감 칸의 ✨ 를 읽어주는 명사 — 이모지는 스크린리더가 일관되게 읽지 못한다.
-    var dexShinyLabel: String { t("이로치", "Shiny", "色違い", "Variocolor", "Chromatique", "Shiny", "Schillernd") }
     // MARK: Pokémon 상세
     var loadingPokemonDetails: String { t("포켓몬 정보를 불러오는 중…", "Loading Pokémon details…", "ポケモン情報を読み込み中…", "Cargando detalles del Pokémon…", "Chargement des détails du Pokémon…", "Carregando detalhes do Pokémon…", "Pokémon-Details werden geladen…") }
     var pokemonDetailsUnavailable: String { t("포켓몬 정보를 불러오지 못했어요.", "Pokémon details could not be loaded.", "ポケモン情報を読み込めませんでした。", "No se pudieron cargar los detalles.", "Impossible de charger les détails.", "Não foi possível carregar os detalhes.", "Pokémon-Details konnten nicht geladen werden.") }
     var pokemonIndividual: String { t("개체", "Individual", "個体", "Ejemplar", "Individu", "Indivíduo", "Individuum") }
     var level: String { t("레벨", "Level", "レベル", "Nivel", "Niveau", "Nível", "Level") }
     var gender: String { t("성별", "Gender", "性別", "Sexo", "Sexe", "Gênero", "Geschlecht") }
-    var nature: String { t("성격", "Nature", "性格", "Naturaleza", "Nature", "Natureza", "Wesen") }
     var ability: String { t("특성", "Ability", "特性", "Habilidad", "Talent", "Habilidade", "Fähigkeit") }
     var hiddenAbility: String { t("숨겨진 특성", "Hidden Ability", "隠れ特性", "Habilidad oculta", "Talent caché", "Habilidade oculta", "Versteckte Fähigkeit") }
     var hidden: String { t("숨김", "Hidden", "隠れ", "Oculta", "Caché", "Oculta", "Versteckt") }
@@ -817,8 +803,6 @@ struct L {
     // MARK: companion 이벤트 시스템 알림
     var notifHatchTitle: String { t("🥚 부화!", "🥚 Hatched!", "🥚 孵化！", "🥚 ¡Eclosionó!", "🥚 Éclosion !", "🥚 Chocou!", "🥚 Geschlüpft!") }
     func notifHatchBody(_ name: String) -> String { t("알에서 \(name)이(가) 나왔어요!", "\(name) hatched from the egg!", "タマゴから \(name) が生まれました！", "¡\(name) salió del huevo!", "\(name) est sorti de l'œuf !", "\(name) saiu do ovo!", "\(name) ist aus dem Ei geschlüpft!") }
-    var notifShinyHatchTitle: String { t("✨ 이로치 포켓몬!", "✨ Shiny Pokémon!", "✨ 色違いポケモン！", "✨ ¡Pokémon variocolor!", "✨ Pokémon chromatique !", "✨ Pokémon shiny!", "✨ Schillerndes Pokémon!") }
-    func notifShinyHatchBody(_ name: String) -> String { t("이로치 \(name)이(가) 태어났어요! (1/64)", "A shiny \(name) hatched! (1 in 64)", "色違いの \(name) が生まれました！(1/64)", "¡Nació un \(name) variocolor! (1 entre 64)", "Un \(name) chromatique est né ! (1 sur 64)", "Nasceu um \(name) shiny! (1 em 64)", "Ein schillerndes \(name) ist geschlüpft! (1/64)") }
     var eggImminent: String { t("곧 부화해요!", "About to hatch!", "もうすぐ孵化！", "¡Está a punto de eclosionar!", "Sur le point d'éclore !", "Está quase chocando!", "Schlüpft gleich!") }
     /// 첫 실행(아직 토큰 적립 0) 안내 — "왜 아무 일도 안 일어나지"를 방지.
     var eggFirstRunHint: String {
@@ -831,11 +815,6 @@ struct L {
           "Wächst mit der Nutzung deiner lokalen KI-Coding-Tools. Nach etwa 5M Tokens schlüpft dein Ei.") }
     var notifEvolveTitle: String { t("✨ 진화!", "✨ Evolved!", "✨ 進化！", "✨ ¡Evolucionó!", "✨ Évolution !", "✨ Evoluiu!", "✨ Entwicklung!") }
     func notifEvolveBody(_ name: String) -> String { t("\(name)(으)로 진화했어요!", "Evolved into \(name)!", "\(name) に進化しました！", "¡Evolucionó a \(name)!", "A évolué en \(name) !", "Evoluiu para \(name)!", "Hat sich zu \(name) entwickelt!") }
-    // 메타몽 위장 리빌 — 진화 못 하는 메타몽이 첫 진화 순간 정체를 드러낸다.
-    var notifDittoRevealTitle: String { t("🎭 어라? 메타몽!", "🎭 Huh? It's Ditto!", "🎭 あれ？メタモン！", "🎭 ¿Eh? ¡Es Ditto!", "🎭 Hein ? C'est Métamorph !", "🎭 Ué? É um Ditto!", "🎭 Huch? Ditto!") }
-    func notifDittoRevealBody(_ disguise: String) -> String { t("\(disguise)인 줄 알았는데 — 사실은 메타몽이었어요!", "You thought it was \(disguise) — it was Ditto all along!", "\(disguise) だと思ってた… 実はメタモンでした！", "Pensabas que era \(disguise) — ¡en realidad era Ditto!", "Tu croyais que c'était \(disguise) — c'était Métamorph depuis le début !", "Você achava que era \(disguise) — era um Ditto o tempo todo!", "Du dachtest, es wäre \(disguise) – dabei war es die ganze Zeit Ditto!") }
-    var notifShinyDittoRevealTitle: String { t("🎭✨ 어라? 이로치 메타몽!", "🎭✨ Huh? A shiny Ditto!", "🎭✨ あれ？色違いメタモン！", "🎭✨ ¿Eh? ¡Un Ditto variocolor!", "🎭✨ Hein ? Un Métamorph chromatique !", "🎭✨ Ué? Um Ditto shiny!", "🎭✨ Huch? Ein schillerndes Ditto!") }
-    func notifShinyDittoRevealBody(_ disguise: String) -> String { t("\(disguise)인 줄 알았는데 — 이로치 메타몽이었어요! (1/64)", "You thought it was \(disguise) — it was a shiny Ditto! (1 in 64)", "\(disguise) だと思ってた… 色違いのメタモンでした！(1/64)", "Pensabas que era \(disguise) — ¡era un Ditto variocolor! (1 entre 64)", "Tu croyais que c'était \(disguise) — c'était un Métamorph chromatique ! (1 sur 64)", "Você achava que era \(disguise) — era um Ditto shiny! (1 em 64)", "Du dachtest, es wäre \(disguise) – dabei war es ein schillerndes Ditto! (1/64)") }
     var notifGraduateTitle: String { t("🎓 졸업!", "🎓 Graduated!", "🎓 卒業！", "🎓 ¡Graduado!", "🎓 Diplômé !", "🎓 Formatura!", "🎓 Abschied!") }
     func notifGraduateBody(_ name: String) -> String { t("\(name) — 도감에 보존! 새 알이 도착했어요.", "\(name) — saved to your Pokédex! A new egg has arrived.", "\(name) — 図鑑に保存！新しいタマゴが届きました。", "\(name) — ¡guardado en tu Pokédex! Ha llegado un nuevo huevo.", "\(name) — conservé dans ton Pokédex ! Un nouvel œuf est arrivé.", "\(name) — guardado na sua Pokédex! Chegou um novo ovo.", "\(name) – in deinem Pokédex gespeichert! Ein neues Ei ist da.") }
 
@@ -1006,12 +985,18 @@ struct L {
           "Beim Trainingsabschluss verfallen \(xp) überschüssige EP.")
     }
 
-    /// 아이템 표시명 — species 처럼 공식 현지명.
+    /// 아이템 표시명 — 디지멘탈 8종은 크레스트 속성명(GAME-DESIGN.md §4).
     func itemName(_ kind: ItemKind) -> String {
         switch kind {
         case .rareCandy: return t("이상한 사탕", "Rare Candy", "ふしぎなアメ", "Caramelo Raro", "Super Bonbon", "Doce Raro", "Sonderbonbon")
-        case .mint:      return t("민트", "Mint", "ミント", "Menta", "Menthe", "Menta", "Minze")
-        case .shinyCharm: return t("이로치 부적", "Shiny Charm", "ひかるおまもり", "Amuleto Iris", "Charme Chroma", "Amuleto Shiny", "Schillerpin")
+        case .digimentalCourage: return t("용기의 디지멘탈", "Digimental of Courage", "勇気のデジメンタル", "Digimental del Valor", "Digimental du Courage", "Digimental da Coragem", "Digimental des Mutes")
+        case .digimentalSincerity: return t("성실의 디지멘탈", "Digimental of Sincerity", "誠実のデジメンタル", "Digimental de la Sinceridad", "Digimental de la Sincérité", "Digimental da Sinceridade", "Digimental der Aufrichtigkeit")
+        case .digimentalMiracles: return t("기적의 디지멘탈", "Digimental of Miracles", "奇跡のデジメンタル", "Digimental de los Milagros", "Digimental des Miracles", "Digimental dos Milagres", "Digimental der Wunder")
+        case .digimentalLove: return t("사랑의 디지멘탈", "Digimental of Love", "愛情のデジメンタル", "Digimental del Amor", "Digimental de l'Amour", "Digimental do Amor", "Digimental der Liebe")
+        case .digimentalPurity: return t("순수의 디지멘탈", "Digimental of Purity", "純粋のデジメンタル", "Digimental de la Pureza", "Digimental de la Pureté", "Digimental da Pureza", "Digimental der Reinheit")
+        case .digimentalKnowledge: return t("지식의 디지멘탈", "Digimental of Knowledge", "知識のデジメンタル", "Digimental del Conocimiento", "Digimental de la Connaissance", "Digimental do Conhecimento", "Digimental des Wissens")
+        case .digimentalHope: return t("희망의 디지멘탈", "Digimental of Hope", "希望のデジメンタル", "Digimental de la Esperanza", "Digimental de l'Espoir", "Digimental da Esperança", "Digimental der Hoffnung")
+        case .digimentalLight: return t("빛의 디지멘탈", "Digimental of Light", "光のデジメンタル", "Digimental de la Luz", "Digimental de la Lumière", "Digimental da Luz", "Digimental des Lichts")
         }
     }
     func itemDescription(_ kind: ItemKind) -> String {
@@ -1025,26 +1010,16 @@ struct L {
                      "Augmente l'EXP de ton Pokémon de \(xp).",
                      "Aumenta a experiência do seu Pokémon em \(xp).",
                      "Gibt deinem aktuellen Pokémon \(xp) EP.")
-        case .mint:
-            return t("현재 포켓몬의 성격을 랜덤으로 바꿔줘요.",
-                     "Randomly changes your Pokémon's nature.",
-                     "ポケモンのせいかくをランダムに変えます。",
-                     "Cambia aleatoriamente la naturaleza de tu Pokémon.",
-                     "Change aléatoirement la nature de ton Pokémon.",
-                     "Muda a natureza do seu Pokémon aleatoriamente.",
-                     "Ändert das Wesen deines aktuellen Pokémon zufällig.")
-        case .shinyCharm:
-            return t("보유하면 이로치 포켓몬이 태어날 확률이 올라가요.",
-                     "While owned, raises the chance of hatching a shiny.",
-                     "持っていると色違いが生まれる確率が上がります。",
-                     "Mientras lo tengas, aumenta la probabilidad de que nazca un Pokémon variocolor.",
-                     "Tant que tu le possèdes, augmente les chances qu'un Pokémon chromatique éclose.",
-                     "Enquanto estiver na sua bolsa, aumenta a chance de nascer um Pokémon shiny.",
-                     "Erhöht im Beutel die Chance, dass ein schillerndes Pokémon schlüpft.")
+        default:
+            return t("Child 단계에서 사용하면 아머체로 진화해요.",
+                     "Use it on a Child-stage Digimon to armor-evolve.",
+                     "成長期に使うとアーマー体に進化します。",
+                     "Úsalo en un Digimon en etapa Child para lograr una armor-evolución.",
+                     "Utilise-le sur un Digimon au stade Enfant pour une armor-évolution.",
+                     "Use em um Digimon na fase Child para uma armor-evolução.",
+                     "Bei einem Digimon der Child-Stufe verwendet, löst es eine Rüstungs-Evolution aus.")
         }
     }
-    /// 가방 사용 컨트롤의 효과 힌트 — 민트("성격 랜덤 변경", 사탕의 "+XP" 자리).
-    var mintEffectHint: String { t("성격 랜덤 변경", "Random nature", "せいかくランダム変更", "Naturaleza aleatoria", "Nature aléatoire", "Natureza aleatória", "Zufälliges Wesen") }
 
     // MARK: 상점 (재화 = 사용한 토큰)
     var shop: String { t("상점", "Shop", "ショップ", "Tienda", "Boutique", "Loja", "Laden") }
@@ -1055,8 +1030,6 @@ struct L {
     var notEnoughTokens: String { t("토큰이 부족해요", "Not enough tokens", "トークンが足りません", "No tienes suficientes tokens", "Pas assez de tokens", "Tokens insuficientes", "Nicht genug Tokens") }
     func ownedCount(_ n: Int) -> String { t("보유 ×\(n)", "Owned ×\(n)", "所持 ×\(n)", "En posesión ×\(n)", "Possédés ×\(n)", "Você tem ×\(n)", "Im Beutel ×\(n)") }
     var shopPriceLabel: String { t("가격", "Price", "価格", "Precio", "Prix", "Preço", "Preis") }
-    var ownedAlready: String { t("보유 중", "Owned", "所持済み", "En posesión", "Possédé", "Já tem", "Im Beutel") }
-    var shinyCharmEffectHint: String { t("이로치 확률 ↑ · 적용 중", "Shiny rate ↑ · active", "色違い率↑ · 適用中", "Prob. variocolor ↑ · activo", "Taux chromatique ↑ · actif", "Chance shiny ↑ · ativo", "Schillerchance ↑ · aktiv") }
     // 알 (리롤) — tier = 보증 등급 하한(nil = 보증 없는 기본 알).
     // 이름은 `rarityLabel(r) + " 알"` 식 조합으로 만들지 않는다: 한국어·영어는 맞아떨어져도 일본어에서
     // 조사가 어긋난다(レアのタマゴ vs 자연스러운 レアなタマゴ). 세 언어를 명시 트리플로 적는다.
@@ -1111,9 +1084,6 @@ struct L {
           "Soltar \(monName) e trocar pelo \(eggName)?",
           "\(monName) verabschieden und gegen \(eggName) tauschen?")
     }
-    var freshEggShinyWarning: String { t("⚠️ 이로치 포켓몬이에요! 정말 놓아줄까요?", "⚠️ This one is shiny! Really send it off?", "⚠️ 色違いです！本当に手放しますか？", "⚠️ ¡Este es variocolor! ¿Seguro que quieres soltarlo?", "⚠️ Celui-ci est chromatique ! Vraiment le laisser partir ?", "⚠️ Esse é shiny! Quer mesmo soltar?", "⚠️ Dieses Pokémon ist schillernd! Wirklich verabschieden?") }
-    var freshEggDiscardShiny: String { t("이로치 놓아주기", "Send shiny off", "手放す", "Soltar variocolor", "Laisser partir le chromatique", "Soltar o shiny", "Schillerndes Pokémon verabschieden") }
-
     // MARK: 사탕 획득 알림 ("왜 받는지" = 토큰 한도를 다 채운 수고에 대한 보상)
     func notifCandyTitle(item: String, count: Int) -> String {
         t("🍬 \(item) \(count)개를 받았어요!",

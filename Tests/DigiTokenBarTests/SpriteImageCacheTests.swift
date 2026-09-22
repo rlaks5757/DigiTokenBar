@@ -45,19 +45,16 @@ final class SpriteImageCacheTests: XCTestCase {
         bitmap.bitmapData?.initialize(repeating: 255, count: bitmap.bytesPerRow * bitmap.pixelsHigh)
         var loaded: [NSImage] = []
 
-        for (filename, animated, shiny) in [
-            ("25-s.png", false, false), ("25-shs.png", false, true),
-            ("25-a.gif", true, false), ("25-sha.gif", true, true),
-        ] {
+        for (filename, animated) in [("25-s.png", false), ("25-a.gif", true)] {
             let file = dir.appendingPathComponent(filename)
             try XCTUnwrap(bitmap.representation(using: animated ? .gif : .png, properties: [:])).write(to: file)
             let first = try XCTUnwrap(SpriteLoader.cachedImage(
-                speciesID: 25, animated: animated, shiny: shiny, directory: dir))
-            XCTAssertFalse(loaded.contains { $0 === first }, "normal/shiny and PNG/GIF must have distinct entries")
+                speciesID: 25, animated: animated, directory: dir))
+            XCTAssertFalse(loaded.contains { $0 === first }, "PNG/GIF must have distinct entries")
             loaded.append(first)
             try FileManager.default.removeItem(at: file)
             XCTAssertTrue(SpriteLoader.cachedImage(
-                speciesID: 25, animated: animated, shiny: shiny, directory: dir) === first,
+                speciesID: 25, animated: animated, directory: dir) === first,
                 "a warm lookup must reuse the image object without reopening its file")
         }
 
@@ -88,26 +85,6 @@ final class SpriteImageCacheTests: XCTestCase {
                         "an earlier cache miss or decode failure must not be memoized")
     }
 
-    func testNormalFallbackDoesNotMaskALaterShinyImage() throws {
-        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("sprite-shiny-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: dir) }
-        let bitmap = try XCTUnwrap(NSBitmapImageRep(
-            bitmapDataPlanes: nil, pixelsWide: 2, pixelsHigh: 2, bitsPerSample: 8,
-            samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB,
-            bytesPerRow: 0, bitsPerPixel: 0))
-        bitmap.bitmapData?.initialize(repeating: 255, count: bitmap.bytesPerRow * bitmap.pixelsHigh)
-        let png = try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
-        try png.write(to: dir.appendingPathComponent("25-s.png"))
-        let normal = try XCTUnwrap(SpriteLoader.cachedImage(speciesID: 25, directory: dir))
-        XCTAssertTrue(SpriteLoader.cachedImage(speciesID: 25, shiny: true, directory: dir) === normal)
-
-        try png.write(to: dir.appendingPathComponent("25-shs.png"))
-        let shiny = try XCTUnwrap(SpriteLoader.cachedImage(speciesID: 25, shiny: true, directory: dir))
-        XCTAssertFalse(shiny === normal, "fallback pixels must not be stored under the shiny key")
-        XCTAssertTrue(SpriteLoader.cachedImage(speciesID: 25, directory: dir) === normal)
-    }
-
     func testAsyncLoadsPopulateTheSynchronousCacheAndReuseEachOther() async throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("sprite-async-\(UUID().uuidString)")
         let store = SpriteStore(directory: dir)
@@ -118,20 +95,17 @@ final class SpriteImageCacheTests: XCTestCase {
             bytesPerRow: 0, bitsPerPixel: 0))
         bitmap.bitmapData?.initialize(repeating: 255, count: bitmap.bytesPerRow * bitmap.pixelsHigh)
 
-        for (filename, animated, shiny) in [
-            ("25-s.png", false, false), ("25-shs.png", false, true),
-            ("25-a.gif", true, false), ("25-sha.gif", true, true),
-        ] {
+        for (filename, animated) in [("25-s.png", false), ("25-a.gif", true)] {
             let file = dir.appendingPathComponent(filename)
             try XCTUnwrap(bitmap.representation(using: animated ? .gif : .png, properties: [:])).write(to: file)
             // Xcode 16's NSImage is not Sendable; keep results on MainActor and await only completion.
             var result: NSImage?
             var second: NSImage?
             let firstLoad = Task<Void, Never> { @MainActor in
-                result = await SpriteLoader.image(speciesID: 25, animated: animated, shiny: shiny, store: store)
+                result = await SpriteLoader.image(speciesID: 25, animated: animated, store: store)
             }
             let secondLoad = Task<Void, Never> { @MainActor in
-                second = await SpriteLoader.image(speciesID: 25, animated: animated, shiny: shiny, store: store)
+                second = await SpriteLoader.image(speciesID: 25, animated: animated, store: store)
             }
             await firstLoad.value
             await secondLoad.value
@@ -139,8 +113,8 @@ final class SpriteImageCacheTests: XCTestCase {
             XCTAssertTrue(second === first, "concurrent loads must converge on one image object")
             try FileManager.default.removeItem(at: file)
             XCTAssertTrue(SpriteLoader.cachedImage(
-                speciesID: 25, animated: animated, shiny: shiny, directory: dir) === first)
-            let again = await SpriteLoader.image(speciesID: 25, animated: animated, shiny: shiny, store: store)
+                speciesID: 25, animated: animated, directory: dir) === first)
+            let again = await SpriteLoader.image(speciesID: 25, animated: animated, store: store)
             XCTAssertTrue(again === first, "the async path must also reuse the image, not just the byte cache")
         }
     }
@@ -157,7 +131,7 @@ final class SpriteImageCacheTests: XCTestCase {
         let png = try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
 
         for asyncFirst in [false, true] {
-            let name = asyncFirst ? "rare-candy" : "shiny-charm"
+            let name = asyncFirst ? "rare-candy" : "digimental-courage"
             let file = dir.appendingPathComponent("item-\(name).png")
             XCTAssertNil(SpriteLoader.cachedItemImage(name: name, directory: dir))
             try png.write(to: file)
@@ -197,15 +171,13 @@ final class SpriteImageCacheTests: XCTestCase {
         bitmap.bitmapData?.initialize(repeating: 255, count: bitmap.bytesPerRow * bitmap.pixelsHigh)
         let png = try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
         try png.write(to: dir.appendingPathComponent("25-s.png"))
-        for filename in ["25-sha.gif", "25-shs.png", "25-a.gif", "item-rare-candy.png"] {
+        for filename in ["25-a.gif", "item-rare-candy.png"] {
             // Existing corrupt cache files exercise decode failures without making network requests.
             try Data("invalid image".utf8).write(to: dir.appendingPathComponent(filename))
         }
-        let result = await SpriteLoader.image(speciesID: 25, animated: true, shiny: true, store: store)
+        let result = await SpriteLoader.image(speciesID: 25, animated: true, store: store)
         let normal = try XCTUnwrap(result)
         XCTAssertTrue(SpriteLoader.cachedImage(speciesID: 25, directory: dir) === normal)
-        XCTAssertNil(SpriteLoader.imageCache.object(forKey: dir.appendingPathComponent("25-shs.png").path as NSString),
-                     "the normal fallback must not poison the shiny cache")
         let item = await SpriteLoader.itemImage(name: "rare-candy", store: store)
         XCTAssertNil(item)
 

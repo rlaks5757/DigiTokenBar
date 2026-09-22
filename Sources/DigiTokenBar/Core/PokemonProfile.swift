@@ -220,8 +220,7 @@ enum PokemonStatCalculator {
         return remainder == 0 ? highest : highest + (100 - remainder)
     }
 
-    static func stats(details: PokemonDetails, profile: PokemonProfile,
-                      nature: PokemonNature?) -> [PokemonComputedStat] {
+    static func stats(details: PokemonDetails, profile: PokemonProfile) -> [PokemonComputedStat] {
         order.compactMap { name in
             guard let base = details.baseStats[name] else { return nil }
             let iv = profile.ivs[name]
@@ -230,45 +229,10 @@ enum PokemonStatCalculator {
             if name == "hp" {
                 value = ((2 * base + iv) * level) / 100 + level + 10
             } else {
-                let neutral = ((2 * base + iv) * level) / 100 + 5
-                value = Int((Double(neutral) * (nature?.modifier(for: name) ?? 1)).rounded(.down))
+                value = ((2 * base + iv) * level) / 100 + 5
             }
             return PokemonComputedStat(name: name, base: base, iv: iv, value: value)
         }
-    }
-}
-
-extension PokemonNature {
-    /// Main-series nature modifiers. Neutral natures return 1.0 for every stat.
-    func modifier(for stat: String) -> Double {
-        let pair: (up: String, down: String)?
-        switch self {
-        case .lonely:  pair = ("attack", "defense")
-        case .brave:   pair = ("attack", "speed")
-        case .adamant: pair = ("attack", "special-attack")
-        case .naughty: pair = ("attack", "special-defense")
-        case .bold:    pair = ("defense", "attack")
-        case .relaxed: pair = ("defense", "speed")
-        case .impish:  pair = ("defense", "special-attack")
-        case .lax:     pair = ("defense", "special-defense")
-        case .timid:   pair = ("speed", "attack")
-        case .hasty:   pair = ("speed", "defense")
-        case .jolly:   pair = ("speed", "special-attack")
-        case .naive:   pair = ("speed", "special-defense")
-        case .modest:  pair = ("special-attack", "attack")
-        case .mild:    pair = ("special-attack", "defense")
-        case .quiet:   pair = ("special-attack", "speed")
-        case .rash:    pair = ("special-attack", "special-defense")
-        case .calm:    pair = ("special-defense", "attack")
-        case .gentle:  pair = ("special-defense", "defense")
-        case .sassy:   pair = ("special-defense", "speed")
-        case .careful: pair = ("special-defense", "special-attack")
-        case .hardy, .docile, .serious, .bashful, .quirky: pair = nil
-        }
-        guard let pair else { return 1 }
-        if stat == pair.up { return 1.1 }
-        if stat == pair.down { return 0.9 }
-        return 1
     }
 }
 

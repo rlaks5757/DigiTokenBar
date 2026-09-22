@@ -65,7 +65,7 @@ private struct ShopItemCard: View {
                     HStack(spacing: 6) {
                         Text(l.itemName(kind)).font(.callout.weight(.semibold))
                         let owned = store.itemCount(kind)
-                        if owned > 0 && !kind.isPassive {
+                        if owned > 0 {
                             Text(l.ownedCount(owned)).font(.caption2.weight(.bold))
                                 .foregroundStyle(.secondary).monospacedDigit()
                         }
@@ -85,14 +85,7 @@ private struct ShopItemCard: View {
 
     @ViewBuilder
     private func buyControls(_ l: L) -> some View {
-        if kind.isPassive && store.itemCount(kind) > 0 {
-            // 보유형(이로치 부적 등) — 1회 구매라 소유 후엔 "보유 중" 표시(재구매 버튼 없음).
-            HStack(spacing: 5) {
-                Image(systemName: "checkmark.seal.fill").font(.caption2).foregroundStyle(.green)
-                Text(l.ownedAlready).font(.caption2.weight(.semibold)).foregroundStyle(.green)
-                Spacer()
-            }
-        } else if confirming {
+        if confirming {
             HStack(spacing: 8) {
                 Text(l.buyConfirm(l.itemName(kind)))
                     .font(.caption2).foregroundStyle(.secondary).lineLimit(1)
@@ -136,7 +129,7 @@ private struct EggCard: View {
     let nav: PopoverNavigation
     let tier: Rarity?
     @State private var stage: Stage = .idle
-    private enum Stage { case idle, confirm, shinyConfirm }
+    private enum Stage { case idle, confirm }
 
     private var price: Int { store.price(of: .egg(tier)) }
 
@@ -204,21 +197,8 @@ private struct EggCard: View {
                 Text(l.eggConfirm(store.displayName, l.eggName(tier)))
                     .font(.caption2).foregroundStyle(.secondary).lineLimit(2)
                 Spacer()
-                // 이로치면 한 번 더 경고, 아니면 즉시 실행.
-                Button(l.buy) {
-                    if store.currentIsShiny { stage = .shinyConfirm } else { commit() }
-                }
-                .buttonStyle(.borderedProminent).controlSize(.small)
-                Button(l.cancel) { stage = .idle }
-                    .buttonStyle(.borderless).controlSize(.small)
-            }
-        case .shinyConfirm:
-            HStack(spacing: 8) {
-                Text(l.freshEggShinyWarning)
-                    .font(.caption2.weight(.semibold)).foregroundStyle(.orange).lineLimit(2)
-                Spacer()
-                Button(l.freshEggDiscardShiny) { commit() }
-                    .buttonStyle(.borderedProminent).controlSize(.small).tint(.orange)
+                Button(l.buy) { commit() }
+                    .buttonStyle(.borderedProminent).controlSize(.small)
                 Button(l.cancel) { stage = .idle }
                     .buttonStyle(.borderless).controlSize(.small)
             }

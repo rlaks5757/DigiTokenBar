@@ -64,38 +64,21 @@ final class PokemonProfileLogicTests: XCTestCase {
         XCTAssertEqual(profile, first, "enrichment must not reroll an individual")
     }
 
-    func testNatureChangesCalculatedNonHPStat() throws {
+    func testNonHPStatUsesNeutralFormulaWithNoModifier() throws {
         var neutral = PokemonProfile.generate(seed: 1, instanceID: "neutral")
         neutral.level = 50
-        let stats = PokemonStatCalculator.stats(details: profileDetails, profile: neutral, nature: .adamant)
+        let stats = PokemonStatCalculator.stats(details: profileDetails, profile: neutral)
         let attack = try XCTUnwrap(stats.first { $0.name == "attack" })
         let specialAttack = try XCTUnwrap(stats.first { $0.name == "special-attack" })
         let neutralAttack = ((2 * 65 + neutral.ivs.attack) * 50) / 100 + 5
         let neutralSpecial = ((2 * 40 + neutral.ivs.specialAttack) * 50) / 100 + 5
-        XCTAssertEqual(attack.value, Int((Double(neutralAttack) * 1.1).rounded(.down)))
-        XCTAssertEqual(specialAttack.value, Int((Double(neutralSpecial) * 0.9).rounded(.down)))
+        XCTAssertEqual(attack.value, neutralAttack)
+        XCTAssertEqual(specialAttack.value, neutralSpecial)
     }
 
     func testActualStatScaleExpandsForHighHPPokemon() {
         XCTAssertEqual(PokemonStatCalculator.displayScaleMaximum(for: [180, 299]), 300)
         XCTAssertEqual(PokemonStatCalculator.displayScaleMaximum(for: [651, 300]), 700)
-    }
-
-    func testEveryNatureChangesExactlyItsExpectedNumberOfStats() {
-        let neutral: Set<PokemonNature> = [.hardy, .docile, .serious, .bashful, .quirky]
-        let affectedStats = PokemonStatCalculator.order.filter { $0 != "hp" }
-        XCTAssertEqual(PokemonNature.allCases.count, 25)
-        for nature in PokemonNature.allCases {
-            let raised = affectedStats.filter { nature.modifier(for: $0) == 1.1 }
-            let lowered = affectedStats.filter { nature.modifier(for: $0) == 0.9 }
-            if neutral.contains(nature) {
-                XCTAssertTrue(raised.isEmpty && lowered.isEmpty, "\(nature) must be neutral")
-            } else {
-                XCTAssertEqual(raised.count, 1, "\(nature) must raise exactly one stat")
-                XCTAssertEqual(lowered.count, 1, "\(nature) must lower exactly one stat")
-                XCTAssertNotEqual(raised.first, lowered.first)
-            }
-        }
     }
 
     func testGrowthMapsHatchToFiveAndGraduationToHundred() {
@@ -354,7 +337,7 @@ final class PokemonProfileMigrationTests: XCTestCase {
 
         var legacy = CompanionState()
         legacy.active = MonState(baseID: 79, pathIDs: [79], stageIndex: 0, usedAtStage: 10_000,
-                                 rarity: .common, totalForms: 2, nature: .sassy)
+                                 rarity: .common, totalForms: 2)
         legacy.dex = [DexEntry(id: "old-catch", baseID: 1, finalID: 3,
                                chainOrder: [1, 2, 3], rarity: .common, caughtAt: Date())]
         try JSONEncoder().encode(legacy).write(to: file)

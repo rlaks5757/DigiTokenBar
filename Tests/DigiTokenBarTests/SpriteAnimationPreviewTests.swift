@@ -42,10 +42,10 @@ final class SpriteAnimationPreviewTests: XCTestCase {
         XCTAssertGreaterThan(center.redComponent, 0.9, "first render must use GIF red pixels, not static blue PNG")
         XCTAssertGreaterThan(bitmap.colorAt(x: 2, y: 41)?.alphaComponent ?? 0, 0.9,
                              "GIF must already fill its final canvas on the first render")
-        let ready = SpriteLoader.cachedFrames(speciesID: 25, shiny: false, directory: directory)
+        let ready = SpriteLoader.cachedFrames(speciesID: 25, directory: directory)
         XCTAssertEqual(ready.count, 2)
         try FileManager.default.removeItem(at: directory.appendingPathComponent("25-a.gif"))
-        let repeated = await SpriteLoader.animationFrames(speciesID: 25, shiny: false, store: store)
+        let repeated = await SpriteLoader.animationFrames(speciesID: 25, store: store)
         XCTAssertTrue(ready[0].image === repeated[0].image, "repeat detail visits reuse decoded frames without disk/network")
         XCTAssertEqual(repeated.map(\.delay), [0.1, 0.1])
         let next = NSBitmapImageRep(cgImage: try XCTUnwrap(repeated[1].image.cgImage(forProposedRect: nil, context: nil, hints: nil)))
@@ -63,9 +63,7 @@ final class SpriteAnimationPreviewTests: XCTestCase {
         XCTAssertEqual(original.size, NSSize(width: 96, height: 96))
         XCTAssertEqual(placeholder.size, NSSize(width: 48, height: 48))
         XCTAssertTrue(placeholder === SpriteLoader.animationPlaceholder(original))
-        XCTAssertNotEqual(SpriteView.frameTaskID(speciesID: 25, shiny: false, floor: 0, animated: false),
-                          SpriteView.frameTaskID(speciesID: 25, shiny: false, floor: 0, animated: true))
-        XCTAssertTrue(SpriteLoader.cachedFrames(speciesID: 25, shiny: true, directory: directory).isEmpty,
-                      "a normal cached GIF must not prevent fetching a newly requested shiny GIF")
+        XCTAssertNotEqual(SpriteView.frameTaskID(speciesID: 25, floor: 0, animated: false),
+                          SpriteView.frameTaskID(speciesID: 25, floor: 0, animated: true))
     }
 }

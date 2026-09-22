@@ -29,7 +29,7 @@ final class DexNameMigrationTests: XCTestCase {
 
     private func entry(_ id: String = "old-catch") -> DexEntry {
         DexEntry(id: id, baseID: 1, finalID: 2, chainOrder: [1, 2], rarity: .common,
-                 caughtAt: Date(timeIntervalSince1970: 123), isShiny: true, nature: .brave,
+                 caughtAt: Date(timeIntervalSince1970: 123),
                  names: [1: ["en": "Bulbasaur"], 2: ["en": "Ivysaur"]])
     }
 
@@ -64,8 +64,6 @@ final class DexNameMigrationTests: XCTestCase {
         XCTAssertEqual(store.state.dex.count, 2)
         XCTAssertEqual(store.state.dex[0].id, old.id)
         XCTAssertEqual(store.state.dex[0].caughtAt, old.caughtAt)
-        XCTAssertEqual(store.state.dex[0].isShiny, old.isShiny)
-        XCTAssertEqual(store.state.dex[0].nature, old.nature)
         XCTAssertEqual(store.state.usedSinceInstall, 1234567)
         XCTAssertEqual(store.state.inventory["rareCandy"], 3)
         XCTAssertTrue(store.state.dex.allSatisfy { !$0.needsNamesRefresh })

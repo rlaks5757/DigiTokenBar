@@ -123,24 +123,13 @@ final class ShopTests: XCTestCase {
 
     // MARK: 정렬 (가격 저렴한 순 + 구매 완료 보유형 맨 아래)
 
-    /// 상점 목록은 가격 오름차순(민트 100M < 사탕 500M < 이로치 부적 3B).
+    /// 상점 목록은 가격 오름차순(사탕 500M < 디지멘탈 8종 각 1B).
     func testItemsSortedByPriceAscending() {
         let items = store(used: 0).purchasableItems
-        XCTAssertEqual(items, [.mint, .rareCandy, .shinyCharm])
+        XCTAssertEqual(items.first, .rareCandy)
         let prices = items.compactMap(\.shopPrice)
         XCTAssertEqual(prices, prices.sorted(), "shopPrice 오름차순 — 가격 상수가 바뀌어도 정렬 불변식 유지")
-    }
-
-    /// 구매 완료한 보유형(이로치 부적)은 맨 아래로. 재구매 불가라 상단에 둘 이유 없음.
-    /// (현재 부적이 최고가라 가격순 결과와 일치하지만, 향후 저가 보유형이 생겨도 규칙이 유지되도록 게이트.)
-    func testOwnedPassiveSinksToBottom() {
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("shop-sort-\(UUID().uuidString).json")
-        let json = "{\"saveVersion\":\(CompanionState.currentSaveVersion),\"installBaselineSet\":true,\"usedSinceInstall\":0,\"spentTokens\":0,"
-            + "\"lastDate\":\"d\",\"dex\":[],\"collectedFinals\":[],\"inventory\":{\"shinyCharm\":1}}"
-        try? json.data(using: .utf8)!.write(to: url)
-        let s = CompanionStore(provider: ShopNoProvider(), clock: { self.now }, fileURL: url, rng: SeededRNG(seed: 1))
-        XCTAssertTrue(s.itemCount(.shinyCharm) > 0)
-        XCTAssertEqual(s.purchasableItems.last, .shinyCharm, "구매 완료 보유형은 최하단")
+        XCTAssertEqual(items.count, ItemKind.allCases.count, "모든 판매 아이템이 목록에 있어야 한다")
     }
 
     // MARK: shopEntries (판매 아이템 + 알 3종을 하나의 가격 오름차순 목록으로 병합)
@@ -152,19 +141,26 @@ final class ShopTests: XCTestCase {
     func testShopEntriesInterleavesFreshEggByPrice() {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("shop-entries-\(UUID().uuidString).json")
         let mon = "{\"baseID\":10,\"pathIDs\":[10],\"stageIndex\":0,\"usedAtStage\":200000000,"
-            + "\"rarity\":\"common\",\"totalForms\":3,\"isShiny\":false}"
+            + "\"rarity\":\"common\",\"totalForms\":3}"
         let json = "{\"saveVersion\":\(CompanionState.currentSaveVersion),\"installBaselineSet\":true,\"usedSinceInstall\":5000000000,\"spentTokens\":0,"
             + "\"lastDate\":\"d\",\"active\":\(mon),\"dex\":[],\"collectedFinals\":[]}"
         try? json.data(using: .utf8)!.write(to: url)
         let s = CompanionStore(provider: ShopNoProvider(), clock: { self.now }, fileURL: url, rng: SeededRNG(seed: 1))
         XCTAssertTrue(s.hasActive)
+        // 사탕 500M < 디지멘탈 8종(각 1B, 도착 순서로 동률 유지) < 알(nil, 동률 1B) < 알(uncommon) 2.5B < 알(rare) 4B.
         XCTAssertEqual(s.shopEntries,
-                       [.item(.mint),        // 100M
-                        .item(.rareCandy),   // 500M
-                        .egg(nil),           // 1B
-                        .egg(.uncommon),     // 2.5B
-                        .item(.shinyCharm),  // 3B
-                        .egg(.rare)])        // 4B
+                       [.item(.rareCandy),               // 500M
+                        .item(.digimentalCourage),        // 1B
+                        .item(.digimentalSincerity),      // 1B
+                        .item(.digimentalMiracles),        // 1B
+                        .item(.digimentalLove),            // 1B
+                        .item(.digimentalPurity),          // 1B
+                        .item(.digimentalKnowledge),        // 1B
+                        .item(.digimentalHope),             // 1B
+                        .item(.digimentalLight),            // 1B
+                        .egg(nil),                          // 1B
+                        .egg(.uncommon),                     // 2.5B
+                        .egg(.rare)])                        // 4B
         let prices = s.shopEntries.map(\.price)
         XCTAssertEqual(prices, prices.sorted(), "가격 상수가 바뀌어도 오름차순 불변식 유지")
     }
@@ -176,12 +172,18 @@ final class ShopTests: XCTestCase {
         let s = store(used: 5_000_000_000)   // active 없음, 잔액은 전 티어 가격 이상
         XCTAssertFalse(s.hasActive)
         XCTAssertEqual(s.shopEntries,
-                       [.item(.mint),        // 100M
-                        .item(.rareCandy),   // 500M
-                        .egg(nil),           // 1B
-                        .egg(.uncommon),     // 2.5B
-                        .item(.shinyCharm),  // 3B
-                        .egg(.rare)])        // 4B
+                       [.item(.rareCandy),               // 500M
+                        .item(.digimentalCourage),        // 1B
+                        .item(.digimentalSincerity),      // 1B
+                        .item(.digimentalMiracles),        // 1B
+                        .item(.digimentalLove),            // 1B
+                        .item(.digimentalPurity),          // 1B
+                        .item(.digimentalKnowledge),        // 1B
+                        .item(.digimentalHope),             // 1B
+                        .item(.digimentalLight),            // 1B
+                        .egg(nil),                          // 1B
+                        .egg(.uncommon),                     // 2.5B
+                        .egg(.rare)])                        // 4B
         for tier in FreshEgg.shopTiers {
             XCTAssertTrue(s.shopEntries.contains(.egg(tier)), "알 상태에서도 \(tier?.rawValue ?? "기본") 알은 노출 유지")
             XCTAssertFalse(s.canBuyEgg(tier), "노출은 되지만 \(tier?.rawValue ?? "기본") 알 구매는 hasActive 게이트로 차단")

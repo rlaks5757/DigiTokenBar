@@ -387,7 +387,7 @@ final class RareCandyStoreTests: XCTestCase {
         XCTAssertEqual(s.dexEntries.count, 1)
     }
 
-    /// [회귀] 사탕 졸업은 store 폴링 틱 없이도 스프라이트 정체성(currentSpeciesID/currentIsShiny)
+    /// [회귀] 사탕 졸업은 store 폴링 틱 없이도 스프라이트 정체성(currentSpeciesID)
     /// 관찰을 발화해야 한다 — AppDelegate.observeCompanionSprite 가 이 발화로 메뉴바 스프라이트를 즉시
     /// 갱신한다. 발화가 없으면 메뉴바가 다음 사용량 폴링(기본 120s)까지 이전 포켓몬으로 남는다
     /// (리포트: 사탕 졸업 직후 메뉴바 잔상). 진화(.evolved)도 같은 applyUsage 경로라 함께 보호된다.
@@ -399,7 +399,6 @@ final class RareCandyStoreTests: XCTestCase {
         let fired = expectation(description: "sprite identity observation fired")
         withObservationTracking {
             _ = s.currentSpeciesID
-            _ = s.currentIsShiny
         } onChange: { fired.fulfill() }
         XCTAssertEqual(s.useRareCandy(), .graduated)
         await fulfillment(of: [fired], timeout: 1)

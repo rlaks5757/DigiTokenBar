@@ -171,41 +171,47 @@ enum PokemonBalance {
     }
 }
 
-/// 인벤토리 아이템 종류 — 확장 대비 enum(현재 이상한 사탕 1종). rawValue 로 CompanionState.inventory 에 저장.
+/// 인벤토리 아이템 종류 — rawValue 로 CompanionState.inventory 에 저장(세이브 호환을 위해
+/// 케이스명을 rawValue 로 고정 변경하지 않는다). 디지멘탈 8종은 아머 진화용(EVOLUTION.md §4) —
+/// 이 단계에서는 타입만 전환하고, 아머 진화 로직 자체는 구현하지 않는다(별도 단계).
 enum ItemKind: String, Codable, Sendable, CaseIterable {
     case rareCandy
-    case mint
-    case shinyCharm
+    case digimentalCourage
+    case digimentalSincerity
+    case digimentalMiracles
+    case digimentalLove
+    case digimentalPurity
+    case digimentalKnowledge
+    case digimentalHope
+    case digimentalLight
 
     /// PokéAPI 아이템 스프라이트 파일명(.../sprites/items/{name}.png). nil = 스프라이트 없음(이모지 폴백만).
+    /// 디지멘탈은 PokéAPI 경로가 없어 전부 nil(이모지 폴백) — 스프라이트 작업은 별도 단계.
     var spriteName: String? {
         switch self {
         case .rareCandy: return "rare-candy"
-        case .mint: return nil   // PokéAPI 에 민트 스프라이트 없음(8세대 아이템) → 이모지 폴백
-        case .shinyCharm: return "shiny-charm"
+        default: return nil
         }
     }
     /// 스프라이트 로딩 전/미제공/실패 시 폴백 이모지.
     var fallbackEmoji: String {
         switch self {
         case .rareCandy: return "🍬"
-        case .mint: return "🌿"
-        case .shinyCharm: return "✨"
+        case .digimentalCourage: return "🟠"
+        case .digimentalSincerity: return "🟡"
+        case .digimentalMiracles: return "🔴"
+        case .digimentalLove: return "🩷"
+        case .digimentalPurity: return "⚪️"
+        case .digimentalKnowledge: return "🟣"
+        case .digimentalHope: return "🟡"
+        case .digimentalLight: return "🟡"
         }
     }
     /// 상점 판매가(재화 = 사용한 토큰). nil = 상점 미판매.
     var shopPrice: Int? {
         switch self {
         case .rareCandy: return RareCandy.price
-        case .mint: return Mint.price
-        case .shinyCharm: return ShinyCharm.price
-        }
-    }
-    /// 보유형(패시브) 아이템 — 소비하지 않고 보유하는 동안 상시 효과. 1회 구매(재구매 불가), 가방엔 "적용 중" 표시.
-    var isPassive: Bool {
-        switch self {
-        case .rareCandy, .mint: return false
-        case .shinyCharm: return true
+        default: return DigimentalItem.price
         }
     }
 }
@@ -225,21 +231,10 @@ enum RareCandy {
     static let price = 500_000_000
 }
 
-/// 민트 밸런스 상수.
-enum Mint {
-    /// 상점 구매가. 성격 변경은 순수 코스메틱(성장·능력치 무관)이라 밸런스 근거가 없어 "느낌" 값 —
-    /// 사탕(500M)의 1/5로 싸게 둬서 성격을 마음에 들 때까지 굴려보는 가벼운 재미. 성장을 안 줘서
-    /// 이중계산 이슈도 없음(가격 = 순수 소비).
-    static let price = 100_000_000
-}
-
-/// 이로치 부적 밸런스 상수 — 보유형(1회 구매·영구, 소비 안 됨).
-enum ShinyCharm {
-    /// 상점 구매가. 앞으로의 모든 부화에 적용되는 영구 럭 업그레이드라 프리미엄(레어 1마리 졸업분=3B).
-    static let price = 3_000_000_000
-    /// 보유 시 이로치 부화 확률 분모 — 1/64 → 1/48 (+33%). 본가 '반짝이 부적'(이로치 확률↑) 오마주.
-    /// ×2(1/32)는 과해 절제. 이미 부화한 개체엔 소급 없음(이로치는 부화 순간 확정).
-    static let shinyDenominator: UInt64 = 48
+/// 디지멘탈 밸런스 상수(GAME-DESIGN.md §5) — 아머 진화용 아이템 8종 공통 가격.
+/// 아머는 토큰 이득이 0이라(§4) 저가여도 파밍 악용이 불가능 — 알 리롤(1.00B)과 동급.
+enum DigimentalItem {
+    static let price = 1_000_000_000
 }
 
 /// 새 알(리롤) 밸런스 상수 — 상점 구매 시 현재 포켓몬을 폐기하고 새 알로 되돌린다.
@@ -377,60 +372,6 @@ struct EvoLine: Sendable {
     }
 }
 
-/// 성격 — 본가 25종. 부화 시 확정, 능력치 영향 없음(개체 아이덴티티 표시용).
-enum PokemonNature: String, Codable, Sendable, CaseIterable {
-    case hardy, lonely, brave, adamant, naughty
-    case bold, docile, relaxed, impish, lax
-    case timid, hasty, serious, jolly, naive
-    case modest, mild, quiet, bashful, rash
-    case calm, gentle, sassy, careful, quirky
-
-    /// 본가 공식 번역 명칭 (ko/en/ja/es/fr/de).
-    /// pt 만 예외 — 본가에 포르투갈어판이 없어 공식 명칭이 없다. "natureza"(여성 명사)에
-    /// 맞춘 자체 번역이며 25종이 겹치지 않게 골랐다(`testNatureNamesComplete` 가 중복·공백을 막는다).
-    func name(_ lang: AppLanguage) -> String {
-        let names: (String, String, String, String, String, String, String)
-        switch self {
-        case .hardy:   names = ("노력", "Hardy", "がんばりや", "Fuerte", "Hardi", "Esforçada", "Robust")
-        case .lonely:  names = ("외로움", "Lonely", "さみしがり", "Huraña", "Solo", "Carente", "Solo")
-        case .brave:   names = ("용감", "Brave", "ゆうかん", "Audaz", "Brave", "Corajosa", "Mutig")
-        case .adamant: names = ("고집", "Adamant", "いじっぱり", "Firme", "Rigide", "Teimosa", "Hart")
-        case .naughty: names = ("개구쟁이", "Naughty", "やんちゃ", "Pícara", "Mauvais", "Levada", "Frech")
-        case .bold:    names = ("대담", "Bold", "ずぶとい", "Osada", "Assuré", "Ousada", "Kühn")
-        case .docile:  names = ("온순", "Docile", "すなお", "Dócil", "Docile", "Dócil", "Sanft")
-        case .relaxed: names = ("무사태평", "Relaxed", "のんき", "Plácida", "Relax", "Descontraída", "Locker")
-        case .impish:  names = ("장난꾸러기", "Impish", "わんぱく", "Agitada", "Malin", "Travessa", "Pfiffig")
-        case .lax:     names = ("촐랑", "Lax", "のうてんき", "Floja", "Lâche", "Despreocupada", "Lasch")
-        case .timid:   names = ("겁쟁이", "Timid", "おくびょう", "Miedosa", "Timide", "Medrosa", "Scheu")
-        case .hasty:   names = ("성급", "Hasty", "せっかち", "Activa", "Pressé", "Apressada", "Hastig")
-        case .serious: names = ("성실", "Serious", "まじめ", "Seria", "Sérieux", "Séria", "Ernst")
-        case .jolly:   names = ("명랑", "Jolly", "ようき", "Alegre", "Jovial", "Alegre", "Froh")
-        case .naive:   names = ("천진난만", "Naive", "むじゃき", "Ingenua", "Naïf", "Ingênua", "Naiv")
-        case .modest:  names = ("조심", "Modest", "ひかえめ", "Modesta", "Modeste", "Modesta", "Mäßig")
-        case .mild:    names = ("의젓", "Mild", "おっとり", "Afable", "Doux", "Meiga", "Mild")
-        case .quiet:   names = ("냉정", "Quiet", "れいせい", "Mansa", "Discret", "Discreta", "Ruhig")
-        case .bashful: names = ("수줍음", "Bashful", "てれや", "Tímida", "Pudique", "Tímida", "Zaghaft")
-        case .rash:    names = ("덜렁", "Rash", "うっかりや", "Alocada", "Foufou", "Impulsiva", "Hitzig")
-        case .calm:    names = ("차분", "Calm", "おだやか", "Serena", "Calme", "Calma", "Still")
-        case .gentle:  names = ("얌전", "Gentle", "おとなしい", "Amable", "Gentil", "Gentil", "Zart")
-        case .sassy:   names = ("건방", "Sassy", "なまいき", "Grosera", "Malpoli", "Atrevida", "Forsch")
-        case .careful: names = ("신중", "Careful", "しんちょう", "Cauta", "Prudent", "Cautelosa", "Sacht")
-        case .quirky:  names = ("변덕", "Quirky", "きまぐれ", "Rara", "Bizarre", "Excêntrica", "Kauzig")
-        }
-        switch lang { case .ko: return names.0; case .en: return names.1; case .ja: return names.2; case .es: return names.3; case .fr: return names.4; case .pt: return names.5; case .de: return names.6 }
-    }
-}
-
-/// 게임 밸런스 — 개체 롤 확률.
-enum PokemonOdds {
-    /// 색이 다른 포켓몬(shiny) 부화 확률 분모 — 1/64 (본가 1/4096 은 데스크톱 앱 규모에선 평생 못 봄).
-    static let shinyDenominator: UInt64 = 64
-    /// 메타몽 위장 확률 분모 — common·≥2형태 부화에 한해 1/128 (GO 변장 메타몽 추정 1/50~70보다 귀하게).
-    static let dittoDisguiseDenominator: UInt64 = 128
-    /// 메타몽 종 id — 위장 리빌 전용(일반 부화 풀에서 제외).
-    static let dittoSpeciesID = 132
-}
-
 /// 현재 키우는 포켓몬.
 struct MonState: Codable, Sendable {
     var baseID: Int
@@ -440,15 +381,9 @@ struct MonState: Codable, Sendable {
     var usedAtStage: Int    // 현재 형태에서 누적 사용량
     var rarity: Rarity
     var totalForms: Int
-    var isShiny = false             // 부화 시 확정, 진화해도 유지
-    var nature: PokemonNature?      // 부화 시 확정 (구버전 저장은 nil)
-    var unownForm: UnownForm?
     /// 개체 고유 전투 프로필. 구버전 저장은 nil이며 `CompanionStore`가 한 번만 마이그레이션한다.
     var profile: PokemonProfile?
     var hasGrowthBoost = false
-    // 메타몽 위장 — nil=일반. 값=정체 메타몽, 이 종으로 위장 중(위장 구간엔 baseID 와 동일, 리빌 후에도 원 위장체 보존).
-    var dittoDisguise: Int?
-    var dittoRevealed = false       // 위장 → 리빌(정체 공개) 전환 여부
     // pathIDs 가 비면(손상된 상태 파일) baseID 로 폴백 — 렌더마다 읽히므로 out-of-bounds 크래시 방지.
     var currentID: Int { pathIDs.isEmpty ? baseID : pathIDs[min(stageIndex, pathIDs.count - 1)] }
     var phaseThreshold: Int {
@@ -460,9 +395,8 @@ struct MonState: Codable, Sendable {
     }
 
     init(baseID: Int, pathIDs: [Int], plannedPathIDs: [Int]? = nil, stageIndex: Int, usedAtStage: Int,
-         rarity: Rarity, totalForms: Int, isShiny: Bool = false, nature: PokemonNature? = nil,
-         profile: PokemonProfile? = nil, hasGrowthBoost: Bool = false,
-         dittoDisguise: Int? = nil, dittoRevealed: Bool = false, unownForm: UnownForm? = nil) {
+         rarity: Rarity, totalForms: Int,
+         profile: PokemonProfile? = nil, hasGrowthBoost: Bool = false) {
         self.baseID = baseID
         self.pathIDs = pathIDs
         if let plannedPathIDs, !plannedPathIDs.isEmpty {
@@ -474,13 +408,8 @@ struct MonState: Codable, Sendable {
         self.usedAtStage = usedAtStage
         self.rarity = rarity
         self.totalForms = totalForms
-        self.isShiny = isShiny
-        self.nature = nature
         self.profile = profile
         self.hasGrowthBoost = hasGrowthBoost
-        self.dittoDisguise = dittoDisguise
-        self.dittoRevealed = dittoRevealed
-        self.unownForm = UnownForm.resolved(speciesID: baseID, form: unownForm)
     }
 
     // 하위호환 디코딩: 구버전 저장에 없는 부화 속성은 기본값.
@@ -502,15 +431,9 @@ struct MonState: Codable, Sendable {
         usedAtStage = try c.decode(Int.self, forKey: .usedAtStage)
         rarity = try c.decode(Rarity.self, forKey: .rarity)
         totalForms = try c.decode(Int.self, forKey: .totalForms)
-        isShiny = try c.decodeIfPresent(Bool.self, forKey: .isShiny) ?? false
-        nature = try c.decodeIfPresent(PokemonNature.self, forKey: .nature)
         // 손상된 신규 프로필 하나 때문에 기존 성장 상태 전체를 잃지 않는다. nil이면 스토어가 재마이그레이션한다.
         profile = (try? c.decodeIfPresent(PokemonProfile.self, forKey: .profile)) ?? nil
         hasGrowthBoost = try c.decodeIfPresent(Bool.self, forKey: .hasGrowthBoost) ?? false
-        dittoDisguise = try c.decodeIfPresent(Int.self, forKey: .dittoDisguise)
-        dittoRevealed = try c.decodeIfPresent(Bool.self, forKey: .dittoRevealed) ?? false
-        unownForm = UnownForm.resolved(speciesID: baseID,
-                                       form: try? c.decode(UnownForm.self, forKey: .unownForm))
     }
 }
 
@@ -524,9 +447,6 @@ struct DexEntry: Codable, Sendable, Identifiable {
     var chainOrder: [Int]   // 초기→최종 종 id
     var rarity: Rarity
     var caughtAt: Date?
-    var isShiny = false
-    var nature: PokemonNature?
-    var unownForm: UnownForm?
     /// The individual profile at graduation/release. Nil only for pre-profile saves until migration.
     var profile: PokemonProfile?
     /// 진화 체인 각 종의 다국어 이름(speciesID → langCode → name). 졸업 시 로드된 라인에서 저장 →
@@ -549,23 +469,19 @@ struct DexEntry: Codable, Sendable, Identifiable {
 
     init(id: String = UUID().uuidString,
          baseID: Int, finalID: Int, chainOrder: [Int], rarity: Rarity,
-         caughtAt: Date?, isShiny: Bool = false, nature: PokemonNature? = nil,
-         profile: PokemonProfile? = nil, names: [Int: [String: String]]? = nil, releasedAt: Date? = nil,
-         unownForm: UnownForm? = nil) {
+         caughtAt: Date?,
+         profile: PokemonProfile? = nil, names: [Int: [String: String]]? = nil, releasedAt: Date? = nil) {
         self.id = id
         self.baseID = baseID
         self.finalID = finalID
         self.chainOrder = chainOrder
         self.rarity = rarity
         self.caughtAt = caughtAt
-        self.isShiny = isShiny
-        self.nature = nature
         self.profile = profile
         self.names = names
         self.namesVersion = chainOrder.allSatisfy { names?[$0]?.isEmpty == false }
             ? Self.currentNamesVersion : nil
         self.releasedAt = releasedAt
-        self.unownForm = UnownForm.resolved(speciesID: baseID, form: unownForm)
     }
 
     // 하위호환 디코딩 (MonState 와 동일 이유).
@@ -577,8 +493,6 @@ struct DexEntry: Codable, Sendable, Identifiable {
         chainOrder = try c.decode([Int].self, forKey: .chainOrder)
         rarity = try c.decode(Rarity.self, forKey: .rarity)
         caughtAt = try c.decodeIfPresent(Date.self, forKey: .caughtAt)
-        isShiny = try c.decodeIfPresent(Bool.self, forKey: .isShiny) ?? false
-        nature = try c.decodeIfPresent(PokemonNature.self, forKey: .nature)
         // 프로필만 손상되면 개체 기록은 보존하고 프로필을 다시 생성한다.
         profile = (try? c.decodeIfPresent(PokemonProfile.self, forKey: .profile)) ?? nil
         // try? — 구버전(최종체 단일 [String:String]) 형식이 남아 있어도 종별 맵 디코딩 실패 시 nil 로
@@ -587,8 +501,6 @@ struct DexEntry: Codable, Sendable, Identifiable {
         namesVersion = try? c.decodeIfPresent(Int.self, forKey: .namesVersion)
         // 이 필드 이전에 저장된 항목은 전부 졸업분이다 — nil 이 곧 "졸업"이라 마이그레이션이 필요 없다.
         releasedAt = try c.decodeIfPresent(Date.self, forKey: .releasedAt)
-        unownForm = UnownForm.resolved(speciesID: baseID,
-                                       form: try? c.decode(UnownForm.self, forKey: .unownForm))
     }
 }
 
@@ -634,8 +546,6 @@ struct CompanionState: Codable, Sendable {
     var eggTier: Rarity?
     // 알 상태에서 미리 롤해둔 부화 종(프리패칭) — 부화 순간 네트워크 딜레이 제거. 재시작에도 유지.
     var pendingHatchID: Int?
-    /// The letter is chosen with the species so prefetch warms the exact sprite that will hatch.
-    var pendingUnownForm: UnownForm?
     /// 오늘 사용량 적립 기준값 — 프로바이더별로 독립 관리한다.
     ///
     /// `nil`은 aggregate `claimedTodayTokens`만 가지고 있던 구버전 세이브가 아직 첫 유효
@@ -651,7 +561,6 @@ struct CompanionState: Codable, Sendable {
     // 종 단위 선택이라 성격 같은 개체 정보는 들고 있지 않는다. 선택 가능한 범위는 도감과 동일하게
     // 졸업분 + 현재 개체의 도달 단계이며, 그 범위에서 빠지면 reconcileRepresentativeSelection 이 nil 로 복구한다.
     var representativeSpeciesID: Int? = nil
-    var representativeUnownForm: UnownForm? = nil
     // 도감
     var dex: [DexEntry] = []
     // 소유한 (base,final) 쌍 — 분기 다양성용
@@ -680,8 +589,6 @@ struct CompanionState: Codable, Sendable {
         // 모르는 rawValue 는 nil(보증 없음)로 강등 — 관대 디코딩의 안전한 방향(있지도 않은 보증을 만들지 않는다).
         eggTier            = c.lenientOptional(Rarity.self, forKey: .eggTier)
         pendingHatchID     = c.lenientOptional(Int.self, forKey: .pendingHatchID)
-        pendingUnownForm   = UnownForm.resolved(speciesID: pendingHatchID ?? 0,
-            form: c.lenientOptional(UnownForm.self, forKey: .pendingUnownForm))
         if c.contains(.claimedTodayTokensByProvider) {
             claimedTodayTokensByProvider = c.lenient([String: Int].self,
                                                       forKey: .claimedTodayTokensByProvider,
@@ -695,8 +602,6 @@ struct CompanionState: Codable, Sendable {
         // active 손상(빈 pathIDs 등) → 알로 폴백하되 도감·인벤토리는 보존.
         active             = c.lenientOptional(MonState.self, forKey: .active)
         representativeSpeciesID = c.lenientOptional(Int.self, forKey: .representativeSpeciesID)
-        representativeUnownForm = UnownForm.resolved(speciesID: representativeSpeciesID ?? 0,
-            form: c.lenientOptional(UnownForm.self, forKey: .representativeUnownForm))
         // 도감은 항목별 격리 — 손상 항목 하나가 도감 전체를 날리지 않게.
         dex                = c.lenient([Lossy<DexEntry>].self, forKey: .dex, default: []).compactMap(\.value)
         collectedFinals    = c.lenient(Set<String>.self, forKey: .collectedFinals, default: [])
@@ -708,60 +613,22 @@ struct CompanionState: Codable, Sendable {
 
     /// 졸업 기록 또는 현재 개체가 실제로 도달한 단계에 이 종이 포함되는가.
     /// 도감 전체 표시 모델을 만들지 않고 대표 종 하나만 확인하는 경량 경로다.
-    func ownsSpecies(_ speciesID: Int, unownForm: UnownForm? = nil) -> Bool {
-        let form = UnownForm.resolved(speciesID: speciesID, form: unownForm)
-        if dex.contains(where: {
-            $0.chainOrder.contains(speciesID)
-                && UnownForm.resolved(speciesID: speciesID, form: $0.unownForm) == form
-        }) { return true }
+    func ownsSpecies(_ speciesID: Int) -> Bool {
+        if dex.contains(where: { $0.chainOrder.contains(speciesID) }) { return true }
         guard let active else { return false }
         return active.pathIDs.prefix(active.stageIndex + 1).contains(speciesID)
-            && UnownForm.resolved(speciesID: speciesID, form: active.unownForm) == form
     }
 
     func hasCollectedFinal(forBaseID baseID: Int) -> Bool {
         collectedFinals.contains { $0.hasPrefix("\(baseID):") }
     }
 
-    /// Match Pokédex ownership, including the active Pokémon and released catch records.
-    /// Normal and shiny individuals of the same form contribute once.
-    var collectedUnownForms: Set<UnownForm> {
-        var forms = Set(dex.filter { $0.chainOrder.contains(UnownForm.speciesID) }.compactMap {
-            UnownForm.resolved(speciesID: UnownForm.speciesID, form: $0.unownForm)
-        })
-        if let active, active.pathIDs.prefix(active.stageIndex + 1).contains(UnownForm.speciesID),
-           let form = UnownForm.resolved(speciesID: UnownForm.speciesID, form: active.unownForm) {
-            forms.insert(form)
-        }
-        return forms
-    }
-
-    /// 보유한 특정 종의 이로치 여부. 졸업 기록과 현재 도달 단계만 훑으며 이름·정렬·희귀도 등
-    /// 도감 표시 모델은 계산하지 않는다. 위장 중인 메타몽의 이로치는 리빌 전까지 숨긴다.
-    func ownsShinySpecies(_ speciesID: Int, unownForm: UnownForm? = nil) -> Bool {
-        let form = UnownForm.resolved(speciesID: speciesID, form: unownForm)
-        if dex.contains(where: {
-            $0.isShiny && $0.chainOrder.contains(speciesID)
-                && UnownForm.resolved(speciesID: speciesID, form: $0.unownForm) == form
-        }) { return true }
-        guard let active,
-              active.pathIDs.prefix(active.stageIndex + 1).contains(speciesID),
-              UnownForm.resolved(speciesID: speciesID, form: active.unownForm) == form,
-              active.isShiny else { return false }
-        return active.dittoDisguise == nil || active.dittoRevealed
-    }
-
-    /// 대표 포켓몬은 사용자가 현재 보유한 종만 가리킨다. Fresh Egg·메타몽 리빌·손편집 세이브가
+    /// 대표 포켓몬은 사용자가 현재 보유한 종만 가리킨다. Fresh Egg·손편집 세이브가
     /// 유령 종을 메뉴바와 플로팅 펫에 영구히 남기지 않게 한다.
     mutating func reconcileRepresentativeSelection() {
-        guard let selected = representativeSpeciesID else {
-            representativeUnownForm = nil
-            return
-        }
-        representativeUnownForm = UnownForm.resolved(speciesID: selected, form: representativeUnownForm)
-        if !ownsSpecies(selected, unownForm: representativeUnownForm) {
+        guard let selected = representativeSpeciesID else { return }
+        if !ownsSpecies(selected) {
             representativeSpeciesID = nil
-            representativeUnownForm = nil
         }
     }
 }
