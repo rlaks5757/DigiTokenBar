@@ -100,6 +100,17 @@ private struct ItemCard: View {
     private var canUse: Bool {
         kind == .rareCandy && store.canUseRareCandy
     }
+    /// 사용 불가 사유 — 아이템별 실제 원인. 디지멘탈은 알/활성 여부와 무관하게 항상
+    /// "아머 진화 미구현"이 사유이므로 사탕 전용 사유(알/활성 없음)보다 우선한다.
+    private func unavailableReason(_ l: L) -> String {
+        switch kind {
+        case .rareCandy:
+            return store.isEgg ? l.useAfterHatch : l.useNeedsPokemon
+        case .digimentalCourage, .digimentalSincerity, .digimentalMiracles, .digimentalLove,
+             .digimentalPurity, .digimentalKnowledge, .digimentalHope, .digimentalLight:
+            return l.useArmorEvolutionComingSoon
+        }
+    }
     /// 사용 컨트롤 효과 힌트 ("+XP").
     private func effectHint(_ l: L) -> String {
         "+\(TokenFormatter.compact(selectedCandyCount * RareCandy.xp)) XP"
@@ -131,8 +142,9 @@ private struct ItemCard: View {
                 }
             }
         } else {
-            // 알(부화 전)/활성 없음/(사탕만)라인 미로딩 — 비활성 + 사유
-            Text(store.isEgg ? l.useAfterHatch : l.useNeedsPokemon)
+            // 비활성 사유 — 종류별로 실제 원인이 다르다(디지멘탈은 알/활성 여부와 무관하게 아머 진화
+            // 미구현이 원인이라 그 사유가 우선한다. 사탕은 알(부화 전)/활성 없음/라인 미로딩이 사유).
+            Text(unavailableReason(l))
                 .font(.caption2).foregroundStyle(.tertiary)
         }
     }

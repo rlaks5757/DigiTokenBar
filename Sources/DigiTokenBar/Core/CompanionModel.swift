@@ -190,7 +190,9 @@ enum ItemKind: String, Codable, Sendable, CaseIterable {
     var spriteName: String? {
         switch self {
         case .rareCandy: return "rare-candy"
-        default: return nil
+        case .digimentalCourage, .digimentalSincerity, .digimentalMiracles, .digimentalLove,
+             .digimentalPurity, .digimentalKnowledge, .digimentalHope, .digimentalLight:
+            return nil
         }
     }
     /// 스프라이트 로딩 전/미제공/실패 시 폴백 이모지.
@@ -198,20 +200,22 @@ enum ItemKind: String, Codable, Sendable, CaseIterable {
         switch self {
         case .rareCandy: return "🍬"
         case .digimentalCourage: return "🟠"
-        case .digimentalSincerity: return "🟡"
+        case .digimentalSincerity: return "🟢"
         case .digimentalMiracles: return "🔴"
         case .digimentalLove: return "🩷"
         case .digimentalPurity: return "⚪️"
         case .digimentalKnowledge: return "🟣"
         case .digimentalHope: return "🟡"
-        case .digimentalLight: return "🟡"
+        case .digimentalLight: return "✨"
         }
     }
     /// 상점 판매가(재화 = 사용한 토큰). nil = 상점 미판매.
     var shopPrice: Int? {
         switch self {
         case .rareCandy: return RareCandy.price
-        default: return DigimentalItem.price
+        case .digimentalCourage, .digimentalSincerity, .digimentalMiracles, .digimentalLove,
+             .digimentalPurity, .digimentalKnowledge, .digimentalHope, .digimentalLight:
+            return DigimentalItem.price
         }
     }
 }
@@ -274,6 +278,23 @@ enum ShopEntry: Hashable, Sendable {
         switch self {
         case .item(let kind): return kind.shopPrice ?? 0
         case .egg(let tier): return FreshEgg.price(guaranteeing: tier)
+        }
+    }
+
+    /// 가격 동률일 때의 2차 정렬키 — `ItemKind.allCases` 선언 순서 다음에 알 3종(`FreshEgg.shopTiers`
+    /// 선언 순서)을 이어 붙인 전순서다. `sorted(by:)` 는 stable 정렬을 보장하지 않으므로, 동률(디지멘탈
+    /// 8종 + 기본 알이 전부 1B)이 있는 한 이 키 없이는 목록 순서가 미정의 동작이 된다.
+    /// **`rawValue`(영어 이름 알파벳순)로 가르지 않는다** — 그러면 상점 1B 블록이 문장 순서와 무관해지고,
+    /// 케이스 추가 때마다 기존 행이 중간에 끼어들어 재배열된다. 선언 순서를 쓰면 새 케이스는 항상 뒤에
+    /// 붙어 기존 행이 불변이다. 같은 가격에서 `.item` 이 `.egg` 보다 항상 앞(egg 오프셋은 allCases.count
+    /// 만큼 밀려 있다) — 기본 알(`.egg(nil)`)이 디지멘탈 뒤에 오는 것은 우연이 아니라 이 규칙의 결과다.
+    var sortRank: Int {
+        switch self {
+        case .item(let kind):
+            return ItemKind.allCases.firstIndex(of: kind) ?? 0
+        case .egg(let tier):
+            let offset = FreshEgg.shopTiers.firstIndex(of: tier) ?? 0
+            return ItemKind.allCases.count + offset
         }
     }
 }

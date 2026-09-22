@@ -1423,6 +1423,25 @@ final class CompanionStoreTests: XCTestCase {
         let chain = s.dexEntries[0].chainOrder
         XCTAssertTrue(chain == [1, 2] || chain == [1, 3, 4], "실제 진화 경로 보존: \(chain)")
     }
+
+    /// [복원: 커밋 4222180 에서 shiny 축과 함께 소실] 디스크 캐시 키 스킴 — 키가 바뀌면 기존 캐시가
+    /// 통째로 무효화되므로 speciesID/animated 축이 안정적으로 고정돼야 한다.
+    func testSpriteCacheKeyScheme() {
+        XCTAssertEqual(SpriteStore.cacheKey(speciesID: 25, animated: true), "25-a")
+        XCTAssertEqual(SpriteStore.cacheKey(speciesID: 25, animated: false), "25-s")
+    }
+
+    /// [복원] 스프라이트 다운로드 경로 — 정적/애니메이션이 서로 다른 PokéAPI 서브패스·확장자를 쓴다.
+    /// `base` 는 actor 내부 `private static let` 라 `@testable` 로도 노출되지 않으므로, 이 단언은
+    /// 스킴 자체(고정 문자열)를 그대로 잠근다.
+    func testSpriteURLSchemeForStaticAndAnimated() {
+        XCTAssertEqual(
+            SpriteStore.spriteURL(speciesID: 25, animated: false),
+            URL(string: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png"))
+        XCTAssertEqual(
+            SpriteStore.spriteURL(speciesID: 25, animated: true),
+            URL(string: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/25.gif"))
+    }
 }
 
 // MARK: 표시 로케일 (자동 생성 문장)

@@ -129,7 +129,34 @@ final class ShopTests: XCTestCase {
         XCTAssertEqual(items.first, .rareCandy)
         let prices = items.compactMap(\.shopPrice)
         XCTAssertEqual(prices, prices.sorted(), "shopPrice 오름차순 — 가격 상수가 바뀌어도 정렬 불변식 유지")
-        XCTAssertEqual(items.count, ItemKind.allCases.count, "모든 판매 아이템이 목록에 있어야 한다")
+        // 현재는 9종 전부 판매 중이라 이 단언이 항상 참이다 — 이 자체가 실패할 수 없다는 뜻은 아니다.
+        // filter { $0.shopPrice != nil } 은 미판매 아이템이 섞이는 걸 막는 살아있는 가드(shopPrice
+        // 를 nil 로 두는 종을 추가하면 목록에서 빠지고 이 count 가 실제로 어긋난다). 그 가드가 걸러낸
+        // 결과가 새지 않는지는 바로 아래에서 별도로 확인한다.
+        XCTAssertEqual(items.count, ItemKind.allCases.count, "모든 판매 아이템이 목록에 있어야 한다(현재 9종 전부 판매 중)")
+        XCTAssertTrue(items.allSatisfy { $0.shopPrice != nil },
+                       "미판매 아이템이 섞이면 ShopEntry.price 의 ?? 0 폴백으로 0원 표시된다")
+    }
+
+    /// [회귀] 디지멘탈 8종 × 7언어 = 56개 신규 지역화 문자열 — 이름은 언어 내에서 유일하고 비어있지
+    /// 않아야 한다(설명은 W3 로 exhaustive 해졌어도 8종이 여전히 같은 문구를 공유하므로 유일성은
+    /// 검증하지 않는다 — 비어있지 않음만 확인). `CaseIterable` 이라 케이스가 늘어도 자동으로 걸린다.
+    func testItemNamesCompleteAndUniquePerLanguage() {
+        for lang in AppLanguage.allCases {
+            let l = L(lang)
+            let names = ItemKind.allCases.map { l.itemName($0) }
+            XCTAssertFalse(names.contains(where: \.isEmpty), "\(lang) itemName 에 빈 문자열")
+            XCTAssertEqual(Set(names).count, ItemKind.allCases.count, "\(lang) itemName 중복")
+            XCTAssertTrue(ItemKind.allCases.allSatisfy { !l.itemDescription($0).isEmpty },
+                          "\(lang) itemDescription 에 빈 문자열")
+        }
+    }
+
+    /// [회귀] `spriteName` 이 nil(이모지 폴백만)인 아이템이 화면에서 서로 구별되려면 폴백 이모지가
+    /// 전부 달라야 한다. `CaseIterable` 을 쓰므로 ItemKind 에 케이스가 늘어도 자동으로 걸린다.
+    func testFallbackEmojisAreAllUnique() {
+        let emojis = ItemKind.allCases.map(\.fallbackEmoji)
+        XCTAssertEqual(Set(emojis).count, ItemKind.allCases.count, "폴백 이모지 중복 — 화면에서 구별 불가")
     }
 
     // MARK: shopEntries (판매 아이템 + 알 3종을 하나의 가격 오름차순 목록으로 병합)
@@ -147,7 +174,8 @@ final class ShopTests: XCTestCase {
         try? json.data(using: .utf8)!.write(to: url)
         let s = CompanionStore(provider: ShopNoProvider(), clock: { self.now }, fileURL: url, rng: SeededRNG(seed: 1))
         XCTAssertTrue(s.hasActive)
-        // 사탕 500M < 디지멘탈 8종(각 1B, 도착 순서로 동률 유지) < 알(nil, 동률 1B) < 알(uncommon) 2.5B < 알(rare) 4B.
+        // 사탕 500M < 디지멘탈 8종(각 1B, ShopEntry.sortRank=ItemKind.allCases 순서로 동률 정렬)
+        // < 알(nil, 동률 1B, sortRank 로 디지멘탈 다음) < 알(uncommon) 2.5B < 알(rare) 4B.
         XCTAssertEqual(s.shopEntries,
                        [.item(.rareCandy),               // 500M
                         .item(.digimentalCourage),        // 1B

@@ -816,11 +816,14 @@ final class CompanionStore {
     /// 여기선 읽기만 — 구매는 spentTokens 만 올려 잔액을 깎는다(진화 진행·오늘/주/월 통계 무영향).
     var availableTokens: Int { max(0, state.usedSinceInstall - state.spentTokens) }
 
-    /// 상점 판매 아이템 — shopPrice 있는 것만, 가격 저렴한 순.
+    /// 상점 판매 아이템 — shopPrice 있는 것만, 가격 저렴한 순. 동률(디지멘탈 8종)은
+    /// `ShopEntry.sortRank`(=`ItemKind.allCases` 순서)로 전순서를 만들어 `sorted(by:)` 의
+    /// stable 정렬 미보장에 기대지 않는다.
     var purchasableItems: [ItemKind] {
         ItemKind.allCases
             .filter { $0.shopPrice != nil }
-            .sorted { ($0.shopPrice ?? 0) < ($1.shopPrice ?? 0) }
+            .sorted { (($0.shopPrice ?? 0), ShopEntry.item($0).sortRank)
+                    < (($1.shopPrice ?? 0), ShopEntry.item($1).sortRank) }
     }
 
     /// 상점 표시 순서 — 판매 아이템 + 알 3종을 하나의 가격 오름차순 목록으로 병합.
@@ -831,7 +834,9 @@ final class CompanionStore {
     var shopEntries: [ShopEntry] {
         var entries: [ShopEntry] = purchasableItems.map { ShopEntry.item($0) }
         entries += FreshEgg.shopTiers.map { ShopEntry.egg($0) }
-        return entries.sorted { price(of: $0) < price(of: $1) }
+        // 가격 동률(디지멘탈 8종 + 기본 알)은 sortRank 로 전순서를 만든다 — stable 정렬 미보장 대응.
+        // 규칙: 가격이 같으면 item 이 egg 보다 먼저, 그다음 각 kind 내부는 선언 순서(ShopEntry.sortRank 참고).
+        return entries.sorted { (price(of: $0), $0.sortRank) < (price(of: $1), $1.sortRank) }
     }
 
     /// 구매 가능 — 잔액이 그 아이템 가격 이상(상점 미판매면 false). 활성/알 무관(재고는 미리 쌓아둘 수 있음).
@@ -1040,7 +1045,7 @@ final class CompanionStore {
     }
 
     /// 알 상태에서 부화를 미리 준비 — ① 종 pre-roll(pendingHatchID, 영속) ② 진화 라인
-    /// fetch(provider 캐시 적재) ③ 스프라이트 예열(정적+애니메이션+shiny 애니메이션).
+    /// fetch(provider 캐시 적재) ③ 스프라이트 예열(정적+애니메이션).
     /// 전부 성공하면 부화 순간 네트워크 0. 실패 지점부터 다음 update 틱에 이어서 재시도.
     private func ensureEggPrefetch() async {
         guard state.active == nil, !isHatching, !prefetchInFlight else { return }
@@ -1107,7 +1112,7 @@ final class CompanionStore {
         }
         // 라인 fetch 창(네트워크) 동안 활성 개체가 교체됐으면 이 부화 결과를 폐기한다. 세이브 불러오기가
         // 그 창에 들어오면, 여기서 멈추지 않는 한 갓 부화한 개체가 방금 불러온 개체를 덮어쓴다.
-        // (loadCurrentLine·revealDitto 와 같은 세대 가드 — isHatching 락은 같은 앱 내 중복 부화만 막는다.)
+        // (loadCurrentLine 과 같은 세대 가드 — isHatching 락은 같은 앱 내 중복 부화만 막는다.)
         guard activeGeneration == generation else {
             AppLog.write("hatch: discarded — active subject replaced during line fetch")
             kickLineLoadIfNeeded()
@@ -1178,7 +1183,7 @@ final class CompanionStore {
     /// 부화 종 선정 — 하드코딩 풀 없이 PokéAPI 1~5세대 base 전체(329종)에서 가중 선택.
     ///   ① base 인덱스(id + capture_rate)를 GraphQL 1쿼리로 취득(30일 디스크 캐시 → 보통 0콜)
     ///   ② 가중치 = 공식 capture_rate 그대로(캐터피 255 vs 뮤츠 3 = 85:1, 전설군 ≈ 0.77%)
-    ///      단, 이미 수집한 base 는 가중치 ½(미수집 부스트 — 재부화/shiny 사냥은 열어둠)
+    ///      단, 이미 수집한 base 는 가중치 ½(미수집 부스트 — 재부화로 다른 종을 노리는 파밍은 열어둠)
     ///   ③ 누적 가중치에서 정확히 1롤 — 루프/재롤 없음, 시간 상한 확정적
     /// 인덱스 취득 실패(오프라인 + 캐시 없음) 시 nil → 알 유지, 다음 갱신 틱 재시도.
     private func chooseBase() async -> Int? {

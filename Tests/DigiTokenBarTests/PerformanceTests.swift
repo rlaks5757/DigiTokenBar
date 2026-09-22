@@ -268,6 +268,15 @@ final class FloatingPetEnergyTests: XCTestCase {
                           SpriteView.frameTaskID(speciesID: 42, floor: 0.2))
     }
 
+    /// [복원: 커밋 4222180 에서 shiny 축과 함께 소실] 정적 스프라이트 재로딩 판정 — 종이 바뀔 때만
+    /// 다시 불러야 한다(같은 종 재호출은 no-op). `SpriteView` 정적 함수라 이 파일이 이미 그 타입을
+    /// 참조하는 지점(위 `frameTaskID` 단언들)에 두어 actor-isolation 추론 리스크를 새로 만들지 않는다.
+    func testNeedsReloadOnlyWhenSpeciesChanges() {
+        XCTAssertTrue(SpriteView.needsReload(loadedID: nil, id: 1), "최초 로드 전에는 항상 재로딩 필요")
+        XCTAssertFalse(SpriteView.needsReload(loadedID: 1, id: 1), "같은 종이면 재로딩 불필요")
+        XCTAssertTrue(SpriteView.needsReload(loadedID: 1, id: 2), "종이 바뀌면 재로딩 필요")
+    }
+
     /// 두 상시 표시 표면(메뉴바·펫)은 이제 **같은 설정값**을 읽는다(`animationQuality.frameFloor`)
     /// — 한쪽만 캡이 풀리는 비대칭이 구조적으로 불가능해졌다. 남은 위험은 호출부가 0 을 직접
     /// 넘기는 것뿐인데, 두 호출부 모두 SwiftUI/AppKit 뷰라 헤드리스로 잡을 수 없어 여기선

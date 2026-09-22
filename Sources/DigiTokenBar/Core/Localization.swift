@@ -961,6 +961,7 @@ struct L {
     }
     var useAfterHatch: String { t("부화 후 사용할 수 있어요", "Usable after hatching", "孵化後に使えます", "Se puede usar después de eclosionar", "Utilisable après l'éclosion", "Dá para usar depois que chocar", "Nach dem Schlüpfen verwendbar") }
     var useNeedsPokemon: String { t("사용할 포켓몬이 없어요", "No Pokémon to use it on", "使えるポケモンがいません", "No hay ningún Pokémon en quien usarlo", "Aucun Pokémon sur qui l'utiliser", "Nenhum Pokémon para usar o item", "Kein Pokémon, bei dem du es verwenden kannst") }
+    var useArmorEvolutionComingSoon: String { t("아머 진화는 준비 중이에요", "Armor evolution is coming soon", "アーマー進化は準備中です", "La armor-evolución llegará pronto", "L'armor-évolution arrive bientôt", "A armor-evolução está por vir", "Rüstungs-Evolution ist in Vorbereitung") }
 
     /// Rare Candy batch preview, including carryover and graduation waste.
     var candyGraduates: String {
@@ -1010,7 +1011,8 @@ struct L {
                      "Augmente l'EXP de ton Pokémon de \(xp).",
                      "Aumenta a experiência do seu Pokémon em \(xp).",
                      "Gibt deinem aktuellen Pokémon \(xp) EP.")
-        default:
+        case .digimentalCourage, .digimentalSincerity, .digimentalMiracles, .digimentalLove,
+             .digimentalPurity, .digimentalKnowledge, .digimentalHope, .digimentalLight:
             return t("Child 단계에서 사용하면 아머체로 진화해요.",
                      "Use it on a Child-stage Digimon to armor-evolve.",
                      "成長期に使うとアーマー体に進化します。",
