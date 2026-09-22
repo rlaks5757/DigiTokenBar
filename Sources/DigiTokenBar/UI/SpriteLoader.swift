@@ -158,8 +158,8 @@ enum SpriteLoader {
             // 흰 배경 JPEG 이면 여기서 누끼를 딴다 — 동기 경로(`cachedImage`)가 이 자산을 캐싱하지 않고
             // 넘기므로, 처리된 픽셀을 캐시에 넣는 건 이 경로의 책임이다. `Task.detached` 인 이유:
             // `SpriteLoader` 는 @MainActor 라 `nonisolated` 만으로는 호출자(메인 액터)에서 그대로 돌아
-            // 대상 10종 전부 합쳐 174ms(한 장 15~21ms, 800×800 이 28ms 로 최대)를 메인 스레드에서
-            // 쓴다. NSImage 는 Sendable 이 아니라 경계를 `Data` 로 둔다.
+            // 디지멘탈 9종이면 한 장 15~21ms 가 그만큼 쌓여 메인 스레드에서 쓴다. NSImage 는 Sendable
+            // 이 아니라 경계를 `Data` 로 둔다.
             let filled = await Task.detached { fillingWhiteBackdrop(d) }.value
             guard let img = NSImage(data: filled ?? d) else { continue }   // 디코드 실패 시 다음 후보로 폴백
             imageCache.setObject(img, forKey: imageKey)
