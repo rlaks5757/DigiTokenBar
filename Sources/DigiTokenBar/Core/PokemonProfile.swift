@@ -16,8 +16,9 @@ struct PokemonDetails: Codable, Sendable, Equatable {
 
     var baseStatTotal: Int { baseStats.values.reduce(0, +) }
 
-    /// Invariant: hatchable species are capped at Gen V by animated-sprite availability.
-    /// Keep this learnset selection in sync if that species bound is ever raised.
+    /// Invariant: hatchable species are bounded by `PokemonAssets.queryableSpeciesIDs`
+    /// (the PokéAPI query range — no longer an animated-sprite constraint; that axis was
+    /// removed 2026-09-22). Keep this learnset selection in sync if that bound is ever raised.
     static let preferredVersionGroup = "black-2-white-2"
 
     func levelUpMoves(through level: Int) -> [PokemonKnownMove] {

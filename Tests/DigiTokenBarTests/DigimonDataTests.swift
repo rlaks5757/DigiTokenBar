@@ -204,4 +204,17 @@ final class DigimonSpriteTests: XCTestCase {
         }
         XCTAssertEqual(checkedCount, 48)
     }
+
+    /// [회귀] 빈 상태(도감/가방) 마스코트 id 는 데이터셋에 **실재해야** 한다.
+    /// 포크 전 값은 피카츄(25)·잠만보(143)였는데 디지몬 52종에 없는 id 라, 스프라이트 파일명
+    /// 후보가 하나도 안 나와 화면에 🥚 만 떴다(에러도 로그도 없는 조용한 회귀 — 2026-09-22 리뷰 적발).
+    /// 존재 여부만이 아니라 파일명 후보까지 확인해 "있지만 스프라이트가 안 나오는" 경우도 잡는다.
+    func testEmptyStateMascotsExistInTheDataset() {
+        for (label, id) in [("도감", DigimonData.dexEmptyMascotID), ("가방", DigimonData.bagEmptyMascotID)] {
+            let name = DigimonData.name(for: id)
+            XCTAssertNotNil(name, "\(label) 빈 상태 마스코트 id \(id) 가 데이터셋에 없다 — 화면에 🥚 만 뜬다")
+            XCTAssertFalse(name?.spriteFilenames.isEmpty ?? true,
+                           "\(label) 마스코트 id \(id) 의 스프라이트 파일명 후보가 비었다")
+        }
+    }
 }

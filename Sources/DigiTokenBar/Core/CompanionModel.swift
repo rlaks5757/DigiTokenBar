@@ -186,16 +186,19 @@ enum ItemKind: String, Codable, Sendable, CaseIterable {
     case digimentalLight
     case digimentalFriendship
 
-    /// PokéAPI 아이템 스프라이트 파일명(.../sprites/items/{name}.png). nil = 스프라이트 없음(이모지 폴백만).
-    /// 디지멘탈은 PokéAPI 경로가 없어 전부 nil(이모지 폴백) — 스프라이트 작업은 별도 단계.
+    /// 대응하는 `Digimental` 케이스(아머 진화 데이터 키). 케이스명 규칙(`digimental` + 대문자 시작
+    /// trait, `testDigimentalAndItemKindSetsMatch` 로 양방향 고정됨)으로 기계적 변환 — 손으로
+    /// 유지하는 매핑 목록을 또 만들지 않는다. `rareCandy` 는 nil.
+    var digimental: Digimental? {
+        guard rawValue.hasPrefix("digimental") else { return nil }
+        let suffix = rawValue.dropFirst("digimental".count)
+        return Digimental(rawValue: suffix.prefix(1).lowercased() + suffix.dropFirst())
+    }
+
+    /// Wikimon 아이템 아트 파일명(SpriteStore 의 파일명 기반 fetch 경로로 그대로 전달). nil = 스프라이트
+    /// 없음(이모지 폴백만). `rareCandy` 는 Wikimon 에 대응 소스가 없어 nil — 파일명을 지어내지 않는다.
     var spriteName: String? {
-        switch self {
-        case .rareCandy: return "rare-candy"
-        case .digimentalCourage, .digimentalSincerity, .digimentalMiracles, .digimentalLove,
-             .digimentalPurity, .digimentalKnowledge, .digimentalHope, .digimentalLight,
-             .digimentalFriendship:
-            return nil
-        }
+        digimental?.wikimonFilename
     }
     /// 스프라이트 로딩 전/미제공/실패 시 폴백 이모지.
     var fallbackEmoji: String {
@@ -321,14 +324,10 @@ struct CandyGrant: Equatable, Sendable {
     let count: Int
 }
 
-/// 현재 서비스가 제공하는 움직이는 포켓몬 스프라이트 범위.
-/// PokéAPI 의 Gen-V animated 에셋은 전국도감 #1...649까지만 존재한다.
+/// PokéAPI 에서 조회 가능한 종 ID 범위(전국도감 #1...649) — 부화 rejection sampling 과
+/// base-index REST/GraphQL 조회 상한 산정에 쓰인다.
 enum PokemonAssets {
-    static let animatedSpeciesIDs = 1...649
-
-    static func hasAnimatedSprite(speciesID: Int) -> Bool {
-        animatedSpeciesIDs.contains(speciesID)
-    }
+    static let queryableSpeciesIDs = 1...649
 }
 
 /// PokéAPI evolution-chain 을 파싱한 트리. 분기(evolves_to 다수)를 children 으로.
@@ -346,12 +345,6 @@ struct EvoNode: Codable, Sendable {
     /// 이 노드에서 도달 가능한 모든 최종체 id
     var finalIDs: [Int] {
         children.isEmpty ? [speciesID] : children.flatMap(\.finalIDs)
-    }
-
-    /// 서비스에 GIF 에셋이 있는 종만 남긴 진화 트리. 지원하지 않는 종부터 그 하위 체인도 제외한다.
-    func keepingAnimatedSprites() -> EvoNode? {
-        guard PokemonAssets.hasAnimatedSprite(speciesID: speciesID) else { return nil }
-        return EvoNode(speciesID: speciesID, children: children.compactMap { $0.keepingAnimatedSprites() })
     }
 }
 
@@ -387,7 +380,7 @@ struct EvoLine: Sendable {
 
     init(baseID: Int, tree: EvoNode, rarity: Rarity, names: [Int: [String: String]]) {
         self.baseID = baseID
-        self.tree = tree.keepingAnimatedSprites() ?? EvoNode(speciesID: baseID, children: [])
+        self.tree = tree
         self.rarity = rarity
         self.names = names
     }

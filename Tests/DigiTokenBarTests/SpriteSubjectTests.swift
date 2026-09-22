@@ -9,7 +9,7 @@ import AppKit
 //  2) **취소된 로드는 어떤 상태도 건드리지 않는다.** Swift 의 취소는 협조적이라 `.task(id:)` 가 취소돼도
 //     await 뒤 코드는 계속 실행된다 — 후속 task 가 이미 새 주체로 잡아 둔 상태를 뒤늦게 덮어쓸 수 있다.
 //
-// SwiftUI `.task` 자체는 호스트 없이 돌릴 수 없어 규칙을 순수 전이로 빼서 검증한다(`GIFDecoder.capFrameRate` 와 같은 방식).
+// SwiftUI `.task` 자체는 호스트 없이 돌릴 수 없어 규칙을 순수 전이로 빼서 검증한다.
 // 아래 동시성 테스트는 그 "뒤늦게 도착하는 continuation" 순서를 게이트로 **강제**해 재현한다.
 
 /// 테스트가 재개 시점을 쥐는 게이트 — 로드가 await 에서 멈춰 있는 구간을 결정적으로 만든다.
@@ -37,7 +37,6 @@ private actor LoadGate {
 @MainActor
 private final class SubjectBox {
     var subject: SpriteSubject
-    var frames: [(image: NSImage, delay: TimeInterval)] = []
     var sawCancellation = false
     init(_ subject: SpriteSubject) { self.subject = subject }
 }
@@ -46,9 +45,6 @@ private final class SubjectBox {
 final class SpriteSubjectTests: XCTestCase {
 
     private func image(_ side: CGFloat) -> NSImage { NSImage(size: NSSize(width: side, height: side)) }
-    private func frame(_ img: NSImage, _ delay: TimeInterval = 0.1) -> (image: NSImage, delay: TimeInterval) {
-        (image: img, delay: delay)
-    }
 
     // MARK: 주체가 알로 바뀔 때 (#135)
 
@@ -113,28 +109,6 @@ final class SpriteSubjectTests: XCTestCase {
         XCTAssertNil(applied.loadedID)
     }
 
-    // MARK: GIF 프레임
-
-    /// [트리거] 취소된 GIF 는 반영하지 않는다 — body 가 frames 를 img 보다 먼저 그리므로,
-    /// 뒤늦게 대입되면 알 위에 옛 개체의 프레임이 정지 상태로 올라온다(#135 와 같은 증상).
-    func testFramesDroppedWhenCancelled() {
-        let decoded = [frame(image(4)), frame(image(4))]
-        XCTAssertTrue(SpriteView.framesToApply(decoded, cancelled: true).isEmpty)
-    }
-
-    /// 2프레임 미만은 애니메이션이 아니다 → 정적 폴백(기존 규칙 보존).
-    func testSingleFrameFallsBackToStatic() {
-        XCTAssertTrue(SpriteView.framesToApply([frame(image(4))], cancelled: false).isEmpty)
-        XCTAssertTrue(SpriteView.framesToApply([], cancelled: false).isEmpty)
-    }
-
-    func testMultiFrameAcceptedWhenNotCancelled() {
-        let first = image(4), second = image(4)
-        let ready = SpriteView.framesToApply([frame(first), frame(second)], cancelled: false)
-        XCTAssertEqual(ready.count, 2)
-        XCTAssertTrue(ready.first?.image === first)
-    }
-
     // MARK: 실제 취소 순서 재현 (회귀 트리거)
 
     /// [회귀] 취소된 task 의 continuation 이 **후속 task 뒤에** 도착하는 순서를 게이트로 강제한다.
@@ -171,31 +145,5 @@ final class SpriteSubjectTests: XCTestCase {
         let unguarded = SpriteSubject(image: egg, loadedID: nil).applyingLoad(species, for: 26, cancelled: false)
         XCTAssertTrue(unguarded?.image === species)
         XCTAssertEqual(unguarded?.loadedID, 26)
-    }
-
-    /// [회귀] 같은 순서를 GIF 경로로 — 취소된 디코드 결과가 뒤늦게 도착해도 프레임은 비어 있어야 한다.
-    func testCancelledFramesArrivingLateCannotResurrectPreviousSpecies() async {
-        let gate = LoadGate()
-        let box = SubjectBox(SpriteSubject(image: image(4), loadedID: 25))
-        box.frames = [frame(image(4)), frame(image(4))]   // 25 의 GIF 재생 중
-
-        let decode = Task { @MainActor in
-            await gate.wait()
-            box.sawCancellation = Task.isCancelled
-            box.frames = SpriteView.framesToApply([self.frame(self.image(4)), self.frame(self.image(4))],
-                                                  cancelled: Task.isCancelled)
-        }
-
-        decode.cancel()
-        box.frames = []                                   // 후속 task 진입 시 프레임 초기화
-        box.subject = box.subject.becomingEgg(cachedEgg: image(2))
-
-        await gate.release()
-        _ = await decode.value
-
-        XCTAssertTrue(box.sawCancellation)
-        XCTAssertTrue(box.frames.isEmpty,
-                      "취소된 GIF 가 되살아나면 알 위에 옛 포켓몬이 정지 프레임으로 그려진다")
-        XCTAssertNil(box.subject.loadedID)
     }
 }

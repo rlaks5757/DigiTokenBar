@@ -30,10 +30,11 @@ struct ItemIconView: View {
     var body: some View {
         Group {
             if let img {
-                // 아이템 PNG 는 대체로 정사각(30×30)이라 늘려도 티가 안 났지만, 소스가 외부(PokeAPI
-                // items)라 비정사각이 섞이면 그대로 왜곡된다 — 스프라이트와 같은 SpriteFit 규율.
+                // 디지멘탈 아이템 아트는 ~700KB 사진(Wikimon)이라 픽셀아트 스프라이트와 달리
+                // 30pt 박스로 크게 축소된다 — .interpolation(.none)(nearest-neighbor)을 쓰면
+                // 심한 앨리어싱이 난다. 사진이므로 기본(부드러운) 보간을 쓴다.
                 let fit = SpriteFit.size(for: img.size, box: size)
-                Image(nsImage: img).resizable().interpolation(.none)
+                Image(nsImage: img).resizable()
                     .frame(width: fit.width, height: fit.height)
                     .frame(width: size, height: size)
             } else {
@@ -50,7 +51,7 @@ struct ItemIconView: View {
 
 /// SpriteView 가 그리는 주체(정적 이미지 + 그 이미지가 어느 종의 것인지)의 전이 규칙.
 ///
-/// SwiftUI `.task` 는 호스트 없이 돌릴 수 없어 규칙만 순수 값 전이로 빼 둔다(`GIFDecoder.capFrameRate` 와 같은 방식).
+/// SwiftUI `.task` 는 호스트 없이 돌릴 수 없어 규칙만 순수 값 전이로 빼 둔다.
 /// 여기 담긴 규칙은 둘 다 "화면에 남은 픽셀이 지금 주체의 것인가"를 지킨다.
 struct SpriteSubject: Equatable {
     var image: NSImage?
@@ -85,60 +86,34 @@ struct SpriteSubject: Equatable {
     }
 }
 
-/// 스프라이트 1개(런타임 로드 + 캐시). 없으면 알 글리프. bob 으로 가벼운 상하 움직임.
-/// animated=true 면 Gen-V GIF 프레임을 순환(미지원/오프라인이면 정적+bob 으로 폴백).
+/// 스프라이트 1개(런타임 로드 + 캐시). 없으면 알 글리프. bob 으로 가벼운 상하 움직임(유일한 움직임 —
+/// Wikimon vpet 스프라이트는 정적 PNG 만 있고 애니메이션 변종이 없다, 2026-09-22 확인).
 @MainActor
 struct SpriteView: View {
     let speciesID: Int?
     var size: CGFloat = 84
     var bob: Bool = false
-    var animated: Bool = false
-    /// GIF 프레임 지속의 하한(초). 0=원본 delay 그대로. >0 이면 fps 상한 + wakeup 코얼레싱을 적용해
-    /// idle 배터리를 통제한다 — 항상 떠 있는 플로팅 펫과 메뉴바 GIF 가 **같은 규율**을 쓰게.
-    /// 규율 = "캡이 존재한다(>0)"이며, 두 표면은 지금 같은 사용자 설정
-    /// (`UsageStore.AnimationQuality.frameFloor`)을 읽는다. 값이 표면별로 갈릴 수는 있다 —
-    /// 22px 메뉴바보다 큰 펫은 같은 fps 에서도 끊김이 더 보인다.
-    /// 팝오버 등 일시적 표시는 0(기본)으로 두어 네이티브 fps 유지.
-    var minFrameDelay: TimeInterval = 0
     private let spriteStore: SpriteStore
     @State private var subject: SpriteSubject
     @State private var up = false
-    @State private var frames: [(image: NSImage, delay: TimeInterval)] = []
-    @State private var frameIndex = 0
 
-    init(speciesID: Int?, size: CGFloat = 84, bob: Bool = false, animated: Bool = false,
-         minFrameDelay: TimeInterval = 0, spriteStore: SpriteStore = .shared) {
+    init(speciesID: Int?, size: CGFloat = 84, bob: Bool = false, spriteStore: SpriteStore = .shared) {
         self.speciesID = speciesID
         self.spriteStore = spriteStore
         self.size = size
         self.bob = bob
-        self.animated = animated
-        self.minFrameDelay = minFrameDelay
         // 캐시에 있으면 즉시(동기) 표시 — 재렌더 플래시 방지 + 정적 스냅샷에서도 보임.
         // speciesID==nil(알 상태)이면 알 스프라이트를 시드(없으면 body 가 🥚 폴백).
-        let cached = speciesID.map { SpriteLoader.cachedImage(speciesID: $0, directory: spriteStore.directory) }
-            ?? SpriteLoader.cachedEggImage()
-        let cachedFrames = animated ? speciesID.map {
-            SpriteLoader.cachedFrames(speciesID: $0, directory: spriteStore.directory)
-        } ?? [] : []
-        _frames = State(initialValue: GIFDecoder.capFrameRate(cachedFrames, floor: minFrameDelay))
+        let cached = speciesID.map {
+            SpriteLoader.cachedImage(filenames: SpriteLoader.filenames(for: $0), directory: spriteStore.directory)
+        } ?? SpriteLoader.cachedEggImage()
         _subject = State(initialValue: SpriteSubject(image: cached,
                                                     loadedID: (speciesID != nil && cached != nil) ? speciesID : nil))
     }
 
-    /// GIF 프레임 로드 task 의 정체성 — 바뀌면 재디코드·재솎아내기. **하한을 포함한다**:
-    /// 프레임은 하한에 맞춰 솎아낸 결과물이라, 빠지면 fps 설정 변경이 종 교체까지 안 먹는다
-    /// (`AppDelegate.menuSpriteKey` 와 같은 이유). 순수·테스트용.
-    static func frameTaskID(speciesID: Int?, floor: TimeInterval, animated: Bool = true) -> String {
-        "\(speciesID.map(String.init) ?? "nil")-\(floor)-\(animated)"
-    }
-
-    /// 디코드된 GIF 프레임 중 실제로 재생할 것 — 취소됐거나 2프레임 미만이면 빈 배열(정적 폴백).
-    /// 취소 검사가 여기 있는 이유: `frames` 는 body 에서 `img` 보다 먼저 그려지므로, 취소된 로드가
-    /// 뒤늦게 대입되면 새 주체(알) 위에 옛 개체의 GIF 가 정지 상태로 올라온다.
-    static func framesToApply(_ decoded: [(image: NSImage, delay: TimeInterval)],
-                              cancelled: Bool) -> [(image: NSImage, delay: TimeInterval)] {
-        (cancelled || decoded.count < 2) ? [] : decoded
+    /// 정적 스프라이트 로드 task 의 정체성 — 종이 바뀌면 재로딩. 순수·테스트용.
+    static func frameTaskID(speciesID: Int?) -> String {
+        "\(speciesID.map(String.init) ?? "nil")"
     }
 
     /// 전이 결과를 @State 로 되돌린다(State 세터는 nonmutating). 값이 그대로면 쓰지 않는다 —
@@ -147,7 +122,7 @@ struct SpriteView: View {
         guard next != subject else { return }
         subject = next
     }
-    /// 정적 스프라이트를 다시 불러야 하는가 — 종이 바뀌었을 때. 순수·테스트용(`GIFDecoder.capFrameRate` 와 같은 이유).
+    /// 정적 스프라이트를 다시 불러야 하는가 — 종이 바뀌었을 때. 순수·테스트용.
     static func needsReload(loadedID: Int?, id: Int) -> Bool {
         loadedID != id
     }
@@ -171,26 +146,18 @@ struct SpriteView: View {
 
     var body: some View {
         Group {
-            if !frames.isEmpty {
-                // GIF 애니메이션 경로 — 현재 프레임만 렌더. Gen-V GIF 캔버스는 종마다 비정사각이라
-                // (잭키 36×66) 정사각으로 늘리면 뚱뚱해진다 → fitted 로 비율 유지.
-                fitted(frames[frameIndex % frames.count].image)
-            } else if let img = subject.image {
-                fitted(animated && speciesID != nil ? SpriteLoader.animationPlaceholder(img) : img)
+            if let img = subject.image {
+                fitted(img)
             } else {
                 Text("🥚").font(.system(size: size * 0.62)).frame(width: size, height: size)
             }
         }
-        // GIF 재생 중엔 bob 정지(프레임 자체가 움직임) — 폴백/정적일 때만 상하 움직임
-        .offset(y: bob && frames.isEmpty && up ? -3 : 0)
-        .task(id: Self.frameTaskID(speciesID: speciesID, floor: minFrameDelay, animated: animated)) {
-            // animated 프레임은 id 변경 시 항상 초기화(이전 개체 프레임 잔상 방지)
-            frames = animated ? GIFDecoder.capFrameRate(
-                speciesID.map { SpriteLoader.cachedFrames(speciesID: $0, directory: spriteStore.directory) } ?? [],
-                floor: minFrameDelay) : []
-            frameIndex = 0
+        .offset(y: bob && up ? -3 : 0)
+        .task(id: Self.frameTaskID(speciesID: speciesID)) {
             guard let id = speciesID else {
-                // 알 상태 — 정적 알 스프라이트 로드(애니메이션 알은 없음). 실패/오프라인이면 body 가 🥚 폴백.
+                // 알 상태 — 정적 알 스프라이트 로드. 첫 표시에는 동기 캐시가 비어 body 가 🥚 로
+                // 폴백하고, 네트워크 왕복이 끝나면 일러스트로 교체된다(정상 동작, 조건부 실패가 아니다
+                // — `SpriteStore.eggData()` 주석 참고).
                 // 종 → 알(졸업·새 알)이면 이전 개체 이미지를 버려야 한다 — img 는 뷰 identity 가 살아있는 동안
                 // 유지되고 플로팅 펫 패널은 졸업 때 재생성되지 않아, 안 버리면 옛 포켓몬이 계속 떠 있다.
                 apply(subject.becomingEgg(cachedEgg: SpriteLoader.cachedEggImage()))
@@ -202,36 +169,14 @@ struct SpriteView: View {
             }
             // Drop the previous letter before any await; cached pixels and metadata change atomically.
             let reloadNeeded = Self.needsReload(loadedID: subject.loadedID, id: id)
+            let filenames = SpriteLoader.filenames(for: id)
             if reloadNeeded {
-                let cached = SpriteLoader.cachedImage(speciesID: id, directory: spriteStore.directory)
+                let cached = SpriteLoader.cachedImage(filenames: filenames, directory: spriteStore.directory)
                 apply(subject.startingLoad(cachedImage: cached, for: id))
             }
-            // Request animation before a missing static PNG can hold playback behind a network fetch.
-            if animated && frames.isEmpty {
-                let decoded = await SpriteLoader.animationFrames(speciesID: id, store: spriteStore)
-                guard !Task.isCancelled else { return }
-                frames = GIFDecoder.capFrameRate(Self.framesToApply(decoded, cancelled: false), floor: minFrameDelay)
-            }
-            // A normal-color cache fallback is only a placeholder, including on initial render.
-            if frames.isEmpty {
-                let loaded = await SpriteLoader.image(speciesID: id, animated: false, store: spriteStore)
-                if let next = subject.applyingLoad(loaded, for: id, cancelled: Task.isCancelled) {
-                    apply(next)
-                }
-            }
-            guard !frames.isEmpty, !Task.isCancelled else { return }
-            // delay 기반 프레임 advance. .task 취소 시(speciesID 변경/뷰 소멸) 루프 종료 — 누수 없음
-            while !Task.isCancelled {
-                let delay = frames[frameIndex % frames.count].delay
-                // minFrameDelay>0(플로팅 펫): tolerance 로 wakeup 코얼레싱 — 메뉴바 `Timer.tolerance`
-                // 와 같은 규율(항상 뜬 표면의 idle 배터리 통제). 0 이면 코얼레싱 없이 네이티브.
-                // 코얼레싱 배수는 메뉴바와 공유한다 — 늦게만 발화하므로 크게 두면 재생이 늘어진다
-                // (`AppDelegate.menuFrameTolerance` 주석).
-                try? await Task.sleep(
-                    for: .seconds(delay),
-                    tolerance: minFrameDelay > 0 ? .seconds(delay * AppDelegate.menuFrameTolerance) : .zero)
-                if Task.isCancelled { break }
-                frameIndex = (frameIndex + 1) % frames.count
+            let loaded = await SpriteLoader.image(filenames: filenames, store: spriteStore)
+            if let next = subject.applyingLoad(loaded, for: id, cancelled: Task.isCancelled) {
+                apply(next)
             }
         }
         .onAppear {
@@ -468,7 +413,7 @@ struct CompanionHeader: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .center, spacing: 12) {
-                SpriteView(speciesID: store.currentSpeciesID, size: 76, bob: true, animated: true)
+                SpriteView(speciesID: store.currentSpeciesID, size: 76, bob: true)
                     .frame(width: 76, height: 76)
                     .background(Color.secondary.opacity(0.06))
                     .clipShape(RoundedRectangle(cornerRadius: 12))
@@ -753,10 +698,10 @@ struct CollectionView: View {
         }
     }
 
-    /// 빈 도감 — 안내 마스코트(피카츄, PokéAPI) + 포켓몬을 모으라는 문구.
+    /// 빈 도감 — 안내 마스코트 + 디지몬을 모으라는 문구.
     private var emptyState: some View {
         VStack(spacing: 10) {
-            SpriteView(speciesID: 25, size: 96, animated: true)   // 피카츄(움직임)
+            SpriteView(speciesID: DigimonData.dexEmptyMascotID, size: 96, bob: true)
             Text(store.l.dexEmptyTitle).font(.callout.weight(.semibold))
             Text(store.l.dexEmptyHint)
                 .font(.caption).foregroundStyle(.secondary)
@@ -997,7 +942,7 @@ private struct PokemonDetailView: View {
 
     private var identityHeader: some View {
         HStack(spacing: 14) {
-            SpriteView(speciesID: species.id, size: 82, animated: true)
+            SpriteView(speciesID: species.id, size: 82, bob: true)
                 .frame(width: 82, height: 82)
             VStack(alignment: .leading, spacing: 5) {
                 Text(species.name).font(.title3.weight(.bold))
@@ -1162,7 +1107,7 @@ private extension Array where Element == String {
 }
 
 /// 도감 한 칸 — 도감 번호 + 스프라이트 + 종 이름. 종 정보만 담는다(성격·획득 횟수는 로그의 몫).
-/// 정적 스프라이트만 쓴다(animated 생략) — 한 페이지 24칸을 GIF 로 동시 재생하면 CPU 가 안 된다.
+/// bob 없이 정지 상태로 쓴다 — 한 페이지 24칸이 동시에 흔들리면 시선을 뺏는다.
 @MainActor
 private struct DexSpeciesCell: View {
     let store: CompanionStore

@@ -192,6 +192,44 @@ final class ShopTests: XCTestCase {
                         "Digimental 과 ItemKind 의 디지멘탈 케이스 개수가 다름")
     }
 
+    /// [회귀] `ItemKind.digimental` 브리지 자체를 호출하는 단언. 이 프로퍼티는 케이스명 관례
+    /// (`digimental` + 대문자 trait)로 기계 변환하는데, 관례에서 벗어난 케이스가 생기면 조용히
+    /// nil 이 되어 `spriteName` 도 nil → 아이템이 전부 이모지로 떨어진다. 그런데
+    /// `testDigimentalAndItemKindSetsMatch` 는 변환 규칙을 테스트 안에서 **재구현**하므로
+    /// 프로덕션 프로퍼티가 망가져도 green 을 유지한다 — 그 공백을 여기서 닫는다.
+    func testItemKindDigimentalBridgeResolvesEveryCase() {
+        XCTAssertEqual(Set(ItemKind.allCases.compactMap(\.digimental)), Set(Digimental.allCases),
+                       "ItemKind → Digimental 브리지가 9종 전부를 해석하지 못한다")
+        for kind in ItemKind.allCases where kind.digimental != nil {
+            XCTAssertNotNil(kind.spriteName, "\(kind.rawValue) 의 스프라이트 파일명이 nil 이다")
+        }
+        XCTAssertNil(ItemKind.rareCandy.digimental, "디지멘탈이 아닌 아이템은 nil 이어야 한다")
+    }
+
+    /// [회귀] `Digimental.wikimonFilename` 은 케이스마다 손으로 적은 exhaustive switch(일반화된
+    /// 문자열 생성이 아님, DigimonData.swift 주석 참고)라 케이스 추가 시 매핑 누락은 컴파일 에러로
+    /// 막히지만, **문자열 오타/오귀속은 컴파일이 통과한 채 조용히 404 난다** — 이 테스트가 그 값
+    /// 자체를 9종 전부 고정한다. sincerity → reliability 처럼 케이스명과 파일명이 다른 예외가
+    /// 실수로 "정정"(되돌려짐)되면 여기서 잡힌다.
+    func testDigimentalWikimonFilenamesArePinned() {
+        XCTAssertEqual(Digimental.courage.wikimonFilename, "Digimental_courage.jpg")
+        // Wikimon 표기가 "reliability" — 케이스명(sincerity)과 다른 게 정상(더빙판 명칭 분기).
+        XCTAssertEqual(Digimental.sincerity.wikimonFilename, "Digimental_reliability.jpg")
+        XCTAssertEqual(Digimental.miracles.wikimonFilename, "Digimental_miracles.jpg")
+        XCTAssertEqual(Digimental.love.wikimonFilename, "Digimental_love.jpg")
+        XCTAssertEqual(Digimental.purity.wikimonFilename, "Digimental_purity.jpg")
+        XCTAssertEqual(Digimental.knowledge.wikimonFilename, "Digimental_knowledge.jpg")
+        XCTAssertEqual(Digimental.hope.wikimonFilename, "Digimental_hope.jpg")
+        XCTAssertEqual(Digimental.light.wikimonFilename, "Digimental_light.jpg")
+        XCTAssertEqual(Digimental.friendship.wikimonFilename, "Digimental_friendship.jpg")
+
+        // 복붙 실수로 두 케이스가 같은 파일명을 가리키면(예외 처리를 다른 케이스에 잘못 옮김) 위
+        // 개별 단언은 통과할 수 없지만, 혹시 기대값 자체를 잘못 옮겨 적어도 이 unique 체크가 별도로 잡는다.
+        let filenames = Digimental.allCases.map(\.wikimonFilename)
+        XCTAssertEqual(Set(filenames).count, Digimental.allCases.count,
+                        "디지멘탈 파일명 중복 — 서로 다른 아이템이 같은 아트를 가리킴")
+    }
+
     // MARK: shopEntries (판매 아이템 + 알 3종을 하나의 가격 오름차순 목록으로 병합)
 
     /// 활성 포켓몬이 있으면 알 3종이 각자의 가격 위치에 끼워져 전체가 가격 오름차순.

@@ -1424,24 +1424,6 @@ final class CompanionStoreTests: XCTestCase {
         XCTAssertTrue(chain == [1, 2] || chain == [1, 3, 4], "실제 진화 경로 보존: \(chain)")
     }
 
-    /// [복원: 커밋 4222180 에서 shiny 축과 함께 소실] 디스크 캐시 키 스킴 — 키가 바뀌면 기존 캐시가
-    /// 통째로 무효화되므로 speciesID/animated 축이 안정적으로 고정돼야 한다.
-    func testSpriteCacheKeyScheme() {
-        XCTAssertEqual(SpriteStore.cacheKey(speciesID: 25, animated: true), "25-a")
-        XCTAssertEqual(SpriteStore.cacheKey(speciesID: 25, animated: false), "25-s")
-    }
-
-    /// [복원] 스프라이트 다운로드 경로 — 정적/애니메이션이 서로 다른 PokéAPI 서브패스·확장자를 쓴다.
-    /// `base` 는 actor 내부 `private static let` 라 `@testable` 로도 노출되지 않으므로, 이 단언은
-    /// 스킴 자체(고정 문자열)를 그대로 잠근다.
-    func testSpriteURLSchemeForStaticAndAnimated() {
-        XCTAssertEqual(
-            SpriteStore.spriteURL(speciesID: 25, animated: false),
-            URL(string: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png"))
-        XCTAssertEqual(
-            SpriteStore.spriteURL(speciesID: 25, animated: true),
-            URL(string: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/25.gif"))
-    }
 }
 
 // MARK: 표시 로케일 (자동 생성 문장)
@@ -1657,9 +1639,11 @@ final class CompanionIdentityTests: XCTestCase {
         XCTAssertEqual(s2.state.active?.usedAtStage, 300_000_000 - 125_000_000)   // 초과분 이월
     }
 
-    /// [회귀] 구버전 상태가 GIF 미지원 후대 진화형까지 진행했어도, 라인 재로딩 시 마지막 지원 형태로
-    /// 복구하고 단계 수를 현재 에셋 개수에 맞춘다. 그렇지 않으면 트리에서 현재 종을 못 찾아 성장이 멈춘다.
-    func testLineLoadMigratesPersistedUnsupportedEvolution() async throws {
+    /// [회귀] 저장된 경로는 **트리에 존재하기만 하면** 그대로 복원된다. 예전에는 GIF 에셋이 없는
+    /// #649 초과 형태를 잘라냈지만(`keepingAnimatedSprites`), 정적 Wikimon 스프라이트에는 도감
+    /// 번호 상한이 없으므로 그 절단은 제거됐다(2026-09-22). 재조정 기준은 에셋이 아니라 트리 하나다
+    /// (`longestValidPath`). 이 테스트는 #979 가 살아남는 걸 고정해 절단이 되살아나면 실패한다.
+    func testLineLoadKeepsPersistedPathBeyondTheOldGenVCap() async throws {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("poke-assets-\(UUID().uuidString).json")
         let json = #"{"saveVersion":\#(CompanionState.currentSaveVersion),"installBaselineSet":true,"lastDate":"d1","active":{"baseID":56,"pathIDs":[56,57,979],"stageIndex":2,"usedAtStage":123,"rarity":"common","totalForms":3},"dex":[]}"#
         try Data(json.utf8).write(to: url)
@@ -1672,11 +1656,30 @@ final class CompanionIdentityTests: XCTestCase {
         for _ in 0..<50 where s.currentLine == nil { await Task.yield() }
 
         XCTAssertNotNil(s.currentLine)
-        XCTAssertEqual(s.state.active?.pathIDs, [56, 57])
-        XCTAssertEqual(s.state.active?.plannedPathIDs, [56, 57])
-        XCTAssertEqual(s.state.active?.stageIndex, 1)
-        XCTAssertEqual(s.state.active?.totalForms, 2)
+        XCTAssertEqual(s.state.active?.pathIDs, [56, 57, 979], "#649 초과라고 저장된 경로를 자르면 안 된다")
+        XCTAssertEqual(s.state.active?.plannedPathIDs, [56, 57, 979])
+        XCTAssertEqual(s.state.active?.stageIndex, 2)
+        XCTAssertEqual(s.state.active?.totalForms, 3)
         XCTAssertEqual(s.state.active?.usedAtStage, 123)
+    }
+
+    /// [회귀] 위 복원은 `totalForms` 를 2→3 으로 되돌리는데, `totalForms` 는 `phaseThreshold`
+    /// 의 분모(k(k+1)/2)로 직접 들어가므로 **성장 임계가 재계산된다**. 총량(graduationTotal)은
+    /// 희귀도로 고정이고 단계 수로 나눠 갖는 구조라, 절단됐던 세이브가 원래 단계 수를 되찾는 건
+    /// 밸런스 인플레가 아니라 교정이다 — 그 사실을 수치로 고정해 임계 공식이 바뀌면 드러나게 한다.
+    func testRestoredTotalFormsRedistributesTheSameBudget() {
+        let truncated = PokemonBalance.phaseThreshold(rarity: .common, totalForms: 2, stageIndex: 0)
+        let restored = PokemonBalance.phaseThreshold(rarity: .common, totalForms: 3, stageIndex: 0)
+        XCTAssertGreaterThan(truncated, restored, "단계가 늘면 단계당 임계는 줄어야 한다(총량 고정)")
+
+        // 총량 보존: 각 k 에서 전 단계 임계의 합이 graduationTotal 과 같아야 한다.
+        for k in 2...4 {
+            let sum = (0..<k).reduce(0) {
+                $0 + PokemonBalance.phaseThreshold(rarity: .common, totalForms: k, stageIndex: $1)
+            }
+            XCTAssertEqual(Double(sum), Double(PokemonBalance.graduationTotal(.common)),
+                           accuracy: Double(k), "k=\(k): 단계 임계 합이 졸업 총량과 달라졌다")
+        }
     }
 
     /// [회귀] 부화 이월(overflow)로 즉시 진화해도 마지막 연출은 hatch — evolve 가 버스트를 덮지 않는다.

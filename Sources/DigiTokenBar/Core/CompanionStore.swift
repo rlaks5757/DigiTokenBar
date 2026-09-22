@@ -1080,11 +1080,10 @@ final class CompanionStore {
             return
         }
         guard isCurrentEgg(generation: generation), state.pendingHatchID == id else { return }
-        // 스프라이트 예열 — 부화 직후 보일 것들: base 정적+애니메이션.
+        // 스프라이트 예열 — 부화 직후 보일 base 정적 스프라이트.
         // .app 번들에서만(단위 테스트가 실네트워크에 닿지 않도록 — 알림과 동일한 게이트).
         if AppEnv.isBundledApp {
-            _ = await SpriteStore.shared.data(speciesID: line.baseID, animated: false)
-            _ = await SpriteStore.shared.data(speciesID: line.baseID, animated: true)
+            _ = await SpriteStore.shared.data(filenames: SpriteStore.filenames(for: line.baseID))
         }
         guard isCurrentEgg(generation: generation), state.pendingHatchID == id else { return }
         prefetchedLineID = id
@@ -1213,13 +1212,13 @@ final class CompanionStore {
         return await chooseBaseViaREST()
     }
 
-    /// REST 폴백 — animated 에셋 지원 범위에서 무작위 id 를 뽑아 base 인지 확인(rejection sampling).
+    /// REST 폴백 — PokéAPI 조회 가능 종 ID 범위에서 무작위 id 를 뽑아 base 인지 확인(rejection sampling).
     /// GraphQL 인덱스가 죽어도 부화가 되게 한다. 가중치(capture_rate)는 생략 — 희귀도는 부화 후
     /// line() 이 실제 capture_rate 로 계산하므로 결과 개체의 등급은 정확하다. 인덱스 복구 시 가중 선택 재개.
     private func chooseBaseViaREST() async -> Int? {
         let tier = state.eggTier
         for attempt in 1...16 {
-            let ids = PokemonAssets.animatedSpeciesIDs
+            let ids = PokemonAssets.queryableSpeciesIDs
             let id = Int(rng.next() % UInt64(ids.count)) + ids.lowerBound
             do {
                 if let bs = try await provider.baseSpecies(id: id) {

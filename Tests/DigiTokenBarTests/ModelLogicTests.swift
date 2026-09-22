@@ -61,18 +61,20 @@ final class PokeAPILanguageTests: XCTestCase {
 // MARK: EvoLine 에셋 지원 범위
 
 final class EvoLineAssetTests: XCTestCase {
-    /// PokéAPI 원본 체인에 Gen-V 이후 진화형이 이어져도, 서비스가 제공하는 GIF가 있는 형태만
-    /// 실제 진화 라인과 단계 수에 남아야 한다. 예: 망키(#56) → 성원숭(#57) → 저승갓숭(#979).
-    func testKeepsOnlyFormsWithAnimatedAssets() {
+    /// Wikimon 정적 스프라이트는 파일명 폴백 체인으로 받아오고 도감 번호 상한이 없다 — GIF 시절
+    /// #649 초과 형태를 잘라내던 필터(`keepingAnimatedSprites`)는 제거됐다(2026-09-22). 예:
+    /// 망키(#56) → 성원숭(#57) → 저승갓숭(#979) 전 단계가 그대로 남아야 한다.
+    /// [회귀] 이 트리는 #649 초과 자식(979)을 포함해야 옛 필터가 되살아나면 실패로 드러난다.
+    func testEvolutionTreeSurvivesIntactBeyondTheOldGenVCap() {
         let line = EvoLine(
             baseID: 56,
             tree: evoNode(56, [evoNode(57, [evoNode(979)])]),
             rarity: .common,
             names: [:])
 
-        XCTAssertEqual(line.totalForms, 2)
-        XCTAssertEqual(line.tree.finalIDs, [57])
-        XCTAssertNil(line.tree.node(withID: 979))
+        XCTAssertEqual(line.totalForms, 3)
+        XCTAssertEqual(line.tree.finalIDs, [979])
+        XCTAssertNotNil(line.tree.node(withID: 979), "#649 초과라고 진화 단계가 잘리면 안 된다")
     }
 }
 

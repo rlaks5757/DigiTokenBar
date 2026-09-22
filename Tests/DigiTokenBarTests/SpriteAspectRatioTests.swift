@@ -144,6 +144,17 @@ final class SpriteAspectRatioTests: XCTestCase {
                      "if this ever converts, the guard above stopped being able to fail")
     }
 
+    /// Bob is the only movement left now that Wikimon sprites have no GIF variant (2026-09-22): the
+    /// up/down menu bar frames must actually differ in vertical placement, or the "animation" is two
+    /// identical frames and the menu bar silently freezes despite `menuFrames.count > 1` staying true.
+    @MainActor
+    func testMenuBarBobFramesDifferInVerticalOffset() {
+        let down = AppDelegate.menuBarLayout(for: Self.spoinkGIF, up: false)
+        let up = AppDelegate.menuBarLayout(for: Self.spoinkGIF, up: true)
+        XCTAssertNotEqual(down.rect.origin.y, up.rect.origin.y,
+                          "up/down frames must be offset, or bob has no visible motion")
+    }
+
     /// `contentsScale` must follow the bitmap's own pixel/point density, not the current screen.
     /// Frames are baked by `lockFocus` at the backing scale in effect when they were composed, so
     /// reading the scale off the screen would double the sprite after a move to a 1x display.

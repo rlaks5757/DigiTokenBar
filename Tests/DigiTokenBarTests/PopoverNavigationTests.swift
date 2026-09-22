@@ -67,11 +67,6 @@ final class RepresentativeLocalizationTests: XCTestCase {
         XCTAssertEqual(l.todayTokensShort, "Heutige Tokens")
         XCTAssertEqual(l.todayCost, "Heutige Kosten ($)")
         XCTAssertEqual(l.limitPercent, "Limit %")
-        XCTAssertEqual(l.animationQualityLabel, "Animation")
-        XCTAssertEqual(l.animationQualityHint, "Flüssigere Animationen verbrauchen mehr Batterie")
-        XCTAssertEqual(l.animationPowerSaver, "Energiesparmodus")
-        XCTAssertEqual(l.animationBalanced, "Ausgewogen")
-        XCTAssertEqual(l.animationSmooth, "Flüssig")
     }
 
     /// 대표 포켓몬은 메뉴바와 플로팅 펫에 함께 쓰이는 독립 개념이다. 모든 언어가 pet 전용 표현으로

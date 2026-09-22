@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 가방(인벤토리) — 소유 아이템 카드 + 사용. 빈 상태는 움직이는 잠만보(컬렉션의 피카츄 패턴).
+/// 가방(인벤토리) — 소유 아이템 카드 + 사용. 빈 상태는 V-mon(컬렉션의 아구몬 패턴).
 @MainActor
 struct BagView: View {
     let store: CompanionStore
@@ -22,10 +22,10 @@ struct BagView: View {
         }
     }
 
-    /// 빈 가방 — 움직이는 잠만보(143) + 안내(특정 아이템명 미언급, 확장 대비).
+    /// 빈 가방 — 안내 마스코트 + 안내(특정 아이템명 미언급, 확장 대비).
     private var emptyState: some View {
         VStack(spacing: 10) {
-            SpriteView(speciesID: 143, size: 96, animated: true)   // 잠만보(움직임)
+            SpriteView(speciesID: DigimonData.bagEmptyMascotID, size: 96, bob: true)
             Text(store.l.bagEmptyTitle)
                 .font(.callout.weight(.semibold))
         }

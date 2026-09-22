@@ -26,8 +26,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private let navigation = PopoverNavigation()
 
     // 메뉴바 캐릭터 애니메이션 — 단일 타이머로 프레임 순환.
-    // 프레임 = 이미 22px 로 합성된 이미지 + delay. egg/static 은 2프레임 bob, animated 는 GIF 실제 프레임.
-    private var menuSpriteKey: String?   // menuSpriteKey(id:floor:) 결과 — 바뀌면 재로딩
+    // 프레임 = 이미 22px 로 합성된 이미지 + delay. egg/static 모두 2프레임 bob(유일한 움직임).
+    private var menuSpriteKey: String?   // menuSpriteKey(id:) 결과 — 바뀌면 재로딩
     private var menuFrames: [(image: NSImage, delay: TimeInterval)] = []
     /// `menuFrames` 와 인덱스 대응하는 레이어용 비트맵. 프레임 준비 시 한 번만 변환한다.
     /// 비어 있으면(변환 실패) `setStatusImage` 가 `button.image` 폴백 경로를 탄다.
@@ -36,7 +36,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private var menuTimer: Timer?
     private var menuLoadGen = 0     // async 로드 경합 방지
     private var displayAwake = true     // 디스플레이 켜짐 여부 (꺼지면 메뉴 애니메이션 정지 — 배터리)
-    private var powerObserver: NSObjectProtocol?   // 저전력 토글 → 유효 fps 하한 재평가
 
     /// 스프라이트 전용 서브레이어 — 프레임 교체의 드로잉 비용을 없앤다.
     ///
@@ -108,7 +107,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         observeStore()
         observeCompanionSprite()
         observeDisplaySleep()
-        observePowerState()
         applyState()
     }
 
@@ -126,40 +124,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         }
     }
 
-    /// 대표 스프라이트 정체성(종/shiny/fps 하한) 관찰 — 대표 선택·해제와 애니메이션 품질 변경뿐 아니라
-    /// 사탕 진화·졸업(BagView), 세이브 가져오기, 부화·메타몽 리빌 async 완료처럼 store 갱신 틱 없이
-    /// companion 만 바뀌는 경로에서도 메뉴바를 즉시 갱신한다. observeStore(menuTitle)만으론 다음 사용량 폴링(기본 120s)까지
+    /// 대표 스프라이트 정체성(종) 관찰 — 대표 선택·해제뿐 아니라 사탕 진화·졸업(BagView), 세이브
+    /// 가져오기, 부화·메타몽 리빌 async 완료처럼 store 갱신 틱 없이 companion 만 바뀌는 경로에서도
+    /// 메뉴바를 즉시 갱신한다. observeStore(menuTitle)만으론 다음 사용량 폴링(기본 120s)까지
     /// 이전 포켓몬이 남는다(사탕 졸업 후 메뉴바 잔상 리포트 — UsageStore.onRefresh 주석과 같은 부류).
-    ///
-    /// **fps 설정도 여기서 관찰한다**: 프레임은 하한에 맞춰 솎아낸 결과물이라 하한이 곧 정체성의
-    /// 일부다(`menuSpriteKey`). `observeStore` 는 `menuTitle` 만 추적하므로, 이걸 빼면 설정을
-    /// 바꿔도 다음 사용량 폴링(기본 120s)까지 옛 fps 로 돈다 — 위 '메뉴바 잔상'과 같은 부류.
     /// (플로팅 펫은 `body` 에서 직접 읽어 SwiftUI 관찰이 처리한다.)
     private func observeCompanionSprite() {
         withObservationTracking {
             _ = companion.representativeSubject
-            _ = store.animationQuality
         } onChange: { [weak self] in
             Task { @MainActor in
                 guard let self else { return }
                 self.ensureMenuAnimation()
                 self.syncMenuAnimation()
                 self.observeCompanionSprite()
-            }
-        }
-    }
-
-    /// 저전력 모드 토글을 즉시 반영 — 유효 하한(`menuFrameFloor`)이 바뀌면 `menuSpriteKey` 가
-    /// 달라져 `ensureMenuAnimation()` 이 재구성한다(선택이 powerSaver 면 하한 불변 → 재구성 없음,
-    /// 이미 그 프레임률이라 옳다). 플로팅 펫은 자체 관측(`FloatingPetController`)으로 따로 처리.
-    private func observePowerState() {
-        powerObserver = NotificationCenter.default.addObserver(
-            forName: NSNotification.Name.NSProcessInfoPowerStateDidChange, object: nil, queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor in
-                guard let self else { return }
-                self.ensureMenuAnimation()
-                self.syncMenuAnimation()
             }
         }
     }
@@ -242,18 +220,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
     // MARK: 메뉴바 애니메이션
 
-    /// 메뉴바 GIF 프레임 지속의 하한(초) = fps 상한. 사용자 설정
-    /// (`UsageStore.AnimationQuality`)이 값을 정하고, `GIFDecoder.capFrameRate` 가 프레임을
-    /// 솎아내 적용한다. 하한 자체는 없어질 수 없다 — 근거는 그 enum 과 defect-log '에너지' 절.
-    /// 히스토리: 0.4s 고정 → 프리셋(0.4/0.2/0.1) 중 사용자 선택. 기기·스프라이트마다 체감과
-    /// 배터리 영향이 갈려 하나의 값으로 수렴하지 못했다 — 기본값은 고정 캡과 같은 0.4s 다.
-    /// 저전력 모드에선 powerSaver 하한으로 캡된다(`effectiveFrameFloor` — 저장 설정 무변경 파생,
-    /// 해제 시 자동 복귀). 이 값이 `menuSpriteKey` 에 들어가므로 저전력 토글 → 키 변화 → 재구성.
-    private var menuFrameFloor: TimeInterval {
-        store.animationQuality.effectiveFrameFloor(
-            lowPower: ProcessInfo.processInfo.isLowPowerModeEnabled)
-    }
-
     /// `Timer.tolerance` 배수 — wakeup 코얼레싱(다른 wakeup 과 합쳐 배터리 절약)의 강도.
     ///
     /// **늦게만 발화시킨다**(Apple: "fire the timer later than the scheduled time, up to the
@@ -263,14 +229,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     static let menuFrameTolerance = 0.1
 
     /// 대표 포켓몬에 맞춰 메뉴바 프레임을 준비. 종이 바뀐 경우에만 재로딩.
-    /// 정적 스프라이트로 먼저 보여주고, animated GIF 가 받아지면 교체한다(메뉴바도 GIF로 움직임).
-    /// 에너지 통제는 ① delay 하한 `menuFrameFloor` ② 안 보이면 정지(menuShouldAnimate) ③ 저전력 모드
-    /// 에선 하한을 powerSaver 로 강제 캡(`effectiveFrameFloor`)한다 — GIF 를 생략(bob)하는 대신
-    /// 프레임률만 낮춰, 애니메이션을 유지한 채 절전한다(bob 2회/s ↔ powerSaver ≤2.5회/s 로 근접).
+    /// 정적 스프라이트 + 상하 bob 2프레임(유일한 움직임 — Wikimon vpet 스프라이트는 정적 PNG 만 있다).
     private func ensureMenuAnimation() {
         let subject = companion.representativeSubject
         let id = subject.speciesID
-        let key = id.map { Self.menuSpriteKey(id: $0, floor: menuFrameFloor) }
+        let key = id.map(Self.menuSpriteKey(id:))
         if key == menuSpriteKey, !menuFrames.isEmpty { return }   // 이미 이 개체로 애니메이션 중
         menuSpriteKey = key
         menuLoadGen += 1
@@ -280,31 +243,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             setMenuFrames(Self.eggFrames())
             return
         }
-        // 정적 스프라이트 bob 을 먼저(없으면 받아와서). GIF 가 받아지면 아래에서 교체.
-        if let cached = SpriteLoader.cachedImage(speciesID: id) {
+        // 정적 스프라이트 bob — 캐시에 있으면 즉시, 없으면 받아와서.
+        let filenames = SpriteLoader.filenames(for: id)
+        if let cached = SpriteLoader.cachedImage(filenames: filenames) {
             setMenuFrames(Self.bobFrames(from: cached))
         } else {
             setMenuFrames(Self.eggFrames())
             Task { @MainActor [weak self] in
                 guard let self, gen == self.menuLoadGen,
-                      let sprite = await SpriteLoader.image(speciesID: id) else { return }
+                      let sprite = await SpriteLoader.image(filenames: filenames) else { return }
                 guard gen == self.menuLoadGen else { return }
                 self.setMenuFrames(Self.bobFrames(from: sprite))
             }
-        }
-
-        // 풀 GIF 애니메이션. delay 하한 `menuFrameFloor` 로 redraw 통제 — 저전력 모드에선 이 하한이
-        // powerSaver 로 캡되므로(GIF 생략 대신) 실제 애니메이션을 유지한 채 절전한다.
-        Task { @MainActor [weak self] in
-            guard let self, gen == self.menuLoadGen else { return }
-            guard let data = await SpriteStore.shared.data(speciesID: id, animated: true) else { return }
-            let raw = GIFDecoder.frames(from: data)
-            guard raw.count > 1, gen == self.menuLoadGen else { return }
-            // fps 캡 = `menuFrameFloor`. 프레임마다 상태바 재합성(CA 커밋 → 디스플레이 사이클
-            // wakeup)이 붙으므로 네이티브 fps 로는 절대 돌리지 않는다(근거는 상수 주석).
-            // 솎아낸 **뒤** 22px 로 합성한다 — 버려질 프레임까지 합성하지 않게.
-            let capped = GIFDecoder.capFrameRate(raw, floor: self.menuFrameFloor)
-            self.setMenuFrames(capped.map { (Self.menuBarImage(from: $0.image, up: false), $0.delay) })
         }
     }
 
@@ -443,18 +393,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             && (statusItem.button?.window?.occlusionState.contains(.visible) ?? true)
     }
 
-    /// 메뉴바 프레임 캐시의 정체성 — 이 값이 바뀌면 프레임을 다시 만든다.
-    ///
-    /// **하한(fps 설정)이 반드시 들어가야 한다.** 프레임은 하한에 맞춰 솎아낸 결과물이라, 키가
-    /// 종만 담으면 설정을 바꿔도 다음 진화까지 옛 fps 로 계속 돈다(설계 시 확인된 함정).
-    /// 순수·테스트용: `testIdentityKeysIncludeTheFrameFloor`.
-    static func menuSpriteKey(id: Int, floor: TimeInterval) -> String {
-        "\(id)-\(floor)"
+    /// 메뉴바 프레임 캐시의 정체성 — 이 값이 바뀌면 프레임을 다시 만든다. 순수·테스트용.
+    static func menuSpriteKey(id: Int) -> String {
+        "\(id)"
     }
 
     // MARK: 프레임 합성 (22px)
 
-    /// 스프라이트 정적 + 가벼운 상하 bob 2프레임 (animated 미지원/로딩 폴백).
+    /// 스프라이트 정적 + 가벼운 상하 bob 2프레임. Wikimon 은 정적 PNG 뿐이라 이게 유일한 움직임이다
+    /// — "애니메이션 잔재"로 보고 지우면 동반자가 완전히 정지한다.
     private static func bobFrames(from sprite: NSImage) -> [(image: NSImage, delay: TimeInterval)] {
         [(menuBarImage(from: sprite, up: false), 0.5), (menuBarImage(from: sprite, up: true), 0.5)]
     }

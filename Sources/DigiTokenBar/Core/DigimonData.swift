@@ -37,6 +37,27 @@ enum DigiLevel: String, Sendable, CaseIterable, Codable {
 /// `String` raw value는 JSON 디코딩 키용(케이스명 그대로).
 enum Digimental: String, Sendable, CaseIterable, Codable {
     case courage, sincerity, miracles, love, purity, knowledge, hope, light, friendship
+
+    /// Wikimon 아이템 아트 파일명(`Digimental_<trait>.jpg`, MD5 해시 경로는 SpriteStore 가 처리).
+    /// 케이스마다 명시 — `"Digimental_\(rawValue).jpg"` 로 일반화하면 새 케이스가 추가돼도 항상
+    /// 문자열을 만들어내 컴파일은 통과하지만 실제로는 404 날 수 있다(아래 sincerity 가 그 실례).
+    /// `default:` 없는 exhaustive switch라 케이스 추가 시 매핑을 안 채우면 컴파일 에러로 막힌다.
+    var wikimonFilename: String {
+        switch self {
+        case .courage: return "Digimental_courage.jpg"
+        // Wikimon 은 이 디지멘탈을 "reliability"로 표기한다(더빙/번역판 명칭 분기 — 국내외 매체마다
+        // sincerity/reliability 로 갈렸다). 우리 쪽 케이스명(sincerity)과 다르므로 실수로
+        // "Digimental_sincerity.jpg" 로 되돌리면 404 난다 — 자산이 없는 게 아니라 이름이 다른 것.
+        case .sincerity: return "Digimental_reliability.jpg"
+        case .miracles: return "Digimental_miracles.jpg"
+        case .love: return "Digimental_love.jpg"
+        case .purity: return "Digimental_purity.jpg"
+        case .knowledge: return "Digimental_knowledge.jpg"
+        case .hope: return "Digimental_hope.jpg"
+        case .light: return "Digimental_light.jpg"
+        case .friendship: return "Digimental_friendship.jpg"
+        }
+    }
 }
 
 /// 진화 라인의 한 단계. 레벨은 인덱스에서 유추하지 않고 라인마다 직접 지정한다 —
@@ -93,7 +114,8 @@ struct DigimonName: Sendable {
     /// 값이 있으면 그 시리즈 하나로 확정된 파일명만 쓴다(폴백 없음).
     /// EVOLUTION.md §6 실측: Depthmon 은 시리즈 자리에 `dark_color` 라는 비표준 값이 오고,
     /// Imperialdramon Fighter/Paladin Mode 는 `<stem>` 자체가 `Imperialdramon_fighter`/`_paladin`
-    /// (소문자 약칭, `Mode` 없음) 이면서 시리즈는 `vb` 로 고정이다 — 둘 다 추정 규칙으로 못 만든다.
+    /// (소문자 약칭, `Mode` 없음) 이면서 시리즈는 `vb` 로 고정이며, Dragon Mode(900, 내부 ID)는
+    /// `<stem>` 이 `Imperialdramon_DM` 이면서 시리즈는 `xloader` 로 고정이다 — 셋 다 추정 규칙으로 못 만든다.
     let spriteSeriesPin: String?
     /// **digi-api 에 없는 내부 전용 id 인지.** 기본값 false — digi-api 실측 ID 를 쓰는 기존 종은
     /// 전부 이 값을 명시하지 않아도 false 로 흡수된다(하위호환). true 인 종(예: Imperialdramon
@@ -111,9 +133,9 @@ struct DigimonName: Sendable {
 
     /// 시도할 스프라이트 파일명 후보 목록(우선순위 순). `spriteSeriesPin` 이 있으면 그 파일명
     /// 하나만, 없으면 EVOLUTION.md §6 폴백 체인(vb > ws > xloader) 순서로 3개를 반환한다.
-    /// **파일명까지만** 다룬다 — 실제 URL 의 `<h1>/<h2>` MediaWiki 해시 경로는 파일명에서
-    /// 추측 불가능하고(§6 실측) 파일 페이지·API 조회로 fetch 시점에 풀어야 하므로,
-    /// 네트워크 로직을 금지하는 이 파일(6번째 줄 참고)의 책임 밖이다.
+    /// **파일명까지만** 다룬다 — 실제 URL 의 `<h1>/<h2>` MediaWiki 해시 경로는 파일명의
+    /// MD5 로 fetch 시점에 유도되므로(`SpriteStore.wikimonRequest`), 네트워크 로직을 금지하는
+    /// 이 파일(6번째 줄 참고)의 책임 밖이다.
     var spriteFilenames: [String] {
         let series = spriteSeriesPin.map { [$0] } ?? ["vb", "ws", "xloader"]
         return series.map { "\(spriteStem)_vpet_\($0).png" }
@@ -121,6 +143,12 @@ struct DigimonName: Sendable {
 }
 
 enum DigimonData {
+
+    /// 빈 상태(도감/가방) 안내 마스코트. 데이터에 실재하는 종이어야 한다 — 없는 id 를 쓰면
+    /// 파일명 후보가 안 나와 스프라이트가 조용히 🥚 폴백으로 떨어진다(에러도 로그도 없다).
+    /// 어드벤처 01/02 각 주인공 파트너를 쓴다. 가드: `testEmptyStateMascotsExistInTheDataset`.
+    static let dexEmptyMascotID = 1     // Agumon (어드벤처 01)
+    static let bagEmptyMascotID = 349   // V-mon (어드벤처 02)
 
     /// JSON 로드 + 검증 결과를 한 번만 계산해 캐시한다. `Result` 로 감싸 두어(캐시 자체는
     /// `static let` 이라 Swift 6 전역 가변 상태 진단을 안 만든다) 검증은 반드시 수행되고,

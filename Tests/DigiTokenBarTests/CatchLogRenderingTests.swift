@@ -28,9 +28,9 @@ final class CatchLogRenderingTests: XCTestCase {
         var state = CompanionState()
         state.language = .en
         state.dex = (0..<300).map { i in
-            DexEntry(baseID: 25, finalID: 25, chainOrder: [25], rarity: .common,
+            DexEntry(baseID: 1, finalID: 1, chainOrder: [1], rarity: .common,
                      caughtAt: Date(timeIntervalSince1970: 1_700_000_000 + Double(i)),
-                     names: [25: ["en": "Fixture \(i)"]])
+                     names: [1: ["en": "Fixture \(i)"]])
         }
         try JSONEncoder().encode(state).write(to: file)
         let store = CompanionStore(fileURL: file)
@@ -39,7 +39,8 @@ final class CatchLogRenderingTests: XCTestCase {
         NSColor.red.setFill()
         NSRect(x: 0, y: 0, width: 96, height: 96).fill()
         image.unlockFocus()
-        let key = SpriteLoader.cacheDir.appendingPathComponent("25-s.png").path as NSString
+        let filename = try XCTUnwrap(SpriteLoader.filenames(for: 1).first)
+        let key = SpriteLoader.cacheDir.appendingPathComponent(filename).path as NSString
         let previous = SpriteLoader.imageCache.object(forKey: key)
         SpriteLoader.imageCache.setObject(image, forKey: key)
         defer {
