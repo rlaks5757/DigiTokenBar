@@ -31,9 +31,11 @@
     { "id": 98, "apiName": "Patamon", "spriteStem": "Patamon", "spriteStemVerified": true },
     { "id": 3, "apiName": "Angemon", "spriteStem": "Angemon", "spriteStemVerified": true },
     { "id": 121, "apiName": "Holy Angemon", "spriteStem": "HolyAngemon", "spriteStemVerified": true },
+    { "id": 384, "apiName": "Seraphimon", "spriteStem": "Seraphimon", "spriteStemVerified": true },
 
     { "id": 83, "apiName": "Tailmon", "spriteStem": "Tailmon", "spriteStemVerified": true },
     { "id": 38, "apiName": "Angewomon", "spriteStem": "Angewomon", "spriteStemVerified": true },
+    { "id": 123, "apiName": "Holydramon", "spriteStem": "Holydramon", "spriteStemVerified": true },
 
     { "id": 349, "apiName": "V-mon", "spriteStem": "Vmon", "spriteStemVerified": true },
     { "id": 358, "apiName": "XV-mon", "spriteStem": "Xvmon", "spriteStemVerified": true },
@@ -47,6 +49,7 @@
     { "id": 271, "apiName": "Armadimon", "spriteStem": "Armadimon", "spriteStemVerified": true },
     { "id": 266, "apiName": "Ankylomon", "spriteStem": "Ankylomon", "spriteStemVerified": true },
 
+    { "id": 312, "apiName": "Lighdramon", "spriteStem": "Lighdramon", "spriteStemVerified": true },
     { "id": 331, "apiName": "Paildramon", "spriteStem": "Paildramon", "spriteStemVerified": true },
     { "id": 390, "apiName": "Silphymon", "spriteStem": "Silphymon", "spriteStemVerified": true },
     { "id": 387, "apiName": "Shakkoumon", "spriteStem": "Shakkoumon", "spriteStemVerified": true },
@@ -72,8 +75,8 @@
     { "key": "tentomon", "stages": [{ "id": 85, "level": "child" }, { "id": 35, "level": "adult" }, { "id": 40, "level": "perfect" }], "rarity": "common" },
     { "key": "palmon", "stages": [{ "id": 81, "level": "child" }, { "id": 195, "level": "adult" }, { "id": 166, "level": "perfect" }], "rarity": "common" },
     { "key": "gomamon", "stages": [{ "id": 117, "level": "child" }, { "id": 124, "level": "adult" }, { "id": 96, "level": "perfect" }], "rarity": "common" },
-    { "key": "patamon", "stages": [{ "id": 98, "level": "child" }, { "id": 3, "level": "adult" }, { "id": 121, "level": "perfect" }], "rarity": "rare" },
-    { "key": "tailmon", "stages": [{ "id": 83, "level": "child" }, { "id": 38, "level": "perfect" }], "rarity": "rare" },
+    { "key": "patamon", "stages": [{ "id": 98, "level": "child" }, { "id": 3, "level": "adult" }, { "id": 121, "level": "perfect" }, { "id": 384, "level": "ultimate" }], "rarity": "rare" },
+    { "key": "tailmon", "stages": [{ "id": 83, "level": "child" }, { "id": 38, "level": "perfect" }, { "id": 123, "level": "ultimate" }], "rarity": "rare" },
     { "key": "vmon", "stages": [{ "id": 349, "level": "child" }, { "id": 358, "level": "adult" }], "rarity": "uncommon" },
     { "key": "wormmon", "stages": [{ "id": 356, "level": "child" }, { "id": 336, "level": "adult" }], "rarity": "uncommon" },
     { "key": "hawkmon", "stages": [{ "id": 399, "level": "child" }, { "id": 267, "level": "adult" }], "rarity": "uncommon" },
@@ -94,6 +97,7 @@
     { "childID": 349, "digimental": "courage", "result": 305 },
     { "childID": 349, "digimental": "sincerity", "result": 298 },
     { "childID": 349, "digimental": "miracles", "result": 315 },
+    { "childID": 349, "digimental": "friendship", "result": 312 },
     { "childID": 399, "digimental": "love", "result": 401 },
     { "childID": 399, "digimental": "purity", "result": 389 },
     { "childID": 271, "digimental": "knowledge", "result": 299 },

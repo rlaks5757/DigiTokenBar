@@ -19,13 +19,14 @@ final class DigimonLineTests: XCTestCase {
     }
 
     /// 라인마다 단계 수(k)가 다르다는 전제 — 4로 고정되어 있지 않은지 확인.
-    /// 집합 자체를 고정해, contains 단언만으로는 안 걸리는 k=3 라인(가장 많은 5개)의 오변경도 잡는다.
+    /// 버킷별 개수만으로는 구성원이 통째로 교체돼도 개수가 우연히 같으면 못 잡는다
+    /// (실제로 발생한 사례: patamon 이 k=3→4 로 나가고 tailmon 이 k=2→3 으로 들어와
+    /// k=3 개수는 5 그대로였다) — 분포 전체를 딕셔너리로 고정해 어떤 버킷이 바뀌어도 걸리게 한다.
     func testLineLengthsAreNotUniform() {
         let lengths = DigimonData.lines.map(\.totalForms)
         XCTAssertEqual(Set(lengths), [2, 3, 4], "라인 단계 수 분포가 바뀌었다 — k 값 자체를 재확인하라")
-        // k=3(가장 많은 5라인: Piyomon·Tentomon·Palmon·Gomamon·Patamon, 전부 Perfect 종료)이 실수로
-        // k=2/k=4 로 바뀌어도 위 Set 단언만으로는 안 걸린다 — 개수를 별도로 고정한다.
-        XCTAssertEqual(lengths.filter { $0 == 3 }.count, 5, "k=3 라인 개수가 바뀌었다")
+        let distribution = Dictionary(grouping: lengths, by: { $0 }).mapValues(\.count)
+        XCTAssertEqual(distribution, [2: 4, 3: 5, 4: 3], "라인 단계 수 분포(k별 개수)가 바뀌었다")
     }
 
     /// Tailmon 라인은 Adult 가 없다 — 작중 설정(Adult 급)으로 임의 승격되지 않았는지 확인.
@@ -91,6 +92,7 @@ final class DigimonArmorTests: XCTestCase {
     func testAllNineArmorCombinationsResolve() {
         XCTAssertEqual(DigimonData.armorResult(childID: 349, digimental: .courage), 305)
         XCTAssertEqual(DigimonData.armorResult(childID: 349, digimental: .miracles), 315)
+        XCTAssertEqual(DigimonData.armorResult(childID: 349, digimental: .friendship), 312)
         XCTAssertEqual(DigimonData.armorResult(childID: 399, digimental: .love), 401)
         XCTAssertEqual(DigimonData.armorResult(childID: 399, digimental: .purity), 389)
         XCTAssertEqual(DigimonData.armorResult(childID: 271, digimental: .knowledge), 299)
@@ -101,6 +103,19 @@ final class DigimonArmorTests: XCTestCase {
     /// 존재하지 않는 (Child, 디지멘탈) 조합은 nil.
     func testUnknownArmorComboReturnsNil() {
         XCTAssertNil(DigimonData.armorResult(childID: 1, digimental: .courage))
+    }
+
+    /// 모든 `Digimental` 은 armor 결과를 최소 하나 가진다 — enum → JSON 방향 가드.
+    /// 로더는 JSON→enum 방향(모르는 문자열)만 막는다. 반대로 enum 에 case 만 추가하고
+    /// `armor[]` 행을 빠뜨리면 상점은 그 디지멘탈을 계속 파는데 `armorResult` 는 영원히
+    /// nil 이라 유저가 재화만 잃는다. 게이트에 단서가 남지 않으므로 여기서 고정한다.
+    func testEveryDigimentalHasAtLeastOneArmorResult() {
+        let covered = Set(DigimonData.armorResults.keys.map(\.digimental))
+        for digimental in Digimental.allCases {
+            XCTAssertTrue(covered.contains(digimental),
+                "디지멘탈 \(digimental.rawValue) 에 대응하는 armor[] 행이 없다 — "
+                + "상점에서 팔리지만 진화 결과가 nil 이 된다(재화 소실)")
+        }
     }
 }
 
@@ -158,8 +173,8 @@ final class DigimonSpriteTests: XCTestCase {
     /// 48종 전부 실측 확인되어 spriteStemVerified 가 항상 true 여야 한다 — 아직 미검증인 항목이
     /// 섞여 있으면 스프라이트 로딩 실패 원인 후보 1순위로 취급해야 하므로 회귀 가드로 남긴다.
     func testAllFortyEightSpeciesAreSpriteStemVerified() {
-        // 48종 + Imperialdramon Dragon Mode(900, 내부 ID) = 49.
-        XCTAssertEqual(DigimonData.names.count, 49)
+        // 48종 + Imperialdramon Dragon Mode(900, 내부 ID) + Lighdramon/Seraphimon/Holydramon 3종 = 52.
+        XCTAssertEqual(DigimonData.names.count, 52)
         for (id, name) in DigimonData.names {
             XCTAssertTrue(name.spriteStemVerified, "id \(id) 가 아직 spriteStemVerified: false")
         }
@@ -173,8 +188,8 @@ final class DigimonSpriteTests: XCTestCase {
         XCTAssertEqual(DigimonData.name(for: 900)?.spriteFilenames, ["Imperialdramon_DM_vpet_xloader.png"])
     }
 
-    /// 나머지 45종은 예외 없이 vb > ws > xloader 폴백 체인을 그대로 타야 한다(회귀 방지) —
-    /// 전수(45건)로 확인해 표본 누락으로 통과하는 일이 없게 한다.
+    /// 나머지 48종(45 + Lighdramon/Seraphimon/Holydramon)은 예외 없이 vb > ws > xloader 폴백 체인을
+    /// 그대로 타야 한다(회귀 방지) — 전수(48건)로 확인해 표본 누락으로 통과하는 일이 없게 한다.
     func testRemainingFortyFiveSpeciesUseFallbackChain() {
         let pinnedIDs: Set<Int> = [298, 405, 481, 900]
         var checkedCount = 0
@@ -187,6 +202,6 @@ final class DigimonSpriteTests: XCTestCase {
             ], "id \(id) 의 폴백 체인 순서가 vb > ws > xloader 가 아님")
             checkedCount += 1
         }
-        XCTAssertEqual(checkedCount, 45)
+        XCTAssertEqual(checkedCount, 48)
     }
 }

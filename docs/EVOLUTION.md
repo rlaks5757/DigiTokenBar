@@ -42,8 +42,8 @@ Agumon → Greymon 과 Greymon → Agumon 이 **둘 다** 존재한다.
 | 4 | Tentomon (85) | Kabuterimon (35) | Atlur Kabuterimon (Blue) (40) | — |
 | 5 | Palmon (81) | Togemon (195) | Lilimon (166) | — |
 | 6 | Gomamon (117) | Ikkakumon (124) | Zudomon (96) | — |
-| 7 | Patamon (98) | Angemon (3) | Holy Angemon (121) | — |
-| 8 | Tailmon (83) | — | Angewomon (38) | — |
+| 7 | Patamon (98) | Angemon (3) | Holy Angemon (121) | Seraphimon (384) |
+| 8 | Tailmon (83) | — | Angewomon (38) | Holydramon (123) |
 
 > **8번 Tailmon 라인은 Adult 가 없다.** Tailmon 자체가 Adult 급이지만 작중 Child 처럼 다뤄진다.
 > 코드에서 **단계 수(k)가 라인마다 다르다**는 전제를 반드시 유지할 것.
@@ -108,6 +108,7 @@ Paildramon (331) → Imperialdramon Dragon Mode (900, 내부 ID) → Imperialdra
 | V-mon (349) | 용기 | Fladramon | 305 |
 | V-mon (349) | 성실 | Depthmon | 298 |
 | V-mon (349) | 기적 | Magnamon | 315 |
+| V-mon (349) | 우정 | Lighdramon | 312 |
 | Hawkmon (399) | 사랑 | Holsmon | 401 |
 | Hawkmon (399) | 순수 | Shurimon | 389 |
 | Armadimon (271) | 지식 | Digmon | 299 |
@@ -117,6 +118,14 @@ Paildramon (331) → Imperialdramon Dragon Mode (900, 내부 ID) → Imperialdra
 
 > **성실 디지멘탈은 V-mon·Armadimon 양쪽에서 쓰인다** — `(Child, 디지멘탈)` **복합키**로 조회할 것.
 > 디지멘탈 단독으로는 결과가 결정되지 않는다.
+
+> ⚠️ **아머 진화를 구현할 사람에게.** `Digimental` case 를 추가하고 `ItemKind` 에 대응 상점
+> 아이템만 넣은 채 위 표(및 `Resources/digimon.json` 의 `armor[]` 행)에 결과를 빠뜨려도,
+> 현재 가드들은 이를 잡지 못한다 — 로더는 JSON→enum 방향(모르는 문자열)만 막고, enum→JSON
+> 방향(존재하는 case 에 대응하는 JSON 행이 없는 경우)은 아무도 보지 않는다. 그 상태에서
+> 상점은 여전히 그 디지멘탈을 판매하지만 `DigimonData.armorResult(childID:digimental:)` 는
+> 영원히 nil 을 반환한다 — 유저가 재화를 쓰고 아무 효과도 못 받는다. 새 디지멘탈을 추가할
+> 때는 case 추가와 JSON 행 추가를 같은 커밋에서 끝내라.
 
 ---
 
@@ -166,7 +175,7 @@ Wikimon vpet 도트를 **기기 시리즈 우선순위**로 시도한다:
 vb > ws > xloader   (컬러)
 ```
 
-- 로스터 **49종 중 45종이 이 3개(vb>ws>xloader) 폴백 체인 안에서 해결**된다.
+- 로스터 **52종 중 48종이 이 3개(vb>ws>xloader) 폴백 체인 안에서 해결**된다.
   나머지 4종(Depthmon·Imperialdramon FM/PM/DM)은 파일명·시리즈가 불규칙해 **고정 파일명**을 쓴다(아래 전수 검증 참고).
 - 🚫 **`pen` / `dm` / `dmc` 는 1비트 흑백이다.** 컬러와 섞으면 화풍이 깨진다.
 - 도트는 **이미 투명 배경**이다 — 크로마키 처리 불필요.
@@ -180,6 +189,11 @@ vb > ws > xloader   (컬러)
 >
 > **재정정 (2026-09-22)** — **49종**으로 늘었다. Imperialdramon Dragon Mode 에
 > 내부 전용 id **900**을 부여해 §3 체인의 끊어진 고리(331→405)를 이었다 — 아래 "덤" 항목 참고.
+>
+> **재정정 (2026-09-22, 아머 결과 3종 추가)** — **52종**으로 늘었다. 52 = 49 +
+> Lighdramon(312) + Seraphimon(384) + Holydramon(123) — §4 아머 진화 표에 성실/용기/희망
+> 계열 3행이 추가되며 딸려온 결과 종이다. 폴백 체인 안에서 해결되는 종 수도 45 → 48 로
+> 함께 갱신한다(신규 3종 전부 기본 vb>ws>xloader 체인으로 해결, 아래 전수 검증 참고).
 
 #### 실검증 결과 (2026-09-21)
 
@@ -228,6 +242,25 @@ https://wikimon.net/images/<h1>/<h2>/<Name>_vpet_<series>.png
 > digi-api 에 쓸 수 있는 Dragon Mode ID 가 없어서 **내부 전용 id 900**을 부여해 데이터 테이블에
 > 정식 추가했다(§3 Imperialdramon 체인). `vb` 폴백은 404 라 `spriteSeriesPin`으로 `xloader`
 > 하나만 고정한다(Depthmon·Imperialdramon FM/PM 과 동일 처리).
+
+> **덤 (2026-09-22, 아머 결과 3종 추가 전수 조회)** — §4 아머 진화 표에 추가된 Lighdramon(312)·
+> Seraphimon(384)·Holydramon(123) 을 포함해 로스터 52종 전체를 MD5 유도 URL 로 전수
+> 재조회했다: **52/52 성공, 실패 0.** 신규 3종은 전부 `vb` 시리즈에서 바로 해결되어
+> `spriteSeriesPin` 이 불필요하다(기본 폴백 체인 그대로):
+>
+> | 종 | 파일명 | 포맷/크기 |
+> |---|---|---|
+> | Lighdramon | `Lighdramon_vpet_vb.png` | PNG 192×192 RGBA |
+> | Seraphimon | `Seraphimon_vpet_vb.png` | PNG 180×168 RGBA |
+> | Holydramon | `Holydramon_vpet_vb.png` | PNG 186×168 RGBA |
+>
+> 전부 매직바이트로 실제 PNG 파일임을 확인했고 육안으로 종이 맞는지도 확인했다.
+>
+> **🚨 이름 함정 — 어느 표기가 등록돼 있는지는 종마다 다르다.** `Raidramon`(일본명)으로
+> 조회하면 digi-api 0건·Wikimon vpet 404 인데, `Lighdramon`(영문명)으로는 digi-api 312·
+> vpet 200 이 뜬다. 반대로 `Magnadramon` 은 404, `Holydramon` 이 200 이다. → §5 "이름 함정"과
+> 같은 부류의 함정이 종 이름 자체에도 있다 — **"없음"으로 판정하기 전에 일본명·영문명 양쪽을
+> 모두 조회해야 한다.** 이번 조사에서 실제로 두 번 이 함정에 걸렸다.
 
 **5. 확인된 시리즈 가용성 (표본)**
 

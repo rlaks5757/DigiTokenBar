@@ -123,23 +123,23 @@ final class ShopTests: XCTestCase {
 
     // MARK: 정렬 (가격 저렴한 순 + 구매 완료 보유형 맨 아래)
 
-    /// 상점 목록은 가격 오름차순(사탕 500M < 디지멘탈 8종 각 1B).
+    /// 상점 목록은 가격 오름차순(사탕 500M < 디지멘탈 9종 각 1B).
     func testItemsSortedByPriceAscending() {
         let items = store(used: 0).purchasableItems
         XCTAssertEqual(items.first, .rareCandy)
         let prices = items.compactMap(\.shopPrice)
         XCTAssertEqual(prices, prices.sorted(), "shopPrice 오름차순 — 가격 상수가 바뀌어도 정렬 불변식 유지")
-        // 현재는 9종 전부 판매 중이라 이 단언이 항상 참이다 — 이 자체가 실패할 수 없다는 뜻은 아니다.
+        // 현재는 10종 전부 판매 중이라 이 단언이 항상 참이다 — 이 자체가 실패할 수 없다는 뜻은 아니다.
         // filter { $0.shopPrice != nil } 은 미판매 아이템이 섞이는 걸 막는 살아있는 가드(shopPrice
         // 를 nil 로 두는 종을 추가하면 목록에서 빠지고 이 count 가 실제로 어긋난다). 그 가드가 걸러낸
         // 결과가 새지 않는지는 바로 아래에서 별도로 확인한다.
-        XCTAssertEqual(items.count, ItemKind.allCases.count, "모든 판매 아이템이 목록에 있어야 한다(현재 9종 전부 판매 중)")
+        XCTAssertEqual(items.count, ItemKind.allCases.count, "모든 판매 아이템이 목록에 있어야 한다(현재 10종 전부 판매 중)")
         XCTAssertTrue(items.allSatisfy { $0.shopPrice != nil },
                        "미판매 아이템이 섞이면 ShopEntry.price 의 ?? 0 폴백으로 0원 표시된다")
     }
 
-    /// [회귀] 디지멘탈 8종 × 7언어 = 56개 신규 지역화 문자열 — 이름은 언어 내에서 유일하고 비어있지
-    /// 않아야 한다(설명은 W3 로 exhaustive 해졌어도 8종이 여전히 같은 문구를 공유하므로 유일성은
+    /// [회귀] 디지멘탈 9종 × 7언어 = 63개 신규 지역화 문자열 — 이름은 언어 내에서 유일하고 비어있지
+    /// 않아야 한다(설명은 W3 로 exhaustive 해졌어도 9종이 여전히 같은 문구를 공유하므로 유일성은
     /// 검증하지 않는다 — 비어있지 않음만 확인). `CaseIterable` 이라 케이스가 늘어도 자동으로 걸린다.
     func testItemNamesCompleteAndUniquePerLanguage() {
         for lang in AppLanguage.allCases {
@@ -157,6 +157,39 @@ final class ShopTests: XCTestCase {
     func testFallbackEmojisAreAllUnique() {
         let emojis = ItemKind.allCases.map(\.fallbackEmoji)
         XCTAssertEqual(Set(emojis).count, ItemKind.allCases.count, "폴백 이모지 중복 — 화면에서 구별 불가")
+    }
+
+    /// [회귀] `Digimental`(아머 진화 데이터 키, EVOLUTION.md §4)과 `ItemKind`(인벤토리/상점 키)의
+    /// 디지멘탈 집합이 서로 대조되지 않아서 우정 디지멘탈(friendship)이 세 곳(EVOLUTION.md ·
+    /// Digimental · ItemKind)에서 동시에 빠진 채 조용히 일관됐던 적이 있다 — 1000+ 테스트가
+    /// 전부 green 이었다. 손으로 유지하는 매핑 목록을 세 번째 장소로 또 만들지 않기 위해,
+    /// 케이스명 규칙(`Digimental.foo` → `ItemKind.digimentalFoo`)만으로 두 집합을 기계적으로
+    /// 대조한다 — 규칙 자체는 기존 9종 전부가 이미 따르고 있는 실제 컨벤션이다(우연 아님).
+    /// 양방향 검증: 한쪽에만 있어도 실패해야 하므로 개수 일치 + 상호 포함을 모두 확인한다.
+    func testDigimentalAndItemKindSetsMatch() {
+        func expectedItemKindRawValue(for digimental: Digimental) -> String {
+            "digimental" + digimental.rawValue.prefix(1).uppercased() + digimental.rawValue.dropFirst()
+        }
+        let digimentalItemKinds = ItemKind.allCases.filter { $0.rawValue.hasPrefix("digimental") }
+
+        // 정방향: Digimental 각 케이스가 대응하는 ItemKind 케이스를 갖는지.
+        for d in Digimental.allCases {
+            let expected = expectedItemKindRawValue(for: d)
+            XCTAssertNotNil(ItemKind(rawValue: expected),
+                             "Digimental.\(d.rawValue) 에 대응하는 ItemKind.\(expected) 가 없음")
+        }
+        // 역방향: ItemKind 의 digimental* 케이스가 전부 Digimental 로 되짚어지는지
+        // (ItemKind 쪽에만 늘어난 케이스를 잡는다 — 정방향만으로는 못 잡음).
+        for kind in digimentalItemKinds {
+            let suffix = kind.rawValue.dropFirst("digimental".count)
+            let expectedDigimentalRawValue = suffix.prefix(1).lowercased() + suffix.dropFirst()
+            XCTAssertNotNil(Digimental(rawValue: expectedDigimentalRawValue),
+                             "ItemKind.\(kind.rawValue) 에 대응하는 Digimental.\(expectedDigimentalRawValue) 가 없음")
+        }
+        // 개수 일치까지 확인해 "양쪽 다 있지만 서로 다른 새 케이스가 하나씩 늘어 우연히 개수만
+        // 맞는" 경우가 아니라 진짜 1:1 대응인지 확정한다.
+        XCTAssertEqual(Digimental.allCases.count, digimentalItemKinds.count,
+                        "Digimental 과 ItemKind 의 디지멘탈 케이스 개수가 다름")
     }
 
     // MARK: shopEntries (판매 아이템 + 알 3종을 하나의 가격 오름차순 목록으로 병합)
@@ -186,6 +219,7 @@ final class ShopTests: XCTestCase {
                         .item(.digimentalKnowledge),        // 1B
                         .item(.digimentalHope),             // 1B
                         .item(.digimentalLight),            // 1B
+                        .item(.digimentalFriendship),        // 1B
                         .egg(nil),                          // 1B
                         .egg(.uncommon),                     // 2.5B
                         .egg(.rare)])                        // 4B
@@ -209,6 +243,7 @@ final class ShopTests: XCTestCase {
                         .item(.digimentalKnowledge),        // 1B
                         .item(.digimentalHope),             // 1B
                         .item(.digimentalLight),            // 1B
+                        .item(.digimentalFriendship),        // 1B
                         .egg(nil),                          // 1B
                         .egg(.uncommon),                     // 2.5B
                         .egg(.rare)])                        // 4B

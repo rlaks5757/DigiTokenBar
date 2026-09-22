@@ -107,7 +107,8 @@ private struct ItemCard: View {
         case .rareCandy:
             return store.isEgg ? l.useAfterHatch : l.useNeedsPokemon
         case .digimentalCourage, .digimentalSincerity, .digimentalMiracles, .digimentalLove,
-             .digimentalPurity, .digimentalKnowledge, .digimentalHope, .digimentalLight:
+             .digimentalPurity, .digimentalKnowledge, .digimentalHope, .digimentalLight,
+             .digimentalFriendship:
             return l.useArmorEvolutionComingSoon
         }
     }

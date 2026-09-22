@@ -998,6 +998,7 @@ struct L {
         case .digimentalKnowledge: return t("지식의 디지멘탈", "Digimental of Knowledge", "知識のデジメンタル", "Digimental del Conocimiento", "Digimental de la Connaissance", "Digimental do Conhecimento", "Digimental des Wissens")
         case .digimentalHope: return t("희망의 디지멘탈", "Digimental of Hope", "希望のデジメンタル", "Digimental de la Esperanza", "Digimental de l'Espoir", "Digimental da Esperança", "Digimental der Hoffnung")
         case .digimentalLight: return t("빛의 디지멘탈", "Digimental of Light", "光のデジメンタル", "Digimental de la Luz", "Digimental de la Lumière", "Digimental da Luz", "Digimental des Lichts")
+        case .digimentalFriendship: return t("우정의 디지멘탈", "Digimental of Friendship", "友情のデジメンタル", "Digimental de la Amistad", "Digimental de l'Amitié", "Digimental da Amizade", "Digimental der Freundschaft")
         }
     }
     func itemDescription(_ kind: ItemKind) -> String {
@@ -1012,7 +1013,8 @@ struct L {
                      "Aumenta a experiência do seu Pokémon em \(xp).",
                      "Gibt deinem aktuellen Pokémon \(xp) EP.")
         case .digimentalCourage, .digimentalSincerity, .digimentalMiracles, .digimentalLove,
-             .digimentalPurity, .digimentalKnowledge, .digimentalHope, .digimentalLight:
+             .digimentalPurity, .digimentalKnowledge, .digimentalHope, .digimentalLight,
+             .digimentalFriendship:
             return t("Child 단계에서 사용하면 아머체로 진화해요.",
                      "Use it on a Child-stage Digimon to armor-evolve.",
                      "成長期に使うとアーマー体に進化します。",

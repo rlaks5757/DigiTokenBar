@@ -184,6 +184,7 @@ enum ItemKind: String, Codable, Sendable, CaseIterable {
     case digimentalKnowledge
     case digimentalHope
     case digimentalLight
+    case digimentalFriendship
 
     /// PokéAPI 아이템 스프라이트 파일명(.../sprites/items/{name}.png). nil = 스프라이트 없음(이모지 폴백만).
     /// 디지멘탈은 PokéAPI 경로가 없어 전부 nil(이모지 폴백) — 스프라이트 작업은 별도 단계.
@@ -191,7 +192,8 @@ enum ItemKind: String, Codable, Sendable, CaseIterable {
         switch self {
         case .rareCandy: return "rare-candy"
         case .digimentalCourage, .digimentalSincerity, .digimentalMiracles, .digimentalLove,
-             .digimentalPurity, .digimentalKnowledge, .digimentalHope, .digimentalLight:
+             .digimentalPurity, .digimentalKnowledge, .digimentalHope, .digimentalLight,
+             .digimentalFriendship:
             return nil
         }
     }
@@ -207,6 +209,7 @@ enum ItemKind: String, Codable, Sendable, CaseIterable {
         case .digimentalKnowledge: return "🟣"
         case .digimentalHope: return "🟡"
         case .digimentalLight: return "✨"
+        case .digimentalFriendship: return "🔵"
         }
     }
     /// 상점 판매가(재화 = 사용한 토큰). nil = 상점 미판매.
@@ -214,7 +217,8 @@ enum ItemKind: String, Codable, Sendable, CaseIterable {
         switch self {
         case .rareCandy: return RareCandy.price
         case .digimentalCourage, .digimentalSincerity, .digimentalMiracles, .digimentalLove,
-             .digimentalPurity, .digimentalKnowledge, .digimentalHope, .digimentalLight:
+             .digimentalPurity, .digimentalKnowledge, .digimentalHope, .digimentalLight,
+             .digimentalFriendship:
             return DigimentalItem.price
         }
     }

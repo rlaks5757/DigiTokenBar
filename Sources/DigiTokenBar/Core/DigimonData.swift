@@ -36,7 +36,7 @@ enum DigiLevel: String, Sendable, CaseIterable, Codable {
 /// 아머 진화용 디지멘탈(Digimental) 아이템. EVOLUTION.md §4.
 /// `String` raw value는 JSON 디코딩 키용(케이스명 그대로).
 enum Digimental: String, Sendable, CaseIterable, Codable {
-    case courage, sincerity, miracles, love, purity, knowledge, hope, light
+    case courage, sincerity, miracles, love, purity, knowledge, hope, light, friendship
 }
 
 /// 진화 라인의 한 단계. 레벨은 인덱스에서 유추하지 않고 라인마다 직접 지정한다 —
@@ -86,7 +86,7 @@ struct DigimonName: Sendable {
     let apiName: String
     /// Wikimon 파일명 어간(`<어간>_vpet_<series>.png` 의 `<어간>`). 시리즈 접미사는 여기 포함하지 않는다.
     let spriteStem: String
-    /// EVOLUTION.md §6 "스프라이트 파일명 전수 검증" 에서 48종 전부 실측 확인됨 — 항상 true.
+    /// EVOLUTION.md §6 "스프라이트 파일명 전수 검증" 에서 52종 전부 실측 확인됨 — 항상 true.
     /// 필드는 회귀 가드로 남겨둔다(향후 새 종 추가 시 미검증 상태를 표시할 수 있게).
     let spriteStemVerified: Bool
     /// 시리즈 자리가 `vb > ws > xloader` 폴백 체인으로 해결되지 않는 예외용. nil 이면 폴백 체인을 탄다.
@@ -211,7 +211,7 @@ enum DigimonData {
 
     // MARK: - 이름 매핑 (EVOLUTION.md §5, §3 하위 실검증)
 
-    /// speciesID → 이름 표기. §6 "스프라이트 파일명 전수 검증" 에서 48종 전부 Wikimon API 로
+    /// speciesID → 이름 표기. §6 "스프라이트 파일명 전수 검증" 에서 52종 전부 Wikimon API 로
     /// 실측 확인되어 전 항목 `spriteStemVerified: true` 다(이후 추가된 Dragon Mode(900)도 팀 리드가
     /// 별도 실측). 그중 4건(Depthmon, Imperialdramon Fighter/Paladin/Dragon Mode)은
     /// `vb > ws > xloader` 폴백 규칙으로 못 만드는 파일명이라 `spriteSeriesPin` 으로 확정 파일명을

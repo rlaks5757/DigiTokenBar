@@ -21,11 +21,11 @@ final class DigimonDataLoaderTests: XCTestCase {
 
     func testRealResourceFileLoadsAndValidates() throws {
         let ds = try DigimonDataLoader.load(from: repoDigimonJSONURL())
-        // 48종 + Imperialdramon Dragon Mode(900, 내부 ID) = 49.
-        XCTAssertEqual(ds.names.count, 49)
+        // 48종 + Imperialdramon Dragon Mode(900, 내부 ID) + Lighdramon/Seraphimon/Holydramon 3종 = 52.
+        XCTAssertEqual(ds.names.count, 52)
         XCTAssertEqual(ds.lines.count, 12)
         XCTAssertEqual(ds.jogressResults.count, 5)
-        XCTAssertEqual(ds.armorResults.count, 9)
+        XCTAssertEqual(ds.armorResults.count, 10)
     }
 
     // MARK: - 최소 유효 데이터셋(뮤테이션 베이스) — 필드 하나만 건드려 실패 모드를 격리한다.
