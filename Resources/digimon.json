@@ -53,6 +53,7 @@
     { "id": 183, "apiName": "Omegamon", "spriteStem": "Omegamon", "spriteStemVerified": true },
     { "id": 405, "apiName": "Imperialdramon(Fighter Mode)", "spriteStem": "Imperialdramon_fighter", "spriteStemVerified": true, "spriteSeriesPin": "vb" },
     { "id": 481, "apiName": "Imperialdramon(Paladin Mode)", "spriteStem": "Imperialdramon_paladin", "spriteStemVerified": true, "spriteSeriesPin": "vb" },
+    { "id": 900, "apiName": "Imperialdramon(Dragon Mode)", "spriteStem": "Imperialdramon_DM", "spriteStemVerified": true, "spriteSeriesPin": "xloader", "isInternalID": true },
 
     { "id": 305, "apiName": "Fladramon", "spriteStem": "Fladramon", "spriteStemVerified": true },
     { "id": 298, "apiName": "Depthmon", "spriteStem": "Depthmon", "spriteStemVerified": true, "spriteSeriesPin": "dark_color" },
@@ -84,6 +85,10 @@
     { "a": 266, "b": 3, "result": 387 },
     { "a": 202, "b": 168, "result": 183 },
     { "a": 405, "b": 183, "result": 481 }
+  ],
+  "chain": [
+    { "from": 331, "fromLevel": "perfect", "to": 900, "toLevel": "ultimate" },
+    { "from": 900, "fromLevel": "ultimate", "to": 405, "toLevel": "ultimate" }
   ],
   "armor": [
     { "childID": 349, "digimental": "courage", "result": 305 },

@@ -95,12 +95,18 @@ struct DigimonName: Sendable {
     /// Imperialdramon Fighter/Paladin Mode 는 `<stem>` 자체가 `Imperialdramon_fighter`/`_paladin`
     /// (소문자 약칭, `Mode` 없음) 이면서 시리즈는 `vb` 로 고정이다 — 둘 다 추정 규칙으로 못 만든다.
     let spriteSeriesPin: String?
+    /// **digi-api 에 없는 내부 전용 id 인지.** 기본값 false — digi-api 실측 ID 를 쓰는 기존 종은
+    /// 전부 이 값을 명시하지 않아도 false 로 흡수된다(하위호환). true 인 종(예: Imperialdramon
+    /// Dragon Mode, id 900)은 실제 digi-api 조회를 시도하면 실패하므로, 런타임 fetch 호출부가
+    /// 이 값으로 걸러야 한다 — EVOLUTION.md §3 Imperialdramon 체인 참고.
+    let isInternalID: Bool
 
-    init(apiName: String, spriteStem: String, spriteStemVerified: Bool, spriteSeriesPin: String? = nil) {
+    init(apiName: String, spriteStem: String, spriteStemVerified: Bool, spriteSeriesPin: String? = nil, isInternalID: Bool = false) {
         self.apiName = apiName
         self.spriteStem = spriteStem
         self.spriteStemVerified = spriteStemVerified
         self.spriteSeriesPin = spriteSeriesPin
+        self.isInternalID = isInternalID
     }
 
     /// 시도할 스프라이트 파일명 후보 목록(우선순위 순). `spriteSeriesPin` 이 있으면 그 파일명
@@ -184,8 +190,9 @@ enum DigimonData {
     // MARK: - 죠그레스 (EVOLUTION.md §3)
 
     /// `(A, B) → 결과 ID`. 키는 `JogressKey` 로 정규화되어 순서 무관 조회가 보장된다.
-    /// Imperialdramon Dragon Mode 는 §3 체인 서술에만 등장하고 ID·죠그레스 입력이 없다
-    /// (§5: 단독 조회 HTTP 400) — 여기서 임의로 ID 를 만들지 않는다.
+    /// Paildramon(331) → Imperialdramon Dragon Mode(900, 내부 ID) → Fighter Mode(405) 는
+    /// 두 부모가 필요한 죠그레스가 아니라 단일 부모 전이라 여기 없다 — `DigimonDataset.forwardEdges`
+    /// (chain 배치)로 표현된다. §3 참고.
     static var jogressResults: [JogressKey: Int] { ds.jogressResults }
 
     static func jogressResult(_ a: Int, _ b: Int) -> Int? {
@@ -205,9 +212,10 @@ enum DigimonData {
     // MARK: - 이름 매핑 (EVOLUTION.md §5, §3 하위 실검증)
 
     /// speciesID → 이름 표기. §6 "스프라이트 파일명 전수 검증" 에서 48종 전부 Wikimon API 로
-    /// 실측 확인되어 전 항목 `spriteStemVerified: true` 다. 그중 3건(Depthmon, Imperialdramon
-    /// Fighter/Paladin Mode)은 `vb > ws > xloader` 폴백 규칙으로 못 만드는 파일명이라
-    /// `spriteSeriesPin` 으로 확정 파일명을 고정한다 — 위 DigimonName 문서 참고.
+    /// 실측 확인되어 전 항목 `spriteStemVerified: true` 다(이후 추가된 Dragon Mode(900)도 팀 리드가
+    /// 별도 실측). 그중 4건(Depthmon, Imperialdramon Fighter/Paladin/Dragon Mode)은
+    /// `vb > ws > xloader` 폴백 규칙으로 못 만드는 파일명이라 `spriteSeriesPin` 으로 확정 파일명을
+    /// 고정한다 — 위 DigimonName 문서 참고.
     static var names: [Int: DigimonName] { ds.names }
 
     static func name(for speciesID: Int) -> DigimonName? {

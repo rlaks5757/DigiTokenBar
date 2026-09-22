@@ -28,6 +28,8 @@ enum DigimonDataError: Error, CustomStringConvertible, Equatable {
     case unknownSpeciesInJogress(id: Int)
     /// 아머 결과 id 가 species 테이블에 없음.
     case unknownSpeciesInArmor(id: Int)
+    /// 단일 부모 전이(chain)가 참조하는 species id 가 species 테이블에 없음.
+    case unknownSpeciesInChain(id: Int)
     /// 통합 진화 그래프(정규+죠그레스+아머)에서 순환 발견.
     case cycleDetected(path: [Int])
 
@@ -49,6 +51,8 @@ enum DigimonDataError: Error, CustomStringConvertible, Equatable {
             return "죠그레스가 참조하는 species id \(id) 가 species 테이블에 없음"
         case .unknownSpeciesInArmor(let id):
             return "아머가 참조하는 species id \(id) 가 species 테이블에 없음"
+        case .unknownSpeciesInChain(let id):
+            return "chain 이 참조하는 species id \(id) 가 species 테이블에 없음"
         case .cycleDetected(let path):
             return "진화 그래프에서 순환 발견: \(path)"
         }
@@ -67,6 +71,8 @@ private struct RawDataset: Decodable {
         let spriteStem: String
         let spriteStemVerified: Bool
         let spriteSeriesPin: String?
+        /// digi-api 에 없는 내부 전용 id 인지. 없으면 false(§ DigimonName.isInternalID 문서 참고).
+        let isInternalID: Bool?
     }
     struct Stage: Decodable {
         let id: Int
@@ -87,12 +93,22 @@ private struct RawDataset: Decodable {
         let digimental: Digimental
         let result: Int
     }
+    /// 단일 부모 전이 한 단계. 죠그레스(두 부모)·정규 라인(라인 소속)으로 표현 안 되는
+    /// 개별 간선용 — Imperialdramon Dragon Mode 처럼 라인에 속하지 않는 중간 단계가 대상이다.
+    /// EVOLUTION.md §3 "Imperialdramon 체인" 참고. 기존 JSON 과의 하위호환을 위해 옵셔널로 둔다.
+    struct Chain: Decodable {
+        let from: Int
+        let fromLevel: DigiLevel
+        let to: Int
+        let toLevel: DigiLevel
+    }
 
     let dataVersion: Int
     let series: [String]
     let species: [Species]
     let lines: [Line]
     let jogress: [Jogress]
+    let chain: [Chain]?
     let armor: [Armor]
 }
 
@@ -144,7 +160,8 @@ enum DigimonDataLoader {
                 apiName: s.apiName,
                 spriteStem: s.spriteStem,
                 spriteStemVerified: s.spriteStemVerified,
-                spriteSeriesPin: s.spriteSeriesPin)
+                spriteSeriesPin: s.spriteSeriesPin,
+                isInternalID: s.isInternalID ?? false)
         }
 
         // 2) 라인 구성 + species 참조 무결성 + 종별 레벨 충돌 검증.
@@ -181,6 +198,23 @@ enum DigimonDataLoader {
             jogressResults[key] = j.result
         }
 
+        // 3-b) 단일 부모 전이(chain) 구성 + species 참조 무결성 + 종별 레벨 충돌 검증.
+        // 라인·죠그레스 어느 쪽으로도 표현 못하는 중간 단계용(EVOLUTION.md §3 Imperialdramon 체인).
+        // speciesLevel 을 라인과 공유해, chain 에 두 번 등장하는 id(예: 900)가 서로 다른 레벨을
+        // 주장하면 라인과 동일하게 speciesLevelConflict 로 잡힌다.
+        var chainEdges: [(from: Int, to: Int)] = []
+        for c in raw.chain ?? [] {
+            guard names[c.from] != nil else { throw DigimonDataError.unknownSpeciesInChain(id: c.from) }
+            guard names[c.to] != nil else { throw DigimonDataError.unknownSpeciesInChain(id: c.to) }
+            for (id, level) in [(c.from, c.fromLevel), (c.to, c.toLevel)] {
+                if let existing = speciesLevel[id], existing != level {
+                    throw DigimonDataError.speciesLevelConflict(id: id)
+                }
+                speciesLevel[id] = level
+            }
+            chainEdges.append((from: c.from, to: c.to))
+        }
+
         // 4) 아머 구성 + 중복 키 검증 + species 참조 무결성.
         var armorResults: [ArmorKey: Int] = [:]
         for a in raw.armor {
@@ -209,6 +243,9 @@ enum DigimonDataLoader {
         }
         for (key, result) in armorResults {
             forwardEdges[key.childID, default: []].append(.armor(digimental: key.digimental, to: result))
+        }
+        for edge in chainEdges {
+            forwardEdges[edge.from, default: []].append(.normal(to: edge.to))
         }
 
         try detectCycle(forwardEdges: forwardEdges)

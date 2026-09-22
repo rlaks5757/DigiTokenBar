@@ -21,7 +21,8 @@ final class DigimonDataLoaderTests: XCTestCase {
 
     func testRealResourceFileLoadsAndValidates() throws {
         let ds = try DigimonDataLoader.load(from: repoDigimonJSONURL())
-        XCTAssertEqual(ds.names.count, 48)
+        // 48종 + Imperialdramon Dragon Mode(900, 내부 ID) = 49.
+        XCTAssertEqual(ds.names.count, 49)
         XCTAssertEqual(ds.lines.count, 12)
         XCTAssertEqual(ds.jogressResults.count, 5)
         XCTAssertEqual(ds.armorResults.count, 9)
@@ -144,6 +145,43 @@ final class DigimonDataLoaderTests: XCTestCase {
         }
     }
 
+    // MARK: - 뮤테이션: chain 이 참조하는 species id 가 없음 → throw (미등록 참조 가드)
+
+    func testChainReferencingUnknownSpeciesThrows() throws {
+        var json = minimalValidJSON()
+        json["chain"] = [
+            ["from": 34, "fromLevel": "adult", "to": 9999, "toLevel": "ultimate"],
+        ]
+        XCTAssertThrowsError(try DigimonDataLoader.load(from: try data(json))) { error in
+            guard case DigimonDataError.unknownSpeciesInChain(let id) = error else {
+                return XCTFail("unknownSpeciesInChain 를 기대했지만 \(error) 를 받음")
+            }
+            XCTAssertEqual(id, 9999)
+        }
+    }
+
+    // MARK: - 뮤테이션: chain 에서 같은 id 가 다른 레벨을 주장 → throw (레벨 충돌 가드)
+
+    func testChainLevelConflictThrows() throws {
+        var json = minimalValidJSON()
+        json["species"] = [
+            ["id": 1, "apiName": "Agumon", "spriteStem": "Agumon", "spriteStemVerified": true],
+            ["id": 34, "apiName": "Greymon", "spriteStem": "Greymon", "spriteStemVerified": true],
+            ["id": 900, "apiName": "Mid", "spriteStem": "Mid", "spriteStemVerified": true],
+        ]
+        // 900 이 첫 간선에서는 ultimate 의 to, 두 번째 간선에서는 perfect 의 from 으로 등장 → 충돌.
+        json["chain"] = [
+            ["from": 34, "fromLevel": "adult", "to": 900, "toLevel": "ultimate"],
+            ["from": 900, "fromLevel": "perfect", "to": 1, "toLevel": "child"],
+        ]
+        XCTAssertThrowsError(try DigimonDataLoader.load(from: try data(json))) { error in
+            guard case DigimonDataError.speciesLevelConflict(let id) = error else {
+                return XCTFail("speciesLevelConflict 를 기대했지만 \(error) 를 받음")
+            }
+            XCTAssertEqual(id, 900)
+        }
+    }
+
     // MARK: - 순환 감지: 순진한 재귀라면 hang 할 자기참조 간선을 주입해 throw/종료를 확인.
 
     func testCycleInJogressGraphThrowsInsteadOfHanging() throws {
@@ -202,12 +240,20 @@ final class DigimonEvolutionTreeTests: XCTestCase {
         XCTAssertTrue(armor.contains { $0 == (.sincerity, 298) })
     }
 
-    /// 405(Imperialdramon FM)는 죠그레스 입력으로만 등장하고 결과로 나오는 간선이 없다
-    /// (EVOLUTION.md §3: Paildramon→Dragon Mode→FM 체인에 ID 가 없어 임의로 만들지 않음).
-    /// 따라서 331(Paildramon)에서 나가는 간선이 없다 — 이 성질을 그대로 검증한다(데이터 갭 보고용).
-    func testPaildramonHasNoOutgoingEdgeToFighterMode() throws {
+    /// Paildramon(331) → Imperialdramon Dragon Mode(900, 내부 ID) → Fighter Mode(405) 는
+    /// 단일 부모 전이(chain)로 연결된다(EVOLUTION.md §3). 331 에서 바로 405 로 가는 간선은
+    /// 없고 900 을 반드시 거친다 — 중간 단계를 생략하지 않았는지 함께 확인한다.
+    func testPaildramonChainsThroughDragonModeToFighterMode() throws {
         let ds = try loadedDataset()
-        XCTAssertTrue(ds.nextStages(from: 331).isEmpty)
+        let toDragonMode = ds.nextStages(from: 331).contains {
+            if case .normal(let to) = $0 { return to == 900 } else { return false }
+        }
+        XCTAssertTrue(toDragonMode, "331→900 chain 간선이 없음")
+
+        let toFighterMode = ds.nextStages(from: 900).contains {
+            if case .normal(let to) = $0 { return to == 405 } else { return false }
+        }
+        XCTAssertTrue(toFighterMode, "900→405 chain 간선이 없음")
     }
 
     /// pathsTo 는 역방향으로 시작 id 까지 경로를 나열한다. Paildramon(331)의 역방향 경로 중 하나는
@@ -238,16 +284,28 @@ final class DigimonEvolutionTreeTests: XCTestCase {
 
     /// 481(Paladin Mode)은 다단 죠그레스 결과다: War Greymon+Metal Garurumon → Omegamon(183),
     /// 그리고 Omegamon 이 다시 405(Imperialdramon FM)와의 죠그레스 파트너가 되어야 도달한다.
-    /// **데이터 갭**: 405 는 정규 라인·죠그레스·아머 어느 결과에도 없어(§3) dex 에 직접 넣는 것
-    /// 외에는 405 를 얻을 방법이 없다 — 이 테스트는 그 갭을 있는 그대로 문서화한다.
+    /// 405 는 이제 정규 죠그레스 결과가 아니라 331(Paildramon)→900(Dragon Mode, 내부 ID)→405
+    /// chain 으로 도달한다(§3) — Omegamon 체인만으로는(V-mon/Wormmon 라인 없이는) 여전히
+    /// 도달 불가함을 확인한다.
     func testIsReachablePaladinModeRequiresFighterModeDirectlyInDex() throws {
         let ds = try loadedDataset()
-        // 405 를 뺀 dex: Omegamon 체인만으로는 도달 불가(데이터 갭).
-        let dexWithoutFighterMode: Set<Int> = [1, 34, 169, 202, 16, 33, 205, 168]
-        XCTAssertFalse(ds.isReachable(481, dex: dexWithoutFighterMode))
+        // Omegamon 부모만 있고 Paildramon 부모(V-mon/Wormmon 라인)가 없는 dex: 여전히 도달 불가.
+        let dexWithoutPaildramonParents: Set<Int> = [1, 34, 169, 202, 16, 33, 205, 168]
+        XCTAssertFalse(ds.isReachable(481, dex: dexWithoutPaildramonParents))
 
-        // 405 를 직접 넣으면(현재 데이터가 표현 가능한 유일한 방법) 다단 죠그레스가 고정점으로 뚫린다.
-        let dexWithFighterMode = dexWithoutFighterMode.union([405])
+        // 405 를 직접 넣으면 다단 죠그레스가 고정점으로 뚫린다(여전히 유효한 경로).
+        let dexWithFighterMode = dexWithoutPaildramonParents.union([405])
         XCTAssertTrue(ds.isReachable(481, dex: dexWithFighterMode))
+    }
+
+    /// **갭 해소 확인**: Paildramon 부모(V-mon/Wormmon 라인)와 Omegamon 부모(Agumon/Gabumon 라인)
+    /// 만 도감에 있으면, 405 를 직접 넣지 않아도 331→900→405 chain 을 타고 481 까지 정규 플레이로
+    /// 도달 가능해야 한다 — 팀 리드 지시 "331→481 도달 가능" 검증.
+    func testIsReachablePaladinModeViaChainWithoutFighterModeDirectlyInDex() throws {
+        let ds = try loadedDataset()
+        let dex: Set<Int> = [349, 358, 356, 336, 1, 34, 169, 202, 16, 33, 205, 168]
+        XCTAssertTrue(ds.isReachable(900, dex: dex), "331→900 이 고정점에 포함되지 않음")
+        XCTAssertTrue(ds.isReachable(405, dex: dex), "900→405 가 고정점에 포함되지 않음")
+        XCTAssertTrue(ds.isReachable(481, dex: dex), "405+183 → 481 죠그레스가 고정점에 포함되지 않음")
     }
 }

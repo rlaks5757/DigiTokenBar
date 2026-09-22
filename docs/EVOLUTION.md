@@ -80,14 +80,22 @@ Agumon → Greymon 과 Greymon → Agumon 이 **둘 다** 존재한다.
 ### Imperialdramon 체인
 
 ```
-Paildramon (331) → Imperialdramon Dragon Mode → Imperialdramon Fighter Mode (405)
-                                                          + Omegamon (183)
-                                                          → Paladin Mode (481)
+Paildramon (331) → Imperialdramon Dragon Mode (900, 내부 ID) → Imperialdramon Fighter Mode (405)
+                                                                       + Omegamon (183)
+                                                                       → Paladin Mode (481)
 ```
 
 > Paladin Mode 는 **양쪽 부모가 모두 죠그레스 결과물**이다.
 > 따라서 "죠그레스 결과가 도감에 졸업 기록으로 남는가"가 도달 가능성을 결정한다.
 > → `docs/GAME-DESIGN.md` 참고. **남지 않으면 Paladin Mode 는 영구 도달 불가.**
+
+> **Dragon Mode 는 digi-api ID 가 없다.** 대신 내부 전용 id **900**(900번대는 비어 있어 충돌 없음)을
+> 부여해 정식 종으로 추가했다(2026-09-22). 900 은 두 개체가 합쳐지는 죠그레스가 아니라
+> **단일 부모 전이**라서 `jogress` 테이블이 아니라 별도 `chain` 테이블(`(from, to)` 두 간선:
+> 331→900, 900→405)에 담는다. `DigimonName.isInternalID` 로 digi-api 조회 불가능한 종임을
+> 표시한다 — 900 으로 digi-api 를 조회하면 실패하니 런타임 fetch 호출부는 이 플래그로 걸러야 한다.
+> 레벨은 Dragon Mode·Fighter Mode 모두 **Ultimate**(원작 설정) — Paildramon(Perfect)에서
+> 한 단계 올라가고 Fighter Mode 와 동급이다.
 
 ---
 
@@ -158,8 +166,8 @@ Wikimon vpet 도트를 **기기 시리즈 우선순위**로 시도한다:
 vb > ws > xloader   (컬러)
 ```
 
-- 로스터 **48종 중 45종이 이 3개(vb>ws>xloader) 폴백 체인 안에서 해결**된다.
-  나머지 3종(Depthmon·Imperialdramon FM/PM)은 파일명·시리즈가 불규칙해 **고정 파일명**을 쓴다(아래 전수 검증 참고).
+- 로스터 **49종 중 45종이 이 3개(vb>ws>xloader) 폴백 체인 안에서 해결**된다.
+  나머지 4종(Depthmon·Imperialdramon FM/PM/DM)은 파일명·시리즈가 불규칙해 **고정 파일명**을 쓴다(아래 전수 검증 참고).
 - 🚫 **`pen` / `dm` / `dmc` 는 1비트 흑백이다.** 컬러와 섞으면 화풍이 깨진다.
 - 도트는 **이미 투명 배경**이다 — 크로마키 처리 불필요.
 - 용량 ~1.5KB/종 (47종 전체 68KB).
@@ -169,6 +177,9 @@ vb > ws > xloader   (컬러)
 > **Imperialdramon Fighter Mode (405)** 가 빠져 있다. 405 는 정규 라인에 없고
 > Paladin Mode 죠그레스의 **입력으로만** 등장해서 위 세 집합 어디에도 안 잡힌다.
 > 하지만 화면에 그려지므로 이름 매핑·스프라이트가 필요하다. → 용량도 ~72KB 로 정정.
+>
+> **재정정 (2026-09-22)** — **49종**으로 늘었다. Imperialdramon Dragon Mode 에
+> 내부 전용 id **900**을 부여해 §3 체인의 끊어진 고리(331→405)를 이었다 — 아래 "덤" 항목 참고.
 
 #### 실검증 결과 (2026-09-21)
 
@@ -213,9 +224,10 @@ https://wikimon.net/images/<h1>/<h2>/<Name>_vpet_<series>.png
 → `fighter`/`paladin` 은 **소문자 약칭**이고 `Mode` 가 아예 없다. Depthmon 은 시리즈 자리에
 `dark_color` 라는 비표준 값이 온다. §5 의 "런타임 이름 추론 금지"를 뒷받침하는 실제 사례다.
 
-> **덤:** `Imperialdramon_DM_vpet_xloader.png` (192×192) 도 존재한다. digi-api 에 쓸 수 있는
-> Dragon Mode ID 가 없어 데이터 테이블에선 제외했지만, **스프라이트는 있다.** 나중에 체인
-> 중간 단계를 그려야 하면 이 파일을 쓰면 된다.
+> **덤 (2026-09-22 갱신):** `Imperialdramon_DM_vpet_xloader.png` (192×192, 10,360 bytes) 실측 확인.
+> digi-api 에 쓸 수 있는 Dragon Mode ID 가 없어서 **내부 전용 id 900**을 부여해 데이터 테이블에
+> 정식 추가했다(§3 Imperialdramon 체인). `vb` 폴백은 404 라 `spriteSeriesPin`으로 `xloader`
+> 하나만 고정한다(Depthmon·Imperialdramon FM/PM 과 동일 처리).
 
 **5. 확인된 시리즈 가용성 (표본)**
 

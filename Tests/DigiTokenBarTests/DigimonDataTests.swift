@@ -124,6 +124,14 @@ final class DigimonNameTests: XCTestCase {
         XCTAssertTrue(name?.spriteStemVerified ?? false)
     }
 
+    /// digi-api 에 없는 내부 전용 id 는 Imperialdramon Dragon Mode(900) 하나뿐이어야 한다.
+    /// 새 내부 ID 가 추가/누락되면 이 집합이 바뀌므로, 런타임 fetch 호출부가 걸러야 할 대상을
+    /// 여기서 고정한다 — 기본값(false)에 조용히 흡수되는 기존 48종은 이 집합에 없어야 한다.
+    func testInternalIDsAreExactlyDragonMode() {
+        let internalIDs = Set(DigimonData.names.filter(\.value.isInternalID).map(\.key))
+        XCTAssertEqual(internalIDs, [900])
+    }
+
     /// 라인·죠그레스(입력+결과)·아머 결과에 등장하는 모든 ID 가 이름 테이블에 있는지 — 참조 누락 방지.
     /// 죠그레스 입력은 `JogressKey.speciesIDs` 로 기계적으로 모은다(수기 보정 없음) — 새 죠그레스 행이
     /// 라인에 없는 입력 ID 를 들고 와도(예: 미래의 Dragon Mode) 이 테스트가 자동으로 잡아낸다.
@@ -150,23 +158,25 @@ final class DigimonSpriteTests: XCTestCase {
     /// 48종 전부 실측 확인되어 spriteStemVerified 가 항상 true 여야 한다 — 아직 미검증인 항목이
     /// 섞여 있으면 스프라이트 로딩 실패 원인 후보 1순위로 취급해야 하므로 회귀 가드로 남긴다.
     func testAllFortyEightSpeciesAreSpriteStemVerified() {
-        XCTAssertEqual(DigimonData.names.count, 48)
+        // 48종 + Imperialdramon Dragon Mode(900, 내부 ID) = 49.
+        XCTAssertEqual(DigimonData.names.count, 49)
         for (id, name) in DigimonData.names {
             XCTAssertTrue(name.spriteStemVerified, "id \(id) 가 아직 spriteStemVerified: false")
         }
     }
 
-    /// 예외 3건은 폴백 없이 실측된 파일명 하나만 정확히 만들어내야 한다.
+    /// 예외 4건은 폴백 없이 실측된 파일명 하나만 정확히 만들어내야 한다.
     func testPinnedSpeciesProduceExactVerifiedFilename() {
         XCTAssertEqual(DigimonData.name(for: 298)?.spriteFilenames, ["Depthmon_vpet_dark_color.png"])
         XCTAssertEqual(DigimonData.name(for: 405)?.spriteFilenames, ["Imperialdramon_fighter_vpet_vb.png"])
         XCTAssertEqual(DigimonData.name(for: 481)?.spriteFilenames, ["Imperialdramon_paladin_vpet_vb.png"])
+        XCTAssertEqual(DigimonData.name(for: 900)?.spriteFilenames, ["Imperialdramon_DM_vpet_xloader.png"])
     }
 
     /// 나머지 45종은 예외 없이 vb > ws > xloader 폴백 체인을 그대로 타야 한다(회귀 방지) —
     /// 전수(45건)로 확인해 표본 누락으로 통과하는 일이 없게 한다.
     func testRemainingFortyFiveSpeciesUseFallbackChain() {
-        let pinnedIDs: Set<Int> = [298, 405, 481]
+        let pinnedIDs: Set<Int> = [298, 405, 481, 900]
         var checkedCount = 0
         for (id, name) in DigimonData.names where !pinnedIDs.contains(id) {
             XCTAssertNil(name.spriteSeriesPin, "id \(id) 는 폴백 체인을 타야 하는데 spriteSeriesPin 이 있음")

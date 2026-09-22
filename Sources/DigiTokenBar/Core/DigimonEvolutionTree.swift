@@ -23,8 +23,8 @@ enum EvolutionEdge: Sendable {
 
 extension DigimonDataset {
 
-    /// `from` 에서 한 단계로 도달 가능한 모든 간선(정규+죠그레스+아머 통합). 간선이 없으면 빈 배열
-    /// (예: 405 는 데이터상 입력 전용이라 여기서 나가는 간선이 없다 — EVOLUTION.md §3 참고).
+    /// `from` 에서 한 단계로 도달 가능한 모든 간선(정규+죠그레스+아머+chain 통합). 간선이 없으면
+    /// 빈 배열(예: 481 은 최종형이라 여기서 나가는 간선이 없다 — EVOLUTION.md §3 참고).
     func nextStages(from id: Int) -> [EvolutionEdge] {
         forwardEdges[id] ?? []
     }
