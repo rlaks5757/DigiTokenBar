@@ -40,6 +40,10 @@ final class CompanionStore {
     private(set) var pokemonDetailsByID: [Int: PokemonDetails] = [:]
     private(set) var loadingPokemonDetailIDs: Set<Int> = []
     private(set) var failedPokemonDetailIDs: Set<Int> = []
+    /// `loadCurrentLine` 이 provider.line 실패를 로그로 남기되, update 틱마다 같은 baseID 로 재시도해도
+    /// 로그가 범람하지 않게 baseID 당 1회만 기록한다(UI 는 이 값을 읽지 않으므로 failedPokemonDetailIDs
+    /// 와 달리 private(set) 아님).
+    private var failedLineBaseIDs: Set<Int> = []
     private let defaults: UserDefaults
     /// 세션 내 활성 개체 교체 감지용. await 뒤 이전 개체의 결과가 새 개체를 덮지 않게 한다.
     private var activeGeneration = 0
@@ -56,7 +60,7 @@ final class CompanionStore {
     /// 상점 배율 — 아이템·알 가격에 곱한다. 낮을수록 싸다.
     private(set) var shopDifficulty: Double
 
-    init(provider: any PokeProviding = PokeAPIClient.shared,
+    init(provider: any PokeProviding = DigimonLineProvider(),
          detailProvider: (any PokemonDetailProviding)? = nil,
          clock: @escaping () -> Date = Date.init,
          fileURL: URL? = nil,
@@ -1161,30 +1165,46 @@ final class CompanionStore {
         let generation = activeGeneration
         isHatching = true
         defer { isHatching = false }
-        if let line = try? await provider.line(baseSpeciesID: a.baseID) {
-            // await 중 사용량·민트 등 활성 상태는 계속 바뀔 수 있다. 요청 당시 스냅샷을 다시 쓰지 말고
-            // 같은 개체가 아직 활성인 경우에만 최신 상태를 정규화한다.
-            guard activeGeneration == generation,
-                  let latest = state.active, latest.baseID == a.baseID, currentLine == nil else { return }
-            state.active = normalizedEvolutionState(latest, from: line.tree)
-            state.reconcileRepresentativeSelection()   // 손상 경로 정규화로 사라진 단계가 대표로 남지 않게
-            currentLine = line
-            save()   // 마이그레이션 선택을 사용량 재평가 전에 영속화해 재시작마다 다시 롤리지 않는다.
-            applyUsage(0)   // 라인 미로딩 동안 적립된 사용량이 임계를 넘었으면 지금 진화 판정
-            // Path normalization can change currentID without entering the regular evolution branch.
-            isHatching = false   // Do not hold the line-load lock across detail HTTP requests.
-            if let speciesID = state.active?.currentID, detailProvider != nil {
-                await loadPokemonDetails(speciesID: speciesID)
+        let line: EvoLine
+        do {
+            line = try await provider.line(baseSpeciesID: a.baseID)
+        } catch {
+            // 조용히 삼키지 않는다 — 실패하면 currentLine 이 계속 nil 로 남아 다음 update 틱마다
+            // 이 함수가 재호출되는 영구 루프가 된다. 매 틱 로그를 쏟으면 로그가 범람하니 baseID 당 1회만.
+            if failedLineBaseIDs.insert(a.baseID).inserted {
+                AppLog.write("loadCurrentLine: line fetch failed for base \(a.baseID): \(error)")
             }
+            return
+        }
+        failedLineBaseIDs.remove(a.baseID)   // 이후 재시도가 성공하면 다시 로그 대상이 되게 한다
+        // await 중 사용량·민트 등 활성 상태는 계속 바뀔 수 있다. 요청 당시 스냅샷을 다시 쓰지 말고
+        // 같은 개체가 아직 활성인 경우에만 최신 상태를 정규화한다.
+        guard activeGeneration == generation,
+              let latest = state.active, latest.baseID == a.baseID, currentLine == nil else { return }
+        state.active = normalizedEvolutionState(latest, from: line.tree)
+        state.reconcileRepresentativeSelection()   // 손상 경로 정규화로 사라진 단계가 대표로 남지 않게
+        currentLine = line
+        save()   // 마이그레이션 선택을 사용량 재평가 전에 영속화해 재시작마다 다시 롤리지 않는다.
+        applyUsage(0)   // 라인 미로딩 동안 적립된 사용량이 임계를 넘었으면 지금 진화 판정
+        // Path normalization can change currentID without entering the regular evolution branch.
+        isHatching = false   // Do not hold the line-load lock across detail HTTP requests.
+        if let speciesID = state.active?.currentID, detailProvider != nil {
+            await loadPokemonDetails(speciesID: speciesID)
         }
     }
 
-    /// 부화 종 선정 — 하드코딩 풀 없이 PokéAPI 1~5세대 base 전체(329종)에서 가중 선택.
-    ///   ① base 인덱스(id + capture_rate)를 GraphQL 1쿼리로 취득(30일 디스크 캐시 → 보통 0콜)
-    ///   ② 가중치 = 공식 capture_rate 그대로(캐터피 255 vs 뮤츠 3 = 85:1, 전설군 ≈ 0.77%)
+    /// 부화 종 선정 — 하드코딩 풀 없이 provider 의 base 인덱스 전체에서 가중 선택.
+    ///   ① base 인덱스(id + captureRate)를 취득
+    ///   ② 가중치 = captureRate 그대로(값이 클수록 흔함 — 등급별 유도값은
+    ///      `DigimonLineProvider.captureRate(for:)` 주석의 실제 확률표 참고)
     ///      단, 이미 수집한 base 는 가중치 ½(미수집 부스트 — 재부화로 다른 종을 노리는 파밍은 열어둠)
     ///   ③ 누적 가중치에서 정확히 1롤 — 루프/재롤 없음, 시간 상한 확정적
-    /// 인덱스 취득 실패(오프라인 + 캐시 없음) 시 nil → 알 유지, 다음 갱신 틱 재시도.
+    /// 인덱스 취득 실패 시 nil → 알 유지, 다음 갱신 틱 재시도.
+    ///
+    /// **기본 provider(`DigimonLineProvider`) 기준으로는 위 설명 중 "PokéAPI 1~5세대 base 전체
+    /// (329종)"·"공식 capture_rate"·"GraphQL/30일 캐시"는 더 이상 사실이 아니다** — 인덱스는 번들
+    /// JSON 12라인 고정이고 captureRate 는 등급에서 유도한 값이다(네트워크 호출 없음). 이 문단은
+    /// `PokeAPIClient` 처럼 실제 PokéAPI 에 붙는 provider 를 주입했을 때만 유효하다.
     private func chooseBase() async -> Int? {
         let tier = state.eggTier
         if let full = try? await provider.baseSpeciesIndex(), !full.isEmpty {
@@ -1207,14 +1227,23 @@ final class CompanionStore {
             }
             return index.last?.id   // 도달 불가(방어)
         }
-        // GraphQL base 인덱스 엔드포인트 장애 → REST 폴백. 부화가 한 엔드포인트에 묶이지 않게.
+        // base 인덱스 취득 실패(예: GraphQL 엔드포인트 장애) → REST 폴백. 부화가 한 엔드포인트에 묶이지 않게.
+        //
+        // **기본 provider(`DigimonLineProvider`) 에서는 이 분기가 도달 불가다** —
+        // `baseSpeciesIndex()` 가 throw 하지 않고 번들 JSON 에 라인이 있는 한 항상 비어있지 않은
+        // 배열을 반환하므로 위 `if` 가 항상 성립한다. `chooseBaseViaREST()` 도 함께 죽은 코드가
+        // 됐지만, `PokeAPIClient` 처럼 실제로 throw 할 수 있는 provider 를 주입하면 여전히 유효한
+        // 폴백이므로 코드는 남겨둔다.
         AppLog.write("hatch: base index unavailable — REST fallback")
         return await chooseBaseViaREST()
     }
 
-    /// REST 폴백 — PokéAPI 조회 가능 종 ID 범위에서 무작위 id 를 뽑아 base 인지 확인(rejection sampling).
-    /// GraphQL 인덱스가 죽어도 부화가 되게 한다. 가중치(capture_rate)는 생략 — 희귀도는 부화 후
-    /// line() 이 실제 capture_rate 로 계산하므로 결과 개체의 등급은 정확하다. 인덱스 복구 시 가중 선택 재개.
+    /// REST 폴백(§ 위 주석 — 기본 provider 에서는 도달 불가) — PokéAPI 조회 가능 종 ID 범위에서
+    /// 무작위 id 를 뽑아 base 인지 확인(rejection sampling). GraphQL 인덱스가 죽어도 부화가 되게 한다.
+    /// 가중치(capture_rate)는 생략 — 희귀도는 부화 후 line() 이 실제 capture_rate 로 계산하므로
+    /// 결과 개체의 등급은 정확하다. 인덱스 복구 시 가중 선택 재개.
+    /// `PokemonAssets.queryableSpeciesIDs`(1...649)도 PokéAPI 전용 범위라 기본 provider 경로에서는
+    /// 마찬가지로 의미가 없다.
     private func chooseBaseViaREST() async -> Int? {
         let tier = state.eggTier
         for attempt in 1...16 {

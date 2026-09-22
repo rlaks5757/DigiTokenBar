@@ -548,7 +548,13 @@ struct CompanionState: Codable, Sendable {
     /// 구세대 세이브가 디코드 자체는 "성공"해 옛 종 id 가 새 세대 종으로 조용히 뒤바뀐다.
     /// 누락(구버전 세이브) 시 0 으로 취급되어 항상 currentSaveVersion 과 달라진다 — CompanionStore.load()
     /// 가 이 불일치를 감지해 fresh 로 시작한다.
-    static let currentSaveVersion = 1
+    ///
+    /// 1 → 2 (2026-09-22): 기본 provider 가 PokéAPI → DigimonData(번들 JSON)로 바뀌어 speciesID 의
+    /// 의미 자체가 달라졌다(예: ID 1 = 이상해씨 → 아구몬). provider 교체 커밋(31cd824)이 이 값을
+    /// 같이 올리지 않아서, 그 시점 이후 ~ 이 수정 전 사이에 생성된 saveVersion=1 세이브는 포켓몬
+    /// speciesID 를 담은 채로 게이트를 통과해(1==1) 이름 미해결 무한 루프·알 미부화로 영구 정지했다.
+    /// 다음에 또 종 식별자 체계가 바뀌면(디지몬 내에서도 라인 baseID 재편 등) 여기를 다시 올려야 한다.
+    static let currentSaveVersion = 2
     var saveVersion = Self.currentSaveVersion
     // 토큰: 설치 이후만 측정
     var installBaselineSet = false

@@ -402,6 +402,33 @@ final class CompanionStoreTests: XCTestCase {
                        "자기 자신이 쓴 세이브를 구세대로 오인해 리셋하면 안 된다")
     }
 
+    /// [회귀] 포켓몬 시절(`saveVersion=1`) 세이브는 본문 speciesID 가 포켓몬 것이라 디지몬 세대(≥2)와
+    /// 절대 호환되지 않는다 — 여기 하드코딩된 `1` 은 currentSaveVersion 을 참조하면 안 된다
+    /// (미래에 currentSaveVersion 이 3, 4 로 또 오르더라도 "포켓몬 세대는 영구히 거부된다"는 이
+    /// 테스트의 주장 자체는 그대로 유지돼야 하기 때문). active.baseID=1 은 포켓몬 세계에서 이상해씨,
+    /// 디지몬 세계에서는 아구몬이다 — 게이트가 없으면 이 값이 그대로 새 세대로 흘러들어 조용히
+    /// 오염된다(§ CompanionModel.currentSaveVersion 1→2 변경 이력 참고).
+    func testPokemonEraSaveVersionOneIsRejectedByCurrentGenerationGate() throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("poke-era-\(UUID().uuidString).json")
+        let json = #"{"saveVersion":1,"#
+            + #""active":{"baseID":1,"pathIDs":[1],"stageIndex":0,"usedAtStage":0,"#
+            + #""rarity":"common","totalForms":1},"#
+            + #""dex":[{"baseID":1,"finalID":3,"chainOrder":[1,2,3],"rarity":"common"}],"#
+            + #""usedSinceInstall":5000}"#
+        try Data(json.utf8).write(to: url)
+
+        let s = CompanionStore(provider: StubProvider(value: linear3), clock: { fixedNow },
+                               fileURL: url, rng: SeededRNG(seed: 7))
+
+        XCTAssertNil(s.state.active, "포켓몬 세대 speciesID(baseID=1=이상해씨)가 새 상태로 흘러들면 안 됨")
+        XCTAssertTrue(s.state.dex.isEmpty, "fresh state 로 시작 — 도감도 초기화")
+        XCTAssertEqual(s.state.saveVersion, CompanionState.currentSaveVersion, "새로 시작한 상태는 현재 세대")
+
+        let backup = url.appendingPathExtension("legacy")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: backup.path), "구세대 원본이 .legacy 로 백업돼야 한다")
+        try? FileManager.default.removeItem(at: backup)
+    }
+
     // MARK: 도감 이름 (컬렉션 표시)
 
     /// 저장된 체인 종별 다국어 이름을 현재 언어로 해석 — 없으면 nil(뷰가 async 조회로 폴백).
@@ -967,6 +994,30 @@ final class CompanionStoreTests: XCTestCase {
         await s.hatchIfNeeded()
         XCTAssertNotNil(s.state.active)
         XCTAssertEqual(s.state.eggUsage, 0)
+    }
+
+    /// [통합] 위 테스트들과 달리 provider 를 주입하지 않는다 — `CompanionStore.init` 의 **기본값**
+    /// (`DigimonLineProvider`)이 실제로 부화까지 이어지는지가 이 테스트의 주장이다. provider 단위
+    /// 테스트(`DigimonLineProviderTests`)는 `DigimonData` 를 올바로 읽는지만 보고, 기존 부화 테스트는
+    /// 전부 `StubProvider` 를 주입해 기본값 자체를 검증하지 않는다 — 이 둘을 실제로 합쳤을 때 부화가
+    /// 되는지는 이 테스트가 유일하게 확인한다.
+    func testHatchWithDefaultProviderProducesAValidDigimonLine() async throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("poke-default-provider-\(UUID().uuidString).json")
+        // provider 미지정 → CompanionStore.init 기본값(DigimonLineProvider) 사용. rng 는 결정성을 위해
+        // 고정 시드(가중 추첨이라 미고정 시 플레이키해진다). AppEnv.isBundledApp 이 테스트 바이너리에서
+        // 항상 false 라 스프라이트 예열 등 네트워크 경로는 이 안에서 타지 않는다.
+        let s = CompanionStore(clock: { fixedNow }, fileURL: url, rng: SeededRNG(seed: 7))
+        base(s)
+        use(s, PokemonBalance.eggHatchThreshold)
+        await s.hatchIfNeeded()
+
+        let active = try XCTUnwrap(s.state.active, "기본 provider 로 부화가 일어나지 않음")
+        let baseIDs = Set(DigimonData.lines.map(\.baseID))
+        XCTAssertTrue(baseIDs.contains(active.baseID),
+            "부화한 baseID \(active.baseID) 가 DigimonData.lines 의 12개 base 밖에 있음")
+        let line = try XCTUnwrap(DigimonData.lines.first { $0.baseID == active.baseID })
+        XCTAssertEqual(active.rarity, line.rarity,
+            "부화 결과 등급 \(active.rarity) 이 라인 원본 등급 \(line.rarity) 과 다름 — 강등/승격 발생")
     }
 
     /// [회귀] 부화한 현재 포켓몬은 졸업 전에도 도감에 보여야 한다. 영구 dex 에 미리 저장하지 않고
