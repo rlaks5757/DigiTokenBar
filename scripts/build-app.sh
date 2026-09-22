@@ -18,6 +18,10 @@ cp ".build/release/$APP_NAME" "$APP/Contents/MacOS/$APP_NAME"
 # 심볼 strip — 릴리스 바이너리 1.84MB → 0.80MB(-57%). codesign 전에 수행(서명 무효화 방지).
 strip -rSTx "$APP/Contents/MacOS/$APP_NAME" 2>/dev/null || strip -rSx "$APP/Contents/MacOS/$APP_NAME"
 cp assets/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
+# 디지몬 진화 데이터(EVOLUTION.md §6) — DigimonData 가 Bundle.main 에서 찾는다.
+# codesign 전에 복사해야 한다: 서명 seal 은 Contents/ 전체를 봉인하므로 서명 후 추가하면 무효화된다.
+cp Resources/digimon.json "$APP/Contents/Resources/digimon.json"
+[[ -s "$APP/Contents/Resources/digimon.json" ]] || { echo "✗ digimon.json 복사 실패" >&2; exit 1; }
 
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>

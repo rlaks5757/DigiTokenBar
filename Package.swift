@@ -8,6 +8,7 @@ let package = Package(
         .executableTarget(
             name: "DigiTokenBar",
             path: "Sources/DigiTokenBar",
+            resources: [.copy("../../Resources/digimon.json")],
             linkerSettings: [.linkedLibrary("sqlite3")]
         ),
         .testTarget(
