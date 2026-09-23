@@ -77,6 +77,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         NSApp.setActivationPolicy(.accessory)
         LoginItem.migrateFromLegacyLoginItemIfNeeded()   // 로그인아이템 → KeepAlive 에이전트(크래시 자동 재실행)
         store = UsageStore()
+        // 도감 상세 패널의 설정 정보 출처는 CompanionStore 기본값(DigimonDetailsBundleSource)이
+        // 곧 프로덕션 정답이라 여기서 따로 주입하지 않는다 — 지울 수 있는 주입 라인 자체가 없어야
+        // "빠뜨려도 티가 안 나는" 회귀가 존재할 수 없다.
         companion = CompanionStore()
         Task { await companion.prepareDigimonProfiles() }
         updater = UpdateChecker()

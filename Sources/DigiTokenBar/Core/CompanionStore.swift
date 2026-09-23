@@ -34,6 +34,8 @@ final class CompanionStore {
     private let provider: any DigimonLineProviding
     private var dexNameRequests: [Int: Task<EvoLine, Error>] = [:]
     private let detailProvider: (any DigimonDetailProviding)?
+    /// 도감 상세 패널의 설정 정보 출처. 번들 JSON 이라 동기 조회이며, 테스트는 스텁을 주입한다.
+    private let loreSource: any DigimonLoreProviding
     private let clock: () -> Date
     private let fileURL: URL
     private var rng: any RandomNumberGenerator
@@ -62,12 +64,14 @@ final class CompanionStore {
 
     init(provider: any DigimonLineProviding = DigimonLineProvider(),
          detailProvider: (any DigimonDetailProviding)? = nil,
+         loreSource: (any DigimonLoreProviding)? = nil,
          clock: @escaping () -> Date = Date.init,
          fileURL: URL? = nil,
          rng: any RandomNumberGenerator = SystemRandomNumberGenerator(),
          defaults: UserDefaults = .standard) {
         self.provider = provider
         self.detailProvider = detailProvider ?? (provider as? any DigimonDetailProviding)
+        self.loreSource = loreSource ?? DigimonDetailsBundleSource()
         self.clock = clock
         self.fileURL = fileURL ?? Self.defaultURL()
         self.rng = rng
@@ -1361,13 +1365,34 @@ final class CompanionStore {
         dexEntriesSorted.filter { $0.finalID == speciesID && $0.profile != nil }
     }
 
+    // MARK: 디지몬 설정 정보(도감 상세 패널)
+
+    /// 도감 상세 패널이 쓰는 설정 정보 조회. **동기 + 결과 2종(found/missing)** 이다 — 출처가 번들
+    /// JSON 이라 네트워크 대기가 없고, 따라서 "로딩 중" 이라는 제3의 상태가 존재할 수 없다.
+    /// 아래 `loadDigimonDetails`(능력치 경로)와 달리 async/loading/failed 집합을 쓰지 않는 이유가
+    /// 이것이다. 데이터가 없는 종은 `.missing` 으로 **즉시** 끝나야 한다 — 조용히 아무것도 안 하면
+    /// 뷰가 영원히 스피너에 갇힌다(이번 버그).
+    func digimonLore(speciesID: Int) -> DigimonLoreLookup {
+        guard let lore = loreSource.lore(speciesID: speciesID) else { return .missing }
+        return .found(lore)
+    }
+
     /// Loads immutable PokéAPI metadata and persists any deferred profile fields exactly once.
     func loadDigimonDetails(speciesID: Int) async {
         if let details = digimonDetailsByID[speciesID] {
             enrichProfiles(for: speciesID, with: details)
             return
         }
-        guard let detailProvider, !loadingDigimonDetailIDs.contains(speciesID) else { return }
+        // detailProvider 가 nil 이면 이 종의 능력치 메타데이터는 **영원히** 오지 않는다. 아무 흔적도
+        // 없이 return 하면 "아직 안 왔다" 와 "앞으로도 안 온다" 가 구분되지 않으므로 로그는 남긴다.
+        // failedDigimonDetailIDs 에 넣지는 않는다 — 이 집합을 읽던 재시도 UI 가 없어져 지금은 아무도
+        // 읽지 않고, 넣으면 매 실행마다 읽는 이 없는 집합만 커진다. 상세 패널의 "정보 없음" 은 이
+        // 경로가 아니라 digimonLore(speciesID:) 의 .missing 이 담당한다.
+        guard let detailProvider else {
+            AppLog.write("digimon details skipped id=\(speciesID): no detail provider configured")
+            return
+        }
+        guard !loadingDigimonDetailIDs.contains(speciesID) else { return }
         loadingDigimonDetailIDs.insert(speciesID)
         failedDigimonDetailIDs.remove(speciesID)
         defer { loadingDigimonDetailIDs.remove(speciesID) }

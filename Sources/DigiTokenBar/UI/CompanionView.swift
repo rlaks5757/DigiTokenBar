@@ -912,23 +912,22 @@ private struct DigimonDetailView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     identityHeader
                     if individuals.count > 1 { individualPicker }
-                    if let details = store.digimonDetailsByID[species.id] {
-                        if let individual, let profile = individual.profile {
-                            individualSection(entry: individual, profile: profile, details: details)
-                        } else {
-                            baseStatsSection(details)
+                    // 번들 데이터라 분기가 정확히 둘이다 — 스피너가 낄 자리가 없다.
+                    switch store.digimonLore(speciesID: species.id) {
+                    case .found(let lore):
+                        if let profile = individual?.profile {
+                            individualSection(profile: profile)
                         }
-                        speciesSection(details)
-                        movesSection(details)
-                    } else if store.failedDigimonDetailIDs.contains(species.id) {
-                        VStack(spacing: 8) {
-                            Text(store.l.digimonDetailsUnavailable).foregroundStyle(.secondary)
-                            Button(store.l.retry) { Task { await store.loadDigimonDetails(speciesID: species.id) } }
+                        loreSection(lore)
+                        attacksSection(lore)
+                    case .missing:
+                        if let profile = individual?.profile {
+                            individualSection(profile: profile)
                         }
-                        .frame(maxWidth: .infinity).padding(.vertical, 24)
-                    } else {
-                        HStack { Spacer(); ProgressView(); Text(store.l.loadingDigimonDetails); Spacer() }
-                            .foregroundStyle(.secondary).padding(.vertical, 30)
+                        Text(store.l.digimonLoreMissing)
+                            .font(.caption).foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding(.vertical, 24)
                     }
                 }
                 .padding(.bottom, 8)
@@ -936,7 +935,6 @@ private struct DigimonDetailView: View {
         }
         .task {
             if selectedInstanceID.isEmpty { selectedInstanceID = individuals.first?.id ?? "" }
-            await store.loadDigimonDetails(speciesID: species.id)
         }
     }
 
@@ -945,7 +943,7 @@ private struct DigimonDetailView: View {
             SpriteView(speciesID: species.id, size: 82, bob: true)
                 .frame(width: 82, height: 82)
             VStack(alignment: .leading, spacing: 5) {
-                Text(species.name).font(.title3.weight(.bold))
+                Text(displayName).font(.title3.weight(.bold))
                 Text(store.l.rarityLabel(species.rarity))
                     .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                 if species.isRaising { Text(store.l.dexRaising).font(.caption2).foregroundStyle(Color.accentColor) }
@@ -968,115 +966,65 @@ private struct DigimonDetailView: View {
         .pickerStyle(.menu)
     }
 
-    private func individualSection(entry: DexEntry, profile: DigimonProfile,
-                                   details: DigimonDetails) -> some View {
+    /// 개체 단위 정보. 종족값·특성·기술은 포켓몬 개념이라 뺐다 — 개체를 구분하는 축만 남긴다.
+    /// 성별도 뺐다 — `DigimonProfile.gender` 는 `enrich(with:)` 가 있어야 채워지는데, 그 경로가
+    /// 요구하는 `detailProvider` 를 앱이 더 이상 주입하지 않아 프로덕션에서 항상 nil 이다(`—` 고정).
+    private func individualSection(profile: DigimonProfile) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             detailTitle(store.l.digimonIndividual)
-            HStack(spacing: 12) {
-                valuePair(store.l.level, "\(profile.level)")
-                valuePair(store.l.gender, store.l.genderLabel(profile.gender))
-            }
-            VStack(alignment: .leading, spacing: 1) {
-                Text(store.l.ability).font(.system(size: 9)).foregroundStyle(.secondary)
-                if let name = profile.abilityName {
-                    DigimonNameLabel(.ability, name, language: store.language,
-                                     suffix: profile.abilityIsHidden ? " · " + store.l.hiddenAbility : "")
-                        .font(.caption.weight(.semibold))
-                } else {
-                    Text("—").font(.caption.weight(.semibold))
-                }
-            }
-            statsSection(DigimonStatCalculator.stats(details: details, profile: profile))
-            detailTitle(store.l.activeMoves)
-            if profile.moves.isEmpty {
-                Text(store.l.noLevelMoves).font(.caption).foregroundStyle(.secondary)
-            } else {
-                ForEach(profile.moves) { move in
-                    HStack {
-                        DigimonNameLabel(.move, move.name, language: store.language)
-                        Spacer()
-                        Text("Lv. \(move.learnedAtLevel)").foregroundStyle(.secondary)
-                    }
-                    .font(.caption)
-                }
-            }
+            valuePair(store.l.level, "\(profile.level)")
         }
         .detailCard()
     }
 
-    private func baseStatsSection(_ details: DigimonDetails) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            detailTitle(store.l.baseStats)
-            ForEach(DigimonStatCalculator.order, id: \.self) { stat in
-                if let value = details.baseStats[stat] {
-                    statRow(name: stat, value: value, iv: nil, scaleMaximum: 300)
-                }
-            }
-        }
-        .detailCard()
-    }
-
-    private func statsSection(_ stats: [DigimonComputedStat]) -> some View {
-        let scaleMaximum = DigimonStatCalculator.displayScaleMaximum(for: stats.map(\.value))
-        return VStack(alignment: .leading, spacing: 5) {
-            detailTitle(store.l.actualStats)
-            ForEach(stats) { stat in
-                statRow(name: stat.name, value: stat.value, iv: stat.iv, scaleMaximum: scaleMaximum)
-            }
-        }
-    }
-
-    private func statRow(name: String, value: Int, iv: Int?, scaleMaximum: Int) -> some View {
-        HStack(spacing: 6) {
-            Text(store.l.statLabel(name)).frame(width: 62, alignment: .leading)
-            ProgressView(value: Double(value), total: Double(scaleMaximum)).tint(Color.accentColor)
-            Text("\(value)").monospacedDigit().frame(width: 28, alignment: .trailing)
-            if let iv { Text("IV \(iv)").foregroundStyle(.secondary).frame(width: 34, alignment: .trailing) }
-        }
-        .font(.system(size: 10))
-    }
-
-    private func speciesSection(_ details: DigimonDetails) -> some View {
+    /// 세대·속성·형태·소개문. 디지몬 설정 정보(DigimonDetail)만 쓰고 전투 메타데이터는 읽지 않는다.
+    private func loreSection(_ lore: DigimonLore) -> some View {
         VStack(alignment: .leading, spacing: 7) {
             detailTitle(store.l.speciesData)
-            HStack(spacing: 5) {
-                ForEach(details.types, id: \.self) { type in
-                    DigimonNameLabel(.type, type, language: store.language).textCase(.uppercase)
-                        .font(.system(size: 9, weight: .bold))
-                        .padding(.horizontal, 6).padding(.vertical, 3)
-                        .background(Color.accentColor.opacity(0.16), in: Capsule())
-                }
-            }
             HStack(spacing: 14) {
-                valuePair(store.l.height, String(format: "%.1f m", Double(details.height) / 10))
-                valuePair(store.l.weight, String(format: "%.1f kg", Double(details.weight) / 10))
-                valuePair(store.l.baseStatTotal, "\(details.baseStatTotal)")
+                valuePair(store.l.digimonGeneration, store.l.stageName(lore.level))
+                valuePair(store.l.digimonAttribute, store.l.attributeName(lore.attribute))
+                // 형태는 열린 집합(데이터에 40종 이상)이라 번역 없이 원문 그대로 — 7개 언어 테이블을
+                // 미리 채우면 데이터에 없는 값을 지어내게 된다.
+                valuePair(store.l.digimonType, lore.type)
             }
-            detailTitle(store.l.possibleAbilities)
-            DigimonNameLabel(items: details.abilities.map { option in
-                DigimonNameItem(resource: .init(kind: .ability, name: option.name),
-                                suffix: option.isHidden ? " (\(store.l.hidden))" : "")
-            }, language: store.language)
-            .font(.caption).foregroundStyle(.secondary)
+            if let summary = lore.summaryKo, !summary.isEmpty {
+                detailTitle(store.l.digimonSummary)
+                Text(summary).font(.caption).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .detailCard()
     }
 
-    private func movesSection(_ details: DigimonDetails) -> some View {
-        LazyVStack(alignment: .leading, spacing: 6) {
-            detailTitle(store.l.completeMoveList(details.moves.count))
-            ForEach(details.moves) { move in
-                HStack(alignment: .firstTextBaseline) {
-                    DigimonNameLabel(.move, move.name, language: store.language)
-                    Spacer()
-                    Text(move.learnMethods.map(store.l.moveMethod).uniqued().joined(separator: " · "))
-                        .foregroundStyle(.secondary).multilineTextAlignment(.trailing)
+    /// 필살기 — 일본어 원어명 + 로마자. 한국 더빙명 필드는 데이터에 아직 없다(`DigimonAttack` 은
+    /// nameJa/romaji 만 담는다). 그 필드가 생기면 여기서 한국어 화면에만 우선 적용하면 된다.
+    @ViewBuilder
+    private func attacksSection(_ lore: DigimonLore) -> some View {
+        if !lore.attacks.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                detailTitle(store.l.digimonAttacks)
+                ForEach(Array(lore.attacks.enumerated()), id: \.offset) { _, attack in
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(attack.nameJa).font(.caption.weight(.semibold))
+                        if !attack.romaji.isEmpty {
+                            Text(attack.romaji).font(.system(size: 9)).foregroundStyle(.secondary)
+                        }
+                    }
                 }
-                .font(.caption)
-                Divider()
             }
+            .detailCard()
         }
-        .detailCard()
+    }
+
+    /// 종 이름 — 한국어 화면에서만 `nameKo`, 없으면 기존 이름으로 폴백.
+    private var displayName: String {
+        if store.language == .ko,
+           case .found(let lore) = store.digimonLore(speciesID: species.id),
+           let ko = lore.nameKo, !ko.isEmpty {
+            return ko
+        }
+        return species.name
     }
 
     private func detailTitle(_ text: String) -> some View {

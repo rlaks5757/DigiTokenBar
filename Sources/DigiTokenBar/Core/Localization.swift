@@ -680,8 +680,40 @@ struct L {
     var stageNameAdult: String { t("성숙기", "Adult", "成熟期", "Adult", "Adulte", "Adult", "Adult") }
     var stageNamePerfect: String { t("완전체", "Perfect", "完全体", "Perfect", "Parfait", "Perfect", "Perfect") }
     var stageNameUltimate: String { t("궁극체", "Ultimate", "究極体", "Ultimate", "Ultime", "Ultimate", "Ultimate") }
+    var stageNameBabyI: String { t("유년기 I", "Baby I", "幼年期I", "Bebé I", "Bébé I", "Bebê I", "Baby I") }
+    var stageNameBabyII: String { t("유년기 II", "Baby II", "幼年期II", "Bebé II", "Bébé II", "Bebê II", "Baby II") }
+    /// 아머체 — 정규 사다리 밖 분기(DigiLevel.armor.ladderRank 가 nil 인 이유와 같은 값).
+    var stageNameArmor: String { t("아머체", "Armor", "アーマー体", "Armor", "Armure", "Armor", "Armor") }
+    /// `DigiLevel` → 표시 이름. `default:` 없는 exhaustive switch 다 — 레벨 케이스가 늘면 번역을
+    /// 빠뜨린 채 컴파일되는 대신 여기서 막힌다(Digimental.wikimonFilename 과 같은 이유).
+    func stageName(_ level: DigiLevel) -> String {
+        switch level {
+        case .babyI:    return stageNameBabyI
+        case .babyII:   return stageNameBabyII
+        case .child:    return stageNameChild
+        case .adult:    return stageNameAdult
+        case .perfect:  return stageNamePerfect
+        case .ultimate: return stageNameUltimate
+        case .armor:    return stageNameArmor
+        }
+    }
+    /// 디지몬 속성 — 닫힌 집합 4종이라 번역 테이블을 전부 채운다(형태는 열린 집합이라 원문 표시).
+    func attributeName(_ attribute: DigimonLore.Attribute) -> String {
+        switch attribute {
+        case .vaccine: return t("백신", "Vaccine", "ワクチン", "Vacuna", "Vaccin", "Vacina", "Vaccine")
+        case .data:    return t("데이터", "Data", "データ", "Datos", "Données", "Dados", "Data")
+        case .virus:   return t("바이러스", "Virus", "ウィルス", "Virus", "Virus", "Vírus", "Virus")
+        case .free:    return t("프리", "Free", "フリー", "Libre", "Libre", "Livre", "Frei")
+        }
+    }
+    /// 데이터의 `attribute` 문자열 → 표시 이름. 4종에 없는 값이 오면 **원문 그대로** 돌려준다 —
+    /// 임의의 케이스로 밀어 넣으면 틀린 속성이 노출되고, 빈 문자열을 내면 값이 조용히 사라진다.
+    func attributeName(dataValue: String) -> String {
+        guard let attribute = DigimonLore.Attribute(dataValue: dataValue) else { return dataValue }
+        return attributeName(attribute)
+    }
     func stage(_ i: Int, _ k: Int) -> String { t("진화 단계 \(i) / \(k)", "Stage \(i) / \(k)", "進化段階 \(i) / \(k)", "Etapa \(i) / \(k)", "Stade \(i) / \(k)", "Estágio \(i) / \(k)", "Entwicklungsstufe \(i) / \(k)") }
-    var unknownNextEvolution: String { t("알 수 없는 다음 진화", "Unknown next evolution", "次の進化先は不明", "Próxima evolución desconocida", "Prochaine évolution inconnue", "Próxima evolución desconhecida", "Nächste Entwicklung unbekannt") }
+    var unknownNextEvolution: String { t("알 수 없는 다음 진화", "Unknown next evolution", "次の進化先は不明", "Próxima evolución desconocida", "Prochaine évolution inconnue", "Próxima evolução desconhecida", "Nächste Entwicklung unbekannt") }
     var eggIncubating: String { t("🥚 부화 준비 중", "🥚 Incubating", "🥚 孵化の準備中", "🥚 Incubando", "🥚 En incubation", "🥚 Incubando", "🥚 Wird ausgebrütet") }
     func eggToHatch(_ amount: String) -> String { t("부화까지 \(amount)", "\(amount) to hatch", "孵化まで \(amount)", "\(amount) para eclosionar", "\(amount) avant l'éclosion", "\(amount) para chocar", "\(amount) bis zum Schlüpfen") }
     /// 알 부화 임계 도달 후 외부 데이터 요청이 실패한 동안의 다음 새로고침 안내.
@@ -694,7 +726,7 @@ struct L {
           "⏳ A eclosão está atrasada — nova tentativa na próxima atualização",
           "⏳ Das Schlüpfen verzögert sich — neuer Versuch bei der nächsten Aktualisierung")
     }
-    func toNextEvolution(_ amount: String) -> String { t("다음 진화까지 \(amount)", "\(amount) to next evolution", "次の進化まで \(amount)", "\(amount) para la siguiente evolución", "\(amount) avant la prochaine évolution", "\(amount) para a próxima evolución", "\(amount) bis zur nächsten Entwicklung") }
+    func toNextEvolution(_ amount: String) -> String { t("다음 진화까지 \(amount)", "\(amount) to next evolution", "次の進化まで \(amount)", "\(amount) para la siguiente evolución", "\(amount) avant la prochaine évolution", "\(amount) para a próxima evolução", "\(amount) bis zur nächsten Entwicklung") }
     func toGraduation(_ amount: String) -> String { t("졸업까지 \(amount)", "\(amount) to graduation", "卒業まで \(amount)", "\(amount) para graduarse", "\(amount) avant le diplôme", "\(amount) para se formar", "\(amount) bis zum Abschied") }
     func growthBoost(_ multiplier: Int) -> String { t("\(multiplier)× 성장", "\(multiplier)× growth", "成長 \(multiplier)倍", "Crecimiento ×\(multiplier)", "Croissance ×\(multiplier)", "Crescimento ×\(multiplier)", "\(multiplier)× Wachstum") }
     func graduated(_ name: String) -> String {
@@ -886,6 +918,16 @@ struct L {
           "Die angezeigten Werte stammen von vor dem Ablauf. Versuch es erneut oder starte Claude Code einmal, um sie automatisch zu aktualisieren.")
     }
     var retry: String { t("다시 시도", "Retry", "再試行", "Reintentar", "Réessayer", "Tentar de novo", "Erneut versuchen") }
+
+    // MARK: 도감 상세 패널 (디지몬 설정 정보)
+    var digimonGeneration: String { t("세대", "Generation", "世代", "Generación", "Génération", "Geração", "Generation") }
+    var digimonAttribute: String { t("속성", "Attribute", "属性", "Atributo", "Attribut", "Atributo", "Attribut") }
+    var digimonType: String { t("형태", "Type", "型", "Tipo", "Type", "Tipo", "Typ") }
+    var digimonAttacks: String { t("필살기", "Special attacks", "必殺技", "Ataques especiales", "Attaques spéciales", "Ataques especiais", "Spezialattacken") }
+    var digimonSummary: String { t("소개", "Overview", "紹介", "Introducción", "Présentation", "Apresentação", "Übersicht") }
+    /// 이 종의 설정 정보가 데이터에 **아예 없을 때**. `digimonDetailsUnavailable`(불러오기 실패)과
+    /// 구분해야 한다 — 이쪽은 재시도할 대상이 없으므로 다시 시도 버튼도 붙이지 않는다.
+    var digimonLoreMissing: String { t("이 디지몬의 정보가 아직 없어요.", "No details for this Digimon yet.", "このデジモンの情報はまだありません。", "Aún no hay datos de este Digimon.", "Aucune information sur ce Digimon pour l’instant.", "Ainda não há dados deste Digimon.", "Für dieses Digimon liegen noch keine Daten vor.") }
 
     // MARK: Antigravity 세션 만료(401) 안내 — Claude 쪽과 동일 문안 구조로 통일
     var antigravityAuthExpiredTitle: String {

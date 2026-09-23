@@ -1,0 +1,913 @@
+{
+  "_source": "wikimon.net",
+  "_license": "CC BY-SA 3.0",
+  "details": [
+    {
+      "id": 1,
+      "level": "child",
+      "attribute": "vaccine",
+      "type": "Reptile",
+      "nameKo": "아구몬",
+      "attacks": [
+        {
+          "nameJa": "ベビーフレイム",
+          "romaji": "Bebī Fureimu"
+        },
+        {
+          "nameJa": "スピットファイア",
+          "romaji": "Supittofaia"
+        }
+      ],
+      "summaryKo": "작은 공룡 모습의 파충류형 디지몬. 아직 어리지만 성격이 매우 용맹하다."
+    },
+    {
+      "id": 3,
+      "level": "adult",
+      "attribute": "vaccine",
+      "type": "Angel",
+      "attacks": [
+        {
+          "nameJa": "ヘブンズナックル",
+          "romaji": "Hebunzu Nakkuru"
+        },
+        {
+          "nameJa": "ホーリーロッド",
+          "romaji": "Hōrī Roddo"
+        }
+      ],
+      "summaryKo": "여섯 장의 빛나는 날개를 지닌 천사형 디지몬. 악을 물리치기 위해서만 힘을 쓴다."
+    },
+    {
+      "id": 5,
+      "level": "adult",
+      "attribute": "vaccine",
+      "type": "Giant Bird",
+      "attacks": [
+        {
+          "nameJa": "メテオウィング",
+          "romaji": "Meteo Wingu"
+        },
+        {
+          "nameJa": "ファイアフラップ",
+          "romaji": "Faia Furappu"
+        }
+      ],
+      "summaryKo": "타오르는 불꽃에 휩싸인 거대조형 디지몬. 먼저 싸우진 않지만 반격은 매섭다."
+    },
+    {
+      "id": 16,
+      "level": "child",
+      "attribute": "data",
+      "type": "Reptile",
+      "attacks": [
+        {
+          "nameJa": "プチファイアー",
+          "romaji": "Puchi Faiā"
+        },
+        {
+          "nameJa": "リトルホーン",
+          "romaji": "Ritoru Hōn"
+        }
+      ],
+      "summaryKo": "가루루몬의 털가죽을 두른 파충류형 디지몬. 그것을 벗으면 몹시 수줍음을 탄다."
+    },
+    {
+      "id": 33,
+      "level": "adult",
+      "attribute": "vaccine",
+      "type": "Beast",
+      "nameKo": "가루몬",
+      "attacks": [
+        {
+          "nameJa": "フォックスファイアー",
+          "romaji": "Fokkusufaiā"
+        },
+        {
+          "nameJa": "たいあたり",
+          "romaji": "Tai Atari"
+        }
+      ],
+      "summaryKo": "늑대를 닮은 수형 디지몬. 미스릴처럼 단단한 털과 높은 지능을 함께 지녔다."
+    },
+    {
+      "id": 34,
+      "level": "adult",
+      "attribute": "vaccine",
+      "type": "Dinosaur",
+      "attacks": [
+        {
+          "nameJa": "メガフレイム",
+          "romaji": "Mega Fureimu"
+        },
+        {
+          "nameJa": "グレートアントラー",
+          "romaji": "Gurēto Antorā"
+        }
+      ],
+      "summaryKo": "투구벌레 같은 두개골을 지닌 공룡형 디지몬. 사납지만 길들이면 더없이 강하다."
+    },
+    {
+      "id": 35,
+      "level": "adult",
+      "attribute": "vaccine",
+      "type": "Insect",
+      "attacks": [
+        {
+          "nameJa": "メガブラスター",
+          "romaji": "Mega Burasutā"
+        },
+        {
+          "nameJa": "ビートホーン",
+          "romaji": "Bīto Hōn"
+        }
+      ],
+      "summaryKo": "머리가 금속화된 곤충형 디지몬. 오직 생존 본능만으로 바이러스종을 덮친다."
+    },
+    {
+      "id": 38,
+      "level": "perfect",
+      "attribute": "vaccine",
+      "type": "Archangel",
+      "attacks": [
+        {
+          "nameJa": "ホーリーアロー",
+          "romaji": "Hōrī Arō"
+        },
+        {
+          "nameJa": "ヘブンズチャーム",
+          "romaji": "Hebunzu Chāmu"
+        }
+      ],
+      "summaryKo": "여덟 날개를 지닌 대천사형 디지몬. 상냥하지만 사악한 자만은 용서치 않는다."
+    },
+    {
+      "id": 40,
+      "level": "perfect",
+      "attribute": "data",
+      "type": "Insect",
+      "attacks": [
+        {
+          "nameJa": "ホーンバスター",
+          "romaji": "Hōn Basutā"
+        },
+        {
+          "nameJa": "ワイルドスクラッチ",
+          "romaji": "Wairudo Sukuracchi"
+        }
+      ],
+      "summaryKo": "거대한 뿔이 주무기인 곤충형 디지몬. 약한 존재를 지켜주는 모습이 관찰된다."
+    },
+    {
+      "id": 81,
+      "level": "child",
+      "attribute": "data",
+      "type": "Plant",
+      "nameKo": "팔몬",
+      "attacks": [
+        {
+          "nameJa": "ポイズンアイビー",
+          "romaji": "Poizun Aibī"
+        },
+        {
+          "nameJa": "プラントショック",
+          "romaji": "Puranto Shokku"
+        }
+      ],
+      "summaryKo": "머리에 열대화를 피운 식물형 디지몬. 기분에 따라 꽃에서 나는 향기가 달라진다."
+    },
+    {
+      "id": 83,
+      "level": "adult",
+      "attribute": "vaccine",
+      "type": "Holy Beast",
+      "nameKo": "가트몬",
+      "attacks": [
+        {
+          "nameJa": "ネコパンチ",
+          "romaji": "Neko Panchi"
+        },
+        {
+          "nameJa": "キャッツ・アイ",
+          "romaji": "Kyattsu Ai"
+        }
+      ],
+      "summaryKo": "꼬리에 성스러운 링을 두른 성수형 디지몬. 호기심이 많아 장난을 무척 좋아한다."
+    },
+    {
+      "id": 85,
+      "level": "child",
+      "attribute": "vaccine",
+      "type": "Insect",
+      "nameKo": "텐토몬",
+      "attacks": [
+        {
+          "nameJa": "プチサンダー",
+          "romaji": "Puchi Sandā"
+        },
+        {
+          "nameJa": "トワイスアーム",
+          "romaji": "Towaisu Āmu"
+        }
+      ],
+      "summaryKo": "단단한 껍질을 지닌 곤충형 디지몬. 온화해서 꽃향기를 맡으며 한가로이 산다."
+    },
+    {
+      "id": 96,
+      "level": "perfect",
+      "attribute": "vaccine",
+      "type": "Marine Beast",
+      "attacks": [
+        {
+          "nameJa": "ハンマースパーク",
+          "romaji": "Hanmā Supāku"
+        },
+        {
+          "nameJa": "ホーン＆タスク",
+          "romaji": "Hōn ando Tasuku"
+        }
+      ],
+      "summaryKo": "두 발로 걷게 된 해수형 디지몬. 고대 얼음에서 캐낸 거대한 망치를 휘두른다."
+    },
+    {
+      "id": 98,
+      "level": "child",
+      "attribute": "data",
+      "type": "Mammal",
+      "nameKo": "파닥몬",
+      "attacks": [
+        {
+          "nameJa": "エアショット",
+          "romaji": "Ea Shotto"
+        },
+        {
+          "nameJa": "はねビンタ",
+          "romaji": "Hane Binta"
+        }
+      ],
+      "summaryKo": "커다란 귀로 하늘을 나는 포유형 디지몬. 온순하며 성스러운 힘을 숨기고 있다."
+    },
+    {
+      "id": 101,
+      "level": "child",
+      "attribute": "vaccine",
+      "type": "Chick",
+      "nameKo": "피요몬",
+      "attacks": [
+        {
+          "nameJa": "マジカルファイアー",
+          "romaji": "Majikaru Faiyā"
+        },
+        {
+          "nameJa": "ピヨリンアタック",
+          "romaji": "Piyorin Atakku"
+        }
+      ],
+      "summaryKo": "날개가 팔처럼 발달한 유조형 디지몬. 언젠가 하늘을 자유로이 나는 것이 꿈이다."
+    },
+    {
+      "id": 117,
+      "level": "child",
+      "attribute": "vaccine",
+      "type": "Marine Beast",
+      "nameKo": "쉬라몬",
+      "attacks": [
+        {
+          "nameJa": "マーチングフィッシィーズ",
+          "romaji": "Māchingu Fisshīzu"
+        },
+        {
+          "nameJa": "するどいツメ",
+          "romaji": "Surudoi Tsume"
+        }
+      ],
+      "summaryKo": "체온을 지키는 털로 덮인 해수형 디지몬. 눈에 띄는 것은 무엇이든 만지는 개구쟁이다."
+    },
+    {
+      "id": 121,
+      "level": "perfect",
+      "attribute": "vaccine",
+      "type": "Archangel",
+      "attacks": [
+        {
+          "nameJa": "ヘブンズゲート",
+          "romaji": "Hōrī Fezā"
+        },
+        {
+          "nameJa": "エクスキャリバー",
+          "romaji": "Ekusukyaribā"
+        }
+      ],
+      "summaryKo": "여덟 장의 은빛 날개를 지닌 대천사형 디지몬. 디지털 월드의 질서를 감독한다."
+    },
+    {
+      "id": 123,
+      "level": "ultimate",
+      "attribute": "vaccine",
+      "type": "Holy Dragon",
+      "nameKo": "홀리드라몬",
+      "attacks": [
+        {
+          "nameJa": "ホーリーフレイム",
+          "romaji": "Hōrī Fureimu"
+        },
+        {
+          "nameJa": "アポカリプス",
+          "romaji": "Apokaripusu"
+        }
+      ],
+      "summaryKo": "하늘의 지배자를 떠올리게 하는 성룡형 디지몬. 좀처럼 모습을 보이지 않는다."
+    },
+    {
+      "id": 124,
+      "level": "adult",
+      "attribute": "vaccine",
+      "type": "Marine Beast",
+      "attacks": [
+        {
+          "nameJa": "ハープーンバルカン",
+          "romaji": "Hāpūn Barukan"
+        },
+        {
+          "nameJa": "ヒートトップ",
+          "romaji": "Hīto Toppu"
+        }
+      ],
+      "summaryKo": "두꺼운 털의 해수형 디지몬. 희소 금속으로 된 날카로운 뿔을 무기로 삼는다."
+    },
+    {
+      "id": 165,
+      "level": "perfect",
+      "attribute": "vaccine",
+      "type": "Bird Man",
+      "attacks": [
+        {
+          "nameJa": "シャドーウィング",
+          "romaji": "Shadō Uingu"
+        },
+        {
+          "nameJa": "イーグルクロー",
+          "romaji": "Īguru Kurō"
+        }
+      ],
+      "summaryKo": "거대한 발톱과 날개를 지닌 조인형 디지몬. 자연을 사랑하는 대지의 수호신이다."
+    },
+    {
+      "id": 166,
+      "level": "perfect",
+      "attribute": "data",
+      "type": "Fairy",
+      "attacks": [
+        {
+          "nameJa": "フラウカノン",
+          "romaji": "Furau Kanon"
+        },
+        {
+          "nameJa": "テンプテーション",
+          "romaji": "Tenputēshon"
+        }
+      ],
+      "summaryKo": "꽃잎에서 태어난 요정형 디지몬. 변덕스럽지만 약한 존재에게는 먼저 손을 내민다."
+    },
+    {
+      "id": 168,
+      "level": "ultimate",
+      "attribute": "data",
+      "type": "Cyborg",
+      "nameKo": "메탈가루몬",
+      "attacks": [
+        {
+          "nameJa": "コキュートスブレス",
+          "romaji": "Kokyūtosu Buresu"
+        },
+        {
+          "nameJa": "ガルルトマホーク",
+          "romaji": "Garuru Tomahōku"
+        }
+      ],
+      "summaryKo": "전신을 금속화한 사이보그형 디지몬. 온몸에 무수한 무기를 숨기고 적을 분쇄한다."
+    },
+    {
+      "id": 169,
+      "level": "perfect",
+      "attribute": "vaccine",
+      "type": "Cyborg",
+      "nameKo": "메탈그레이몬",
+      "attacks": [
+        {
+          "nameJa": "トライデントアーム",
+          "romaji": "Toraidento Āmu"
+        },
+        {
+          "nameJa": "ギガデストロイヤー",
+          "romaji": "Giga Desutoroiyā"
+        }
+      ],
+      "summaryKo": "몸의 절반 이상을 기계화한 사이보그형 디지몬. 핵무기에 맞먹는 공격력을 지녔다."
+    },
+    {
+      "id": 183,
+      "level": "ultimate",
+      "attribute": "vaccine",
+      "type": "Holy Knight",
+      "attacks": [
+        {
+          "nameJa": "ガルルキャノン",
+          "romaji": "Garuru Kyanon"
+        },
+        {
+          "nameJa": "グレイソード",
+          "romaji": "Gurei Sōdo"
+        }
+      ],
+      "summaryKo": "두 궁극체가 융합해 태어난 성기사형 디지몬. 로열 나이츠의 일원으로 꼽힌다."
+    },
+    {
+      "id": 195,
+      "level": "adult",
+      "attribute": "data",
+      "type": "Plant",
+      "attacks": [
+        {
+          "nameJa": "チクチクバンバン",
+          "romaji": "Chikuchiku Ban Ban"
+        },
+        {
+          "nameJa": "マッハジャブ",
+          "romaji": "Mahha Jabu"
+        }
+      ],
+      "summaryKo": "거대한 선인장 모습의 식물형 디지몬. 평소엔 멍하지만 화가 나면 성격이 돌변한다."
+    },
+    {
+      "id": 202,
+      "level": "ultimate",
+      "attribute": "vaccine",
+      "type": "Dragon Man",
+      "attacks": [
+        {
+          "nameJa": "ガイアフォース",
+          "romaji": "Gaia Fōsu"
+        },
+        {
+          "nameJa": "グレートトルネード",
+          "romaji": "Gurēto Torunēdo"
+        }
+      ],
+      "summaryKo": "크론디지조이드 갑옷을 두른 용인형 디지몬. 그레이몬계가 도달하는 궁극 형태다."
+    },
+    {
+      "id": 205,
+      "level": "perfect",
+      "attribute": "vaccine",
+      "type": "Beast Man",
+      "nameKo": "워가루몬",
+      "attacks": [
+        {
+          "nameJa": "カイザーネイル",
+          "romaji": "Kaizā Neiru"
+        },
+        {
+          "nameJa": "ボールディブロー",
+          "romaji": "Bōrudi Burō"
+        }
+      ],
+      "summaryKo": "두 발로 걷게 된 수인형 디지몬. 다리 힘을 살린 발차기가 무척 강력하고 충실하다."
+    },
+    {
+      "id": 266,
+      "level": "adult",
+      "attribute": "free",
+      "type": "Ankylosaur",
+      "attacks": [
+        {
+          "nameJa": "メガトンプレス",
+          "romaji": "Megaton Puresu"
+        },
+        {
+          "nameJa": "テイルハンマー",
+          "romaji": "Teiru Hanmā"
+        }
+      ],
+      "summaryKo": "온몸이 단단한 껍질로 덮인 안킬로사우루스형 디지몬. 온순하지만 겁내지 않는다."
+    },
+    {
+      "id": 267,
+      "level": "adult",
+      "attribute": "free",
+      "type": "Giant Bird",
+      "attacks": [
+        {
+          "nameJa": "グライドホーン",
+          "romaji": "Guraido Hōn"
+        },
+        {
+          "nameJa": "ブラストレーザー",
+          "romaji": "Burasuto Rēzā"
+        }
+      ],
+      "summaryKo": "머리에 거대한 뿔이 난 거대조형 디지몬. 예의를 중시하며 주인에게 충실하다."
+    },
+    {
+      "id": 271,
+      "level": "child",
+      "attribute": "free",
+      "type": "Mammal",
+      "attacks": [
+        {
+          "nameJa": "スクラッチビート",
+          "romaji": "Sukuracchi Bīto"
+        },
+        {
+          "nameJa": "ローリングストーン",
+          "romaji": "Rōringu Sutōn"
+        }
+      ],
+      "summaryKo": "단단한 등껍질에 덮인 포유형 디지몬. 느긋하고 사랑스러운 성격을 지니고 있다."
+    },
+    {
+      "id": 298,
+      "level": "armor",
+      "attribute": "free",
+      "type": "Aquatic Beast Man",
+      "attacks": [
+        {
+          "nameJa": "バブルボム",
+          "romaji": "Baburu Bomu"
+        },
+        {
+          "nameJa": "サルガッソードラッグ",
+          "romaji": "Sarugasso Doraggu"
+        }
+      ],
+      "summaryKo": "성실의 디지멘탈로 아머 진화한 모습. 어떤 디지몬보다 깊은 바다로 잠수한다."
+    },
+    {
+      "id": 299,
+      "level": "armor",
+      "attribute": "free",
+      "type": "Insect",
+      "attacks": [
+        {
+          "nameJa": "ゴールドラッシュ",
+          "romaji": "Gōrudo Rasshu"
+        },
+        {
+          "nameJa": "ビッグクラック",
+          "romaji": "Biggu Kurakku"
+        }
+      ],
+      "summaryKo": "지식의 디지멘탈로 아머 진화한 모습. 드릴로 대지를 가르며 땅속에서 싸운다."
+    },
+    {
+      "id": 305,
+      "level": "armor",
+      "attribute": "free",
+      "type": "Dragon Man",
+      "nameKo": "화염드라몬",
+      "attacks": [
+        {
+          "nameJa": "ナックルファイア",
+          "romaji": "Nakkuru Faia"
+        },
+        {
+          "nameJa": "ファイアロケット",
+          "romaji": "Faia Roketto"
+        }
+      ],
+      "summaryKo": "용기의 디지멘탈로 아머 진화한 모습. 온몸의 불꽃으로 적을 태운다."
+    },
+    {
+      "id": 312,
+      "level": "armor",
+      "attribute": "free",
+      "type": "Beast",
+      "attacks": [
+        {
+          "nameJa": "ライトニングブレード",
+          "romaji": "Raitoningu Burēdo"
+        },
+        {
+          "nameJa": "ブルーサンダー",
+          "romaji": "Burū Sandā"
+        }
+      ],
+      "summaryKo": "우정의 디지멘탈로 아머 진화한 모습. 번개처럼 민첩하게 달리며 적을 감전시킨다."
+    },
+    {
+      "id": 315,
+      "level": "armor",
+      "attribute": "free",
+      "type": "Holy Knight",
+      "nameKo": "매그너몬",
+      "attacks": [
+        {
+          "nameJa": "プラズマシュート",
+          "romaji": "Purazuma Shūto"
+        },
+        {
+          "nameJa": "シャイニングゴールドソーラーストーム",
+          "romaji": "Shainingu Gōrudo Sōrā Sutōmu"
+        }
+      ],
+      "summaryKo": "기적의 디지멘탈로 아머 진화한 모습. 황금 갑옷을 두른 로열 나이츠의 일원이다."
+    },
+    {
+      "id": 326,
+      "level": "armor",
+      "attribute": "free",
+      "type": "Holy Beast",
+      "nameKo": "네페르티몬",
+      "attacks": [
+        {
+          "nameJa": "カースオブクィーン",
+          "romaji": "Kāsu obu Kuīn"
+        },
+        {
+          "nameJa": "ロゼッタストーン",
+          "romaji": "Rozetta Sutōn"
+        }
+      ],
+      "summaryKo": "빛의 디지멘탈로 아머 진화한 모습. 강렬한 빛의 힘으로 어둠을 정화해 버린다."
+    },
+    {
+      "id": 331,
+      "level": "perfect",
+      "attribute": "free",
+      "type": "Dragon Man",
+      "nameKo": "파일드라몬",
+      "attacks": [
+        {
+          "nameJa": "エスグリーマ",
+          "romaji": "Esugurīma"
+        },
+        {
+          "nameJa": "デスペラードブラスター",
+          "romaji": "Desuperādo Burasutā"
+        }
+      ],
+      "summaryKo": "엑스브이몬과 스팅몬이 죠그레스한 용인형 디지몬. 주인을 향한 충성심이 깊다."
+    },
+    {
+      "id": 336,
+      "level": "adult",
+      "attribute": "free",
+      "type": "Insect",
+      "attacks": [
+        {
+          "nameJa": "スパイキングフィニッシュ",
+          "romaji": "Supaikingu Finisshu"
+        },
+        {
+          "nameJa": "ヘルスクイーズ",
+          "romaji": "Heru Sukuīzu"
+        }
+      ],
+      "summaryKo": "인간형에 가까운 곤충형 디지몬. 급소를 노리는 암살자 같은 솜씨와 냉철함을 지녔다."
+    },
+    {
+      "id": 337,
+      "level": "armor",
+      "attribute": "free",
+      "type": "Aquatic",
+      "attacks": [
+        {
+          "nameJa": "オキシジェンホーミング",
+          "romaji": "Okishijen Hōmingu"
+        },
+        {
+          "nameJa": "サブマリンアタック",
+          "romaji": "Sabumarin Atakku"
+        }
+      ],
+      "summaryKo": "성실의 디지멘탈로 아머 진화한 모습. 바닷속을 자유로이 헤엄치며 싸운다."
+    },
+    {
+      "id": 349,
+      "level": "child",
+      "attribute": "free",
+      "type": "Small Dragon",
+      "nameKo": "브이몬",
+      "attacks": [
+        {
+          "nameJa": "ブンブンパンチ",
+          "romaji": "Bunbun Panchi"
+        },
+        {
+          "nameJa": "ブイモンヘッド",
+          "romaji": "Buimon Heddo"
+        }
+      ],
+      "summaryKo": "고대종의 후예인 소룡형 디지몬. 장난꾸러기지만 정의감만은 누구보다도 강하다."
+    },
+    {
+      "id": 356,
+      "level": "child",
+      "attribute": "free",
+      "type": "Larva",
+      "nameKo": "추추몬",
+      "attacks": [
+        {
+          "nameJa": "ネバネバネット",
+          "romaji": "Nebaneba Netto"
+        },
+        {
+          "nameJa": "シルクスレッド",
+          "romaji": "Shiruku Sureddo"
+        }
+      ],
+      "summaryKo": "겁이 많은 유충형 디지몬. 아머 진화하면 믿기 힘든 힘을 발휘한다고 전해진다."
+    },
+    {
+      "id": 358,
+      "level": "adult",
+      "attribute": "free",
+      "type": "Mythical Dragon",
+      "attacks": [
+        {
+          "nameJa": "ストロングクランチ",
+          "romaji": "Sutorongu Kuranchi"
+        },
+        {
+          "nameJa": "エクスレイザー",
+          "romaji": "Ekusu Reizā"
+        }
+      ],
+      "summaryKo": "브이몬의 힘을 이어받은 환룡형 디지몬. 바위산도 부수는 강대한 완력을 지녔다."
+    },
+    {
+      "id": 363,
+      "level": "armor",
+      "attribute": "free",
+      "type": "Holy Beast",
+      "attacks": [
+        {
+          "nameJa": "ロデオギャロップ",
+          "romaji": "Rodeo Gyaroppu"
+        },
+        {
+          "nameJa": "シルバーブレイズ",
+          "romaji": "Shirubā Bureizu"
+        }
+      ],
+      "summaryKo": "희망의 디지멘탈로 아머 진화한 모습. 성스러운 빛으로 악한 자를 벌한다."
+    },
+    {
+      "id": 384,
+      "level": "ultimate",
+      "attribute": "vaccine",
+      "type": "Seraph",
+      "attacks": [
+        {
+          "nameJa": "セブンヘブンズ",
+          "romaji": "Sebun Hebunzu"
+        },
+        {
+          "nameJa": "テスタメント",
+          "romaji": "Tesutamento"
+        }
+      ],
+      "summaryKo": "은빛 갑옷과 열 장의 날개를 지닌 치천사형 디지몬. 모든 천사들을 다스린다."
+    },
+    {
+      "id": 387,
+      "level": "perfect",
+      "attribute": "free",
+      "type": "Mutation",
+      "nameKo": "토우몬",
+      "attacks": [
+        {
+          "nameJa": "ニギミタマ",
+          "romaji": "Nigimitama"
+        },
+        {
+          "nameJa": "アラミタマ",
+          "romaji": "Aramitama"
+        }
+      ],
+      "summaryKo": "안킬로몬과 엔젤몬이 죠그레스한 돌연변이형 디지몬. 성격이 몹시 온화하다."
+    },
+    {
+      "id": 389,
+      "level": "armor",
+      "attribute": "free",
+      "type": "Mutation",
+      "attacks": [
+        {
+          "nameJa": "紅葉",
+          "romaji": "Momiji Oroshi"
+        },
+        {
+          "nameJa": "草薙",
+          "romaji": "Kusanagi"
+        }
+      ],
+      "summaryKo": "순수의 디지멘탈로 아머 진화한 모습. 닌자처럼 바람에 몸을 숨기고 적을 벤다."
+    },
+    {
+      "id": 390,
+      "level": "perfect",
+      "attribute": "free",
+      "type": "Beast Man",
+      "attacks": [
+        {
+          "nameJa": "トップガン",
+          "romaji": "Toppu Gan"
+        },
+        {
+          "nameJa": "デュアルソニック",
+          "romaji": "Dyuaru Sonikku"
+        }
+      ],
+      "summaryKo": "아쿠이라몬과 테일몬이 죠그레스한 수인형 디지몬. 도약력이 매우 뛰어나다."
+    },
+    {
+      "id": 399,
+      "level": "child",
+      "attribute": "free",
+      "type": "Bird",
+      "attacks": [
+        {
+          "nameJa": "ビークペッカー",
+          "romaji": "Bīku Pekkā"
+        },
+        {
+          "nameJa": "フェザースラッシュ",
+          "romaji": "Fezā Surasshu"
+        }
+      ],
+      "summaryKo": "언제나 침착하고 예의 바른 조류형 디지몬. 고대 특수종의 후예로 알려져 있다."
+    },
+    {
+      "id": 401,
+      "level": "armor",
+      "attribute": "free",
+      "type": "Beast",
+      "nameKo": "호루스몬",
+      "attacks": [
+        {
+          "nameJa": "マッハインパルス",
+          "romaji": "Mahha Inparusu"
+        },
+        {
+          "nameJa": "テンペストウィング",
+          "romaji": "Tenpesuto Wingu"
+        }
+      ],
+      "summaryKo": "사랑의 디지멘탈로 아머 진화한 모습. 바람을 타고 하늘의 싸움을 지배한다."
+    },
+    {
+      "id": 405,
+      "level": "ultimate",
+      "attribute": "free",
+      "type": "Ancient Dragon Man",
+      "nameKo": "황제드라몬: 파이터 모드",
+      "attacks": [
+        {
+          "nameJa": "ポジトロンレーザー",
+          "romaji": "Pojitoron Rēzā"
+        },
+        {
+          "nameJa": "ギガデス",
+          "romaji": "Giga Desu"
+        }
+      ],
+      "summaryKo": "모든 힘을 해방해 인간형으로 변한 고대용인형 디지몬. 행성마저 부순다고 한다."
+    },
+    {
+      "id": 481,
+      "level": "ultimate",
+      "attribute": "vaccine",
+      "type": "Ancient Holy Knight",
+      "nameKo": "황제드라몬: 팔라딘 모드",
+      "attacks": [
+        {
+          "nameJa": "オメガブレード",
+          "romaji": "Omega Burēdo"
+        },
+        {
+          "nameJa": "ギガデス",
+          "romaji": "Giga Desu"
+        }
+      ],
+      "summaryKo": "오메가몬의 힘을 얻은 고대성기사형 디지몬. 임페리얼드라몬의 최종 형태다."
+    },
+    {
+      "id": 900,
+      "level": "ultimate",
+      "attribute": "free",
+      "type": "Ancient Dragon",
+      "nameKo": "황제드라몬: 드래곤 모드",
+      "attacks": [
+        {
+          "nameJa": "メガデス",
+          "romaji": "Mega Desu"
+        },
+        {
+          "nameJa": "ポジトロンレーザー",
+          "romaji": "Pojitoron Rēzā"
+        }
+      ],
+      "summaryKo": "고대에 존재한 고대룡형 디지몬. 힘이 너무 강대해 다루기가 거의 불가능하다."
+    }
+  ]
+}
