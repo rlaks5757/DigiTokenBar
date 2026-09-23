@@ -130,8 +130,56 @@ final class DigimonDetailsLoaderTests: XCTestCase {
             for attack in detail.attacks {
                 XCTAssertFalse(attack.nameJa.isEmpty, "id \(id) nameJa")
                 XCTAssertFalse(attack.romaji.isEmpty, "id \(id) romaji")
+                XCTAssertFalse(attack.nameKoTranslit?.isEmpty ?? true, "id \(id) nameKoTranslit")
             }
         }
+    }
+
+    /// 104개 필살기 전부 한국어 음차가 있고, 그 안에 가나·한자가 새어 들어오지 않았는지 —
+    /// (일본어 원문을 그대로 복사해 넣는 실수는 이 검사가 잡는다). 부정 검사(가나·한자 없음)만으로는
+    /// romaji 를 그대로 복사해도 통과하므로(둘 다 ASCII 라틴 문자), 한글이 최소 1자 있다는 긍정
+    /// 검사를 더한다.
+    func testEveryAttackHasKoreanTransliterationWithoutKanaLeakage() throws {
+        let ds = try loadReal()
+        let kanaOrCJK: ClosedRange<UInt32> = 0x3040...0x30FF
+        let cjk: ClosedRange<UInt32> = 0x4E00...0x9FFF
+        let hangul: ClosedRange<UInt32> = 0xAC00...0xD7A3   // 완성형 음절
+        for (id, detail) in ds.byID {
+            for (index, attack) in detail.attacks.enumerated() {
+                guard let translit = attack.nameKoTranslit else {
+                    XCTFail("id \(id) attacks[\(index)] nameKoTranslit 없음")
+                    continue
+                }
+                XCTAssertFalse(translit.trimmingCharacters(in: .whitespaces).isEmpty,
+                               "id \(id) attacks[\(index)] nameKoTranslit 비어 있음")
+                for scalar in translit.unicodeScalars {
+                    XCTAssertFalse(kanaOrCJK.contains(scalar.value) || cjk.contains(scalar.value),
+                                   "id \(id) attacks[\(index)] nameKoTranslit '\(translit)' 에 가나/한자 잔존")
+                }
+                XCTAssertTrue(translit.unicodeScalars.contains { hangul.contains($0.value) },
+                              "id \(id) attacks[\(index)] nameKoTranslit '\(translit)' 에 한글이 없다 — romaji 복사 의심")
+            }
+        }
+    }
+
+    /// 음차 내용을 실제 값으로 고정 — 가타카나(영어 외래어) 두 건, 히라가나/한자(의미 번역·고유명사)
+    /// 네 건. 개수만 세면 전부 일본어를 그대로 복사해도 통과하므로 내용을 못 잡는다.
+    func testKoreanTransliterationContentForKnownAttacks() throws {
+        let ds = try loadReal()
+        func translit(_ id: Int, _ nameJa: String) -> String? {
+            ds.byID[id]?.attacks.first { $0.nameJa == nameJa }?.nameKoTranslit
+        }
+        XCTAssertEqual(translit(101, "マジカルファイアー"), "마지컬 파이어")
+        XCTAssertEqual(translit(1, "ベビーフレイム"), "베이비 플레임")
+        // 히라가나 — 의미 번역(고유명사 아님).
+        XCTAssertEqual(translit(33, "たいあたり"), "몸통박치기")
+        XCTAssertEqual(translit(98, "はねビンタ"), "날개 따귀")
+        XCTAssertEqual(translit(117, "するどいツメ"), "날카로운 발톱")
+        // id 389: 원본 데이터가 「紅葉」로 잘려 있던 것을 Wikimon 원문(紅葉おろし)으로 복원했다.
+        XCTAssertEqual(ds.byID[389]?.attacks.first?.nameJa, "紅葉おろし")
+        XCTAssertEqual(translit(389, "紅葉おろし"), "모미지 오로시")
+        // 한자 고유명사 — 음차가 맞다(쿠사나기 = 일본 신화의 검).
+        XCTAssertEqual(translit(389, "草薙"), "쿠사나기")
     }
 
     /// CC BY-SA 3.0 출처 표기는 라이선스 의무다 — 리팩터링이 조용히 떨어뜨리지 못하게 고정한다.
@@ -189,7 +237,7 @@ final class DigimonDetailsLoaderTests: XCTestCase {
                     "attribute": "vaccine",
                     "type": "Reptile",
                     "nameKo": "아구몬",
-                    "attacks": [["nameJa": "ベビーフレイム", "romaji": "Bebī Fureimu"]],
+                    "attacks": [["nameJa": "ベビーフレイム", "romaji": "Bebī Fureimu", "nameKoTranslit": "베이비 플레임"]],
                     "summaryKo": "작은 공룡 모습의 파충류형 디지몬.",
                 ],
             ],
@@ -264,7 +312,7 @@ final class DigimonDetailsLoaderTests: XCTestCase {
     func testEmptyAttackNameJaThrows() throws {
         var json = minimalValidJSON()
         var details = json["details"] as! [[String: Any]]
-        details[0]["attacks"] = [["nameJa": "  ", "romaji": "Bebī Fureimu"]]
+        details[0]["attacks"] = [["nameJa": "  ", "romaji": "Bebī Fureimu", "nameKoTranslit": "베이비 플레임"]]
         json["details"] = details
         XCTAssertThrowsError(try DigimonDetailsLoader.load(from: try data(json))) { error in
             XCTAssertEqual(error as? DigimonDetailsError,
@@ -276,11 +324,23 @@ final class DigimonDetailsLoaderTests: XCTestCase {
     func testEmptyAttackRomajiThrows() throws {
         var json = minimalValidJSON()
         var details = json["details"] as! [[String: Any]]
-        details[0]["attacks"] = [["nameJa": "ベビーフレイム", "romaji": ""]]
+        details[0]["attacks"] = [["nameJa": "ベビーフレイム", "romaji": "", "nameKoTranslit": "베이비 플레임"]]
         json["details"] = details
         XCTAssertThrowsError(try DigimonDetailsLoader.load(from: try data(json))) { error in
             XCTAssertEqual(error as? DigimonDetailsError,
                            .emptyField(id: 1, field: "attacks[0].romaji"))
+        }
+    }
+
+    /// 필살기 하나라도 nameKoTranslit 이 빈 문자열이면 통과해선 안 된다 — nameJa/romaji 와 같은 계약.
+    func testEmptyAttackNameKoTranslitThrows() throws {
+        var json = minimalValidJSON()
+        var details = json["details"] as! [[String: Any]]
+        details[0]["attacks"] = [["nameJa": "ベビーフレイム", "romaji": "Bebī Fureimu", "nameKoTranslit": "  "]]
+        json["details"] = details
+        XCTAssertThrowsError(try DigimonDetailsLoader.load(from: try data(json))) { error in
+            XCTAssertEqual(error as? DigimonDetailsError,
+                           .emptyField(id: 1, field: "attacks[0].nameKoTranslit"))
         }
     }
 

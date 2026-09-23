@@ -111,6 +111,88 @@ final class DigimonLorePanelTests: XCTestCase {
         XCTAssertEqual(Set(names).count, DigiLevel.allCases.count)
     }
 
+    // MARK: 형태(type) 한국어 매핑 — 열린 집합, 한국어 전용
+
+    /// 실 데이터의 고유 type 값 집합 == 매핑 키 집합(진짜 양방향), 그리고 31종 전부의 번역 내용을
+    /// 기대값으로 고정한다.
+    ///
+    /// 번들 출처(`DigimonDetailsBundleSource`)는 `DigimonData.lines`(진화 그래프)에 도달 가능한
+    /// 종만 훑는데, 그 경로는 52종 중 일부만 커버해 실제로는 31종 중 24종만 보인다(간선 데이터
+    /// 갭) — 그래서 이 테스트에는 쓸 수 없다. `digimon_details.json` 을 직접 읽어 52종/31종
+    /// 전체를 확보한다.
+    ///
+    /// 기대값은 `Localization.swift` 의 매핑을 베낀 것이 아니라 `summaryKo` 에 이미 녹아든 공식 용어와
+    /// 대조해 판단한 값이다 — 매핑을 그대로 옮기면 매핑이 틀려도 테스트가 같이 틀려 아무것도 못 잡는다.
+    func testTypeKoreanMappingCoversExactlyTheRealDataValuesWithFixedContent() throws {
+        let details = try DigimonDetailsLoader.load(from: URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("Resources/digimon_details.json"))
+        let realTypes = Set(details.byID.values.map(\.type))
+
+        let expected: [String: String] = [
+            "Ancient Dragon": "고대룡형",
+            "Ancient Dragon Man": "고대용인형",
+            "Ancient Holy Knight": "고대성기사형",
+            "Angel": "천사형",
+            "Ankylosaur": "안킬로사우루스형",
+            "Aquatic": "수서형",
+            "Aquatic Beast Man": "수서수인형",
+            "Archangel": "대천사형",
+            "Beast": "수형",
+            "Beast Man": "수인형",
+            "Bird": "조류형",
+            "Bird Man": "조인형",
+            "Chick": "유조형",
+            "Cyborg": "사이보그형",
+            "Dinosaur": "공룡형",
+            "Dragon Man": "용인형",
+            "Fairy": "요정형",
+            "Giant Bird": "거대조형",
+            "Holy Beast": "성수형",
+            "Holy Dragon": "성룡형",
+            "Holy Knight": "성기사형",
+            "Insect": "곤충형",
+            "Larva": "유충형",
+            "Mammal": "포유형",
+            "Marine Beast": "해수형",
+            "Mutation": "돌연변이형",
+            "Mythical Dragon": "환룡형",
+            "Plant": "식물형",
+            "Reptile": "파충류형",
+            "Seraph": "치천사형",
+            "Small Dragon": "소룡형",
+        ]
+
+        // 양방향: 실 데이터 type 집합과 매핑 키 집합이 정확히 같아야 한다 — 데이터에 새 값이 추가됐는데
+        // 매핑이 못 따라간 경우도, 매핑에 쓰레기 키가 남은 경우도 잡는다.
+        XCTAssertEqual(Set(L.typeKorean.keys), realTypes,
+                       "typeKorean 매핑 키 집합이 실 데이터 type 집합과 다르다")
+        XCTAssertEqual(Set(expected.keys), realTypes,
+                       "이 테스트의 기대값 집합이 실 데이터 type 집합과 다르다 — 31종 목록을 갱신해야 한다")
+
+        let l = L(.ko)
+        for type in realTypes {
+            guard let want = expected[type] else {
+                XCTFail("형태 '\(type)' 의 기대값이 없다")
+                continue
+            }
+            XCTAssertEqual(l.typeName(dataValue: type), want, "형태 '\(type)' 번역이 기대값과 다르다")
+        }
+    }
+
+    /// 매핑에 없는 값(미래 데이터 추가분 시뮬레이션)은 한국어 화면에서도 원문 그대로 — 크래시도
+    /// 빈 문자열도 안 된다.
+    func testTypeKoreanMappingFallsBackToRawStringForUnknownType() {
+        XCTAssertEqual(L(.ko).typeName(dataValue: "Whatever New Type"), "Whatever New Type")
+    }
+
+    /// 한국어 화면에서만 번역한다 — 나머지 언어는 원문을 그대로 써야 한다(요청 범위 밖).
+    func testTypeKoreanMappingOnlyAppliesToKoreanLanguage() {
+        XCTAssertEqual(L(.en).typeName(dataValue: "Chick"), "Chick")
+        XCTAssertEqual(L(.ja).typeName(dataValue: "Chick"), "Chick")
+        XCTAssertEqual(L(.ko).typeName(dataValue: "Chick"), "유조형")
+    }
+
     // MARK: 번들 데이터 → 화면 경로 (위 단위 테스트가 전부 스텁이라 이 경로는 따로 지켜야 한다)
 
     /// 번들 출처를 실제로 주입했을 때 번들 데이터가 store 조회까지 도달하는지, 도감의 모든 라인에
@@ -156,8 +238,8 @@ final class DigimonLorePanelTests: XCTestCase {
 
     private static let sample = DigimonLore(
         speciesID: 1, level: .child, attribute: .vaccine, type: "Reptile", nameKo: "아구몬",
-        attacks: [DigimonLore.Attack(nameJa: "ベビーフレイム", romaji: "Bebī Fureimu"),
-                  DigimonLore.Attack(nameJa: "スピットファイア", romaji: "Supittofaia")],
+        attacks: [DigimonLore.Attack(nameJa: "ベビーフレイム", romaji: "Bebī Fureimu", nameKoTranslit: "베이비 플레임"),
+                  DigimonLore.Attack(nameJa: "スピットファイア", romaji: "Supittofaia", nameKoTranslit: "스피트파이어")],
         summaryKo: "작은 공룡 모습의 파충류형 디지몬.")
 
     @MainActor

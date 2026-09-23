@@ -19,8 +19,9 @@ struct DigimonLore: Sendable, Equatable {
     let level: DigiLevel
     /// 백신/데이터/바이러스/프리. 닫힌 집합이라 enum 이고 7개 언어 번역이 있다.
     let attribute: Attribute
-    /// 형태(파충류형 등). **열린 집합이라 번역하지 않고 원문 그대로 표시한다** — 값 종류가 데이터
-    /// 파일에서 계속 늘어나는데(현재 40종 이상) 7개 언어 테이블을 미리 채우면 없는 값을 지어내게 된다.
+    /// 형태(파충류형 등). **열린 집합이라 번역 테이블을 다 채우지 않는다** — 값 종류가 데이터
+    /// 파일에서 계속 늘어나(현재 31종) 7개 언어를 미리 채우면 없는 값을 지어내게 된다. 한국어만
+    /// `L.typeName(dataValue:)` 로 번역하고, 나머지 언어와 매핑 밖의 값은 이 원문을 그대로 쓴다.
     let type: String
     /// 한국어 표기명. 한국어 화면에서만 쓰고, 없으면 호출부가 기존 이름으로 폴백한다.
     let nameKo: String?
@@ -43,17 +44,24 @@ struct DigimonLore: Sendable, Equatable {
         }
     }
 
-    /// 필살기 하나. 한국 더빙명(`nameKo`)은 데이터가 채워지는 대로 붙는 자리이고, 지금은 없어도
-    /// 일본어 원어명 + 로마자로 표시된다. 북미 더빙명을 한국명 대용으로 넣으면 안 된다(틀린 이름).
+    /// 필살기 하나. 한국 더빙명(`nameKo`)은 공식 더빙명이 확인되는 대로 붙는 자리이고, 지금은 없다.
+    /// 북미 더빙명을 한국명 대용으로 넣으면 안 된다(틀린 이름).
+    ///
+    /// `nameKoTranslit`는 **음차**다 — 대부분 영어 외래어를 한국어 표기법으로 옮긴 것이라 실제
+    /// 더빙명과 거의 일치하지만, 공식 출처로 확인된 값은 아니다. `nameKo`(확인된 공식 더빙명)가
+    /// 채워지면 표시 우선순위를 그쪽으로 옮기고 이 필드는 대체·보조용으로 남긴다.
     struct Attack: Sendable, Equatable {
         let nameJa: String
         let romaji: String
         let nameKo: String?
+        /// 한국어 음차(비공식). 위 주석 참고.
+        let nameKoTranslit: String?
 
-        init(nameJa: String, romaji: String, nameKo: String? = nil) {
+        init(nameJa: String, romaji: String, nameKo: String? = nil, nameKoTranslit: String? = nil) {
             self.nameJa = nameJa
             self.romaji = romaji
             self.nameKo = nameKo
+            self.nameKoTranslit = nameKoTranslit
         }
     }
 }

@@ -54,9 +54,12 @@ enum DigimonDetailsError: Error, CustomStringConvertible, Equatable {
 private struct RawDetailsDocument: Decodable {
     /// 필살기 하나. `|d=`(북미 더빙명)는 담지 않는다 — 한국 더빙명과 어긋나 한국어 표기 대용으로
     /// 쓰이면 틀린 이름이 노출된다. 그래서 `DigimonAttack.nameKo` 는 항상 nil 로 매핑된다.
+    /// `nameKoTranslit` 는 공식 더빙명이 아니라 우리가 만든 한국어 음차다(`DigimonLore.Attack` 주석
+    /// 참고) — nameJa/romaji 처럼 원천 그대로가 아니므로 구분해 둔다.
     struct Attack: Decodable {
         let nameJa: String
         let romaji: String
+        let nameKoTranslit: String
     }
     struct Detail: Decodable {
         let id: Int
@@ -129,7 +132,8 @@ enum DigimonDetailsLoader {
                 throw DigimonDetailsError.emptyField(id: detail.id, field: "attacks")
             }
             for (index, attack) in detail.attacks.enumerated() {
-                for (name, value) in [("nameJa", attack.nameJa), ("romaji", attack.romaji)] {
+                for (name, value) in [("nameJa", attack.nameJa), ("romaji", attack.romaji),
+                                      ("nameKoTranslit", attack.nameKoTranslit)] {
                     guard !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                         throw DigimonDetailsError.emptyField(id: detail.id, field: "attacks[\(index)].\(name)")
                     }
@@ -145,7 +149,7 @@ enum DigimonDetailsLoader {
                 type: detail.type,
                 nameKo: detail.nameKo,
                 attacks: detail.attacks.map {
-                    DigimonLore.Attack(nameJa: $0.nameJa, romaji: $0.romaji)
+                    DigimonLore.Attack(nameJa: $0.nameJa, romaji: $0.romaji, nameKoTranslit: $0.nameKoTranslit)
                 },
                 summaryKo: detail.summaryKo)
         }

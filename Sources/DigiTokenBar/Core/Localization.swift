@@ -712,6 +712,51 @@ struct L {
         guard let attribute = DigimonLore.Attribute(dataValue: dataValue) else { return dataValue }
         return attributeName(attribute)
     }
+    /// 형태(Reptile 등) 한국어 표기 — 데이터 현재 31종. 열린 집합이라 나머지 6개 언어는 번역하지
+    /// 않고 원문을 그대로 쓴다(`digimon_details.json` summaryKo 에 이미 녹아든 공식 용어를 따랐다,
+    /// 예: Chick→유조형, Mammal→포유형, Mythical Dragon→환룡형 — "~형" 관용구를 기계적으로 만들면
+    /// 이 표기들과 어긋난다). 새 형태가 데이터에 추가되면 여기 없는 값은 원문 폴백으로 떨어진다.
+    // private 아님 — 테스트가 키 집합을 실 데이터와 대조하려면 열거할 수 있어야 한다(@testable import).
+    static let typeKorean: [String: String] = [
+        "Ancient Dragon": "고대룡형",
+        "Ancient Dragon Man": "고대용인형",
+        "Ancient Holy Knight": "고대성기사형",
+        "Angel": "천사형",
+        "Ankylosaur": "안킬로사우루스형",
+        "Aquatic": "수서형",
+        "Aquatic Beast Man": "수서수인형",
+        "Archangel": "대천사형",
+        "Beast": "수형",
+        "Beast Man": "수인형",
+        "Bird": "조류형",
+        "Bird Man": "조인형",
+        "Chick": "유조형",
+        "Cyborg": "사이보그형",
+        "Dinosaur": "공룡형",
+        "Dragon Man": "용인형",
+        "Fairy": "요정형",
+        "Giant Bird": "거대조형",
+        "Holy Beast": "성수형",
+        "Holy Dragon": "성룡형",
+        "Holy Knight": "성기사형",
+        "Insect": "곤충형",
+        "Larva": "유충형",
+        "Mammal": "포유형",
+        "Marine Beast": "해수형",
+        "Mutation": "돌연변이형",
+        "Mythical Dragon": "환룡형",
+        "Plant": "식물형",
+        "Reptile": "파충류형",
+        "Seraph": "치천사형",
+        "Small Dragon": "소룡형",
+    ]
+    /// `DigimonLore.type` → 표시 문자열. 한국어 화면에서만 번역하고, 나머지 언어와 매핑에 없는
+    /// 값(미래 데이터 추가분 포함)은 **원문 그대로** 돌려준다 — attributeName(dataValue:) 와 같은
+    /// 폴백 규칙.
+    func typeName(dataValue: String) -> String {
+        guard lang == .ko else { return dataValue }
+        return Self.typeKorean[dataValue] ?? dataValue
+    }
     func stage(_ i: Int, _ k: Int) -> String { t("진화 단계 \(i) / \(k)", "Stage \(i) / \(k)", "進化段階 \(i) / \(k)", "Etapa \(i) / \(k)", "Stade \(i) / \(k)", "Estágio \(i) / \(k)", "Entwicklungsstufe \(i) / \(k)") }
     var unknownNextEvolution: String { t("알 수 없는 다음 진화", "Unknown next evolution", "次の進化先は不明", "Próxima evolución desconocida", "Prochaine évolution inconnue", "Próxima evolução desconhecida", "Nächste Entwicklung unbekannt") }
     var eggIncubating: String { t("🥚 부화 준비 중", "🥚 Incubating", "🥚 孵化の準備中", "🥚 Incubando", "🥚 En incubation", "🥚 Incubando", "🥚 Wird ausgebrütet") }

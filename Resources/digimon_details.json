@@ -11,11 +11,13 @@
       "attacks": [
         {
           "nameJa": "ベビーフレイム",
-          "romaji": "Bebī Fureimu"
+          "romaji": "Bebī Fureimu",
+          "nameKoTranslit": "베이비 플레임"
         },
         {
           "nameJa": "スピットファイア",
-          "romaji": "Supittofaia"
+          "romaji": "Supittofaia",
+          "nameKoTranslit": "스피트파이어"
         }
       ],
       "summaryKo": "작은 공룡 모습의 파충류형 디지몬. 아직 어리지만 성격이 매우 용맹하다."
@@ -28,11 +30,13 @@
       "attacks": [
         {
           "nameJa": "ヘブンズナックル",
-          "romaji": "Hebunzu Nakkuru"
+          "romaji": "Hebunzu Nakkuru",
+          "nameKoTranslit": "헤븐즈 너클"
         },
         {
           "nameJa": "ホーリーロッド",
-          "romaji": "Hōrī Roddo"
+          "romaji": "Hōrī Roddo",
+          "nameKoTranslit": "홀리 로드"
         }
       ],
       "summaryKo": "여섯 장의 빛나는 날개를 지닌 천사형 디지몬. 악을 물리치기 위해서만 힘을 쓴다."
@@ -45,11 +49,13 @@
       "attacks": [
         {
           "nameJa": "メテオウィング",
-          "romaji": "Meteo Wingu"
+          "romaji": "Meteo Wingu",
+          "nameKoTranslit": "메테오 윙"
         },
         {
           "nameJa": "ファイアフラップ",
-          "romaji": "Faia Furappu"
+          "romaji": "Faia Furappu",
+          "nameKoTranslit": "파이어 플랩"
         }
       ],
       "summaryKo": "타오르는 불꽃에 휩싸인 거대조형 디지몬. 먼저 싸우진 않지만 반격은 매섭다."
@@ -62,11 +68,13 @@
       "attacks": [
         {
           "nameJa": "プチファイアー",
-          "romaji": "Puchi Faiā"
+          "romaji": "Puchi Faiā",
+          "nameKoTranslit": "프티 파이어"
         },
         {
           "nameJa": "リトルホーン",
-          "romaji": "Ritoru Hōn"
+          "romaji": "Ritoru Hōn",
+          "nameKoTranslit": "리틀 혼"
         }
       ],
       "summaryKo": "가루루몬의 털가죽을 두른 파충류형 디지몬. 그것을 벗으면 몹시 수줍음을 탄다."
@@ -80,11 +88,13 @@
       "attacks": [
         {
           "nameJa": "フォックスファイアー",
-          "romaji": "Fokkusufaiā"
+          "romaji": "Fokkusufaiā",
+          "nameKoTranslit": "폭스파이어"
         },
         {
           "nameJa": "たいあたり",
-          "romaji": "Tai Atari"
+          "romaji": "Tai Atari",
+          "nameKoTranslit": "몸통박치기"
         }
       ],
       "summaryKo": "늑대를 닮은 수형 디지몬. 미스릴처럼 단단한 털과 높은 지능을 함께 지녔다."
@@ -97,11 +107,13 @@
       "attacks": [
         {
           "nameJa": "メガフレイム",
-          "romaji": "Mega Fureimu"
+          "romaji": "Mega Fureimu",
+          "nameKoTranslit": "메가 플레임"
         },
         {
           "nameJa": "グレートアントラー",
-          "romaji": "Gurēto Antorā"
+          "romaji": "Gurēto Antorā",
+          "nameKoTranslit": "그레이트 앤틀러"
         }
       ],
       "summaryKo": "투구벌레 같은 두개골을 지닌 공룡형 디지몬. 사납지만 길들이면 더없이 강하다."
@@ -114,11 +126,13 @@
       "attacks": [
         {
           "nameJa": "メガブラスター",
-          "romaji": "Mega Burasutā"
+          "romaji": "Mega Burasutā",
+          "nameKoTranslit": "메가 블래스터"
         },
         {
           "nameJa": "ビートホーン",
-          "romaji": "Bīto Hōn"
+          "romaji": "Bīto Hōn",
+          "nameKoTranslit": "비트 혼"
         }
       ],
       "summaryKo": "머리가 금속화된 곤충형 디지몬. 오직 생존 본능만으로 바이러스종을 덮친다."
@@ -131,11 +145,13 @@
       "attacks": [
         {
           "nameJa": "ホーリーアロー",
-          "romaji": "Hōrī Arō"
+          "romaji": "Hōrī Arō",
+          "nameKoTranslit": "홀리 애로우"
         },
         {
           "nameJa": "ヘブンズチャーム",
-          "romaji": "Hebunzu Chāmu"
+          "romaji": "Hebunzu Chāmu",
+          "nameKoTranslit": "헤븐즈 참"
         }
       ],
       "summaryKo": "여덟 날개를 지닌 대천사형 디지몬. 상냥하지만 사악한 자만은 용서치 않는다."
@@ -148,11 +164,13 @@
       "attacks": [
         {
           "nameJa": "ホーンバスター",
-          "romaji": "Hōn Basutā"
+          "romaji": "Hōn Basutā",
+          "nameKoTranslit": "혼 버스터"
         },
         {
           "nameJa": "ワイルドスクラッチ",
-          "romaji": "Wairudo Sukuracchi"
+          "romaji": "Wairudo Sukuracchi",
+          "nameKoTranslit": "와일드 스크래치"
         }
       ],
       "summaryKo": "거대한 뿔이 주무기인 곤충형 디지몬. 약한 존재를 지켜주는 모습이 관찰된다."
@@ -166,11 +184,13 @@
       "attacks": [
         {
           "nameJa": "ポイズンアイビー",
-          "romaji": "Poizun Aibī"
+          "romaji": "Poizun Aibī",
+          "nameKoTranslit": "포이즌 아이비"
         },
         {
           "nameJa": "プラントショック",
-          "romaji": "Puranto Shokku"
+          "romaji": "Puranto Shokku",
+          "nameKoTranslit": "플랜트 쇼크"
         }
       ],
       "summaryKo": "머리에 열대화를 피운 식물형 디지몬. 기분에 따라 꽃에서 나는 향기가 달라진다."
@@ -184,11 +204,13 @@
       "attacks": [
         {
           "nameJa": "ネコパンチ",
-          "romaji": "Neko Panchi"
+          "romaji": "Neko Panchi",
+          "nameKoTranslit": "고양이 펀치"
         },
         {
           "nameJa": "キャッツ・アイ",
-          "romaji": "Kyattsu Ai"
+          "romaji": "Kyattsu Ai",
+          "nameKoTranslit": "캐츠 아이"
         }
       ],
       "summaryKo": "꼬리에 성스러운 링을 두른 성수형 디지몬. 호기심이 많아 장난을 무척 좋아한다."
@@ -202,11 +224,13 @@
       "attacks": [
         {
           "nameJa": "プチサンダー",
-          "romaji": "Puchi Sandā"
+          "romaji": "Puchi Sandā",
+          "nameKoTranslit": "프티 썬더"
         },
         {
           "nameJa": "トワイスアーム",
-          "romaji": "Towaisu Āmu"
+          "romaji": "Towaisu Āmu",
+          "nameKoTranslit": "트와이스 암"
         }
       ],
       "summaryKo": "단단한 껍질을 지닌 곤충형 디지몬. 온화해서 꽃향기를 맡으며 한가로이 산다."
@@ -219,11 +243,13 @@
       "attacks": [
         {
           "nameJa": "ハンマースパーク",
-          "romaji": "Hanmā Supāku"
+          "romaji": "Hanmā Supāku",
+          "nameKoTranslit": "해머 스파크"
         },
         {
           "nameJa": "ホーン＆タスク",
-          "romaji": "Hōn ando Tasuku"
+          "romaji": "Hōn ando Tasuku",
+          "nameKoTranslit": "혼 & 터스크"
         }
       ],
       "summaryKo": "두 발로 걷게 된 해수형 디지몬. 고대 얼음에서 캐낸 거대한 망치를 휘두른다."
@@ -237,11 +263,13 @@
       "attacks": [
         {
           "nameJa": "エアショット",
-          "romaji": "Ea Shotto"
+          "romaji": "Ea Shotto",
+          "nameKoTranslit": "에어 샷"
         },
         {
           "nameJa": "はねビンタ",
-          "romaji": "Hane Binta"
+          "romaji": "Hane Binta",
+          "nameKoTranslit": "날개 따귀"
         }
       ],
       "summaryKo": "커다란 귀로 하늘을 나는 포유형 디지몬. 온순하며 성스러운 힘을 숨기고 있다."
@@ -255,11 +283,13 @@
       "attacks": [
         {
           "nameJa": "マジカルファイアー",
-          "romaji": "Majikaru Faiyā"
+          "romaji": "Majikaru Faiyā",
+          "nameKoTranslit": "마지컬 파이어"
         },
         {
           "nameJa": "ピヨリンアタック",
-          "romaji": "Piyorin Atakku"
+          "romaji": "Piyorin Atakku",
+          "nameKoTranslit": "피요링 어택"
         }
       ],
       "summaryKo": "날개가 팔처럼 발달한 유조형 디지몬. 언젠가 하늘을 자유로이 나는 것이 꿈이다."
@@ -273,11 +303,13 @@
       "attacks": [
         {
           "nameJa": "マーチングフィッシィーズ",
-          "romaji": "Māchingu Fisshīzu"
+          "romaji": "Māchingu Fisshīzu",
+          "nameKoTranslit": "마칭 피시즈"
         },
         {
           "nameJa": "するどいツメ",
-          "romaji": "Surudoi Tsume"
+          "romaji": "Surudoi Tsume",
+          "nameKoTranslit": "날카로운 발톱"
         }
       ],
       "summaryKo": "체온을 지키는 털로 덮인 해수형 디지몬. 눈에 띄는 것은 무엇이든 만지는 개구쟁이다."
@@ -290,11 +322,13 @@
       "attacks": [
         {
           "nameJa": "ヘブンズゲート",
-          "romaji": "Hōrī Fezā"
+          "romaji": "Hōrī Fezā",
+          "nameKoTranslit": "헤븐즈 게이트"
         },
         {
           "nameJa": "エクスキャリバー",
-          "romaji": "Ekusukyaribā"
+          "romaji": "Ekusukyaribā",
+          "nameKoTranslit": "엑스칼리버"
         }
       ],
       "summaryKo": "여덟 장의 은빛 날개를 지닌 대천사형 디지몬. 디지털 월드의 질서를 감독한다."
@@ -308,11 +342,13 @@
       "attacks": [
         {
           "nameJa": "ホーリーフレイム",
-          "romaji": "Hōrī Fureimu"
+          "romaji": "Hōrī Fureimu",
+          "nameKoTranslit": "홀리 플레임"
         },
         {
           "nameJa": "アポカリプス",
-          "romaji": "Apokaripusu"
+          "romaji": "Apokaripusu",
+          "nameKoTranslit": "아포칼립스"
         }
       ],
       "summaryKo": "하늘의 지배자를 떠올리게 하는 성룡형 디지몬. 좀처럼 모습을 보이지 않는다."
@@ -325,11 +361,13 @@
       "attacks": [
         {
           "nameJa": "ハープーンバルカン",
-          "romaji": "Hāpūn Barukan"
+          "romaji": "Hāpūn Barukan",
+          "nameKoTranslit": "하푼 벌컨"
         },
         {
           "nameJa": "ヒートトップ",
-          "romaji": "Hīto Toppu"
+          "romaji": "Hīto Toppu",
+          "nameKoTranslit": "히트 탑"
         }
       ],
       "summaryKo": "두꺼운 털의 해수형 디지몬. 희소 금속으로 된 날카로운 뿔을 무기로 삼는다."
@@ -342,11 +380,13 @@
       "attacks": [
         {
           "nameJa": "シャドーウィング",
-          "romaji": "Shadō Uingu"
+          "romaji": "Shadō Uingu",
+          "nameKoTranslit": "섀도우 윙"
         },
         {
           "nameJa": "イーグルクロー",
-          "romaji": "Īguru Kurō"
+          "romaji": "Īguru Kurō",
+          "nameKoTranslit": "이글 클로"
         }
       ],
       "summaryKo": "거대한 발톱과 날개를 지닌 조인형 디지몬. 자연을 사랑하는 대지의 수호신이다."
@@ -359,11 +399,13 @@
       "attacks": [
         {
           "nameJa": "フラウカノン",
-          "romaji": "Furau Kanon"
+          "romaji": "Furau Kanon",
+          "nameKoTranslit": "프라우 카논"
         },
         {
           "nameJa": "テンプテーション",
-          "romaji": "Tenputēshon"
+          "romaji": "Tenputēshon",
+          "nameKoTranslit": "템테이션"
         }
       ],
       "summaryKo": "꽃잎에서 태어난 요정형 디지몬. 변덕스럽지만 약한 존재에게는 먼저 손을 내민다."
@@ -377,11 +419,13 @@
       "attacks": [
         {
           "nameJa": "コキュートスブレス",
-          "romaji": "Kokyūtosu Buresu"
+          "romaji": "Kokyūtosu Buresu",
+          "nameKoTranslit": "코키토스 브레스"
         },
         {
           "nameJa": "ガルルトマホーク",
-          "romaji": "Garuru Tomahōku"
+          "romaji": "Garuru Tomahōku",
+          "nameKoTranslit": "가루루 토마호크"
         }
       ],
       "summaryKo": "전신을 금속화한 사이보그형 디지몬. 온몸에 무수한 무기를 숨기고 적을 분쇄한다."
@@ -395,11 +439,13 @@
       "attacks": [
         {
           "nameJa": "トライデントアーム",
-          "romaji": "Toraidento Āmu"
+          "romaji": "Toraidento Āmu",
+          "nameKoTranslit": "트라이던트 암"
         },
         {
           "nameJa": "ギガデストロイヤー",
-          "romaji": "Giga Desutoroiyā"
+          "romaji": "Giga Desutoroiyā",
+          "nameKoTranslit": "기가 디스트로이어"
         }
       ],
       "summaryKo": "몸의 절반 이상을 기계화한 사이보그형 디지몬. 핵무기에 맞먹는 공격력을 지녔다."
@@ -412,11 +458,13 @@
       "attacks": [
         {
           "nameJa": "ガルルキャノン",
-          "romaji": "Garuru Kyanon"
+          "romaji": "Garuru Kyanon",
+          "nameKoTranslit": "가루루 캐논"
         },
         {
           "nameJa": "グレイソード",
-          "romaji": "Gurei Sōdo"
+          "romaji": "Gurei Sōdo",
+          "nameKoTranslit": "그레이 소드"
         }
       ],
       "summaryKo": "두 궁극체가 융합해 태어난 성기사형 디지몬. 로열 나이츠의 일원으로 꼽힌다."
@@ -429,11 +477,13 @@
       "attacks": [
         {
           "nameJa": "チクチクバンバン",
-          "romaji": "Chikuchiku Ban Ban"
+          "romaji": "Chikuchiku Ban Ban",
+          "nameKoTranslit": "콕콕 빵빵"
         },
         {
           "nameJa": "マッハジャブ",
-          "romaji": "Mahha Jabu"
+          "romaji": "Mahha Jabu",
+          "nameKoTranslit": "마하 잽"
         }
       ],
       "summaryKo": "거대한 선인장 모습의 식물형 디지몬. 평소엔 멍하지만 화가 나면 성격이 돌변한다."
@@ -446,11 +496,13 @@
       "attacks": [
         {
           "nameJa": "ガイアフォース",
-          "romaji": "Gaia Fōsu"
+          "romaji": "Gaia Fōsu",
+          "nameKoTranslit": "가이아 포스"
         },
         {
           "nameJa": "グレートトルネード",
-          "romaji": "Gurēto Torunēdo"
+          "romaji": "Gurēto Torunēdo",
+          "nameKoTranslit": "그레이트 토네이도"
         }
       ],
       "summaryKo": "크론디지조이드 갑옷을 두른 용인형 디지몬. 그레이몬계가 도달하는 궁극 형태다."
@@ -464,11 +516,13 @@
       "attacks": [
         {
           "nameJa": "カイザーネイル",
-          "romaji": "Kaizā Neiru"
+          "romaji": "Kaizā Neiru",
+          "nameKoTranslit": "카이저 네일"
         },
         {
           "nameJa": "ボールディブロー",
-          "romaji": "Bōrudi Burō"
+          "romaji": "Bōrudi Burō",
+          "nameKoTranslit": "볼디 블로우"
         }
       ],
       "summaryKo": "두 발로 걷게 된 수인형 디지몬. 다리 힘을 살린 발차기가 무척 강력하고 충실하다."
@@ -481,11 +535,13 @@
       "attacks": [
         {
           "nameJa": "メガトンプレス",
-          "romaji": "Megaton Puresu"
+          "romaji": "Megaton Puresu",
+          "nameKoTranslit": "메가톤 프레스"
         },
         {
           "nameJa": "テイルハンマー",
-          "romaji": "Teiru Hanmā"
+          "romaji": "Teiru Hanmā",
+          "nameKoTranslit": "테일 해머"
         }
       ],
       "summaryKo": "온몸이 단단한 껍질로 덮인 안킬로사우루스형 디지몬. 온순하지만 겁내지 않는다."
@@ -498,11 +554,13 @@
       "attacks": [
         {
           "nameJa": "グライドホーン",
-          "romaji": "Guraido Hōn"
+          "romaji": "Guraido Hōn",
+          "nameKoTranslit": "글라이드 혼"
         },
         {
           "nameJa": "ブラストレーザー",
-          "romaji": "Burasuto Rēzā"
+          "romaji": "Burasuto Rēzā",
+          "nameKoTranslit": "블래스트 레이저"
         }
       ],
       "summaryKo": "머리에 거대한 뿔이 난 거대조형 디지몬. 예의를 중시하며 주인에게 충실하다."
@@ -515,11 +573,13 @@
       "attacks": [
         {
           "nameJa": "スクラッチビート",
-          "romaji": "Sukuracchi Bīto"
+          "romaji": "Sukuracchi Bīto",
+          "nameKoTranslit": "스크래치 비트"
         },
         {
           "nameJa": "ローリングストーン",
-          "romaji": "Rōringu Sutōn"
+          "romaji": "Rōringu Sutōn",
+          "nameKoTranslit": "롤링 스톤"
         }
       ],
       "summaryKo": "단단한 등껍질에 덮인 포유형 디지몬. 느긋하고 사랑스러운 성격을 지니고 있다."
@@ -532,11 +592,13 @@
       "attacks": [
         {
           "nameJa": "バブルボム",
-          "romaji": "Baburu Bomu"
+          "romaji": "Baburu Bomu",
+          "nameKoTranslit": "버블 봄"
         },
         {
           "nameJa": "サルガッソードラッグ",
-          "romaji": "Sarugasso Doraggu"
+          "romaji": "Sarugasso Doraggu",
+          "nameKoTranslit": "사르가소 드래그"
         }
       ],
       "summaryKo": "성실의 디지멘탈로 아머 진화한 모습. 어떤 디지몬보다 깊은 바다로 잠수한다."
@@ -549,11 +611,13 @@
       "attacks": [
         {
           "nameJa": "ゴールドラッシュ",
-          "romaji": "Gōrudo Rasshu"
+          "romaji": "Gōrudo Rasshu",
+          "nameKoTranslit": "골드 러시"
         },
         {
           "nameJa": "ビッグクラック",
-          "romaji": "Biggu Kurakku"
+          "romaji": "Biggu Kurakku",
+          "nameKoTranslit": "빅 크랙"
         }
       ],
       "summaryKo": "지식의 디지멘탈로 아머 진화한 모습. 드릴로 대지를 가르며 땅속에서 싸운다."
@@ -567,11 +631,13 @@
       "attacks": [
         {
           "nameJa": "ナックルファイア",
-          "romaji": "Nakkuru Faia"
+          "romaji": "Nakkuru Faia",
+          "nameKoTranslit": "너클 파이어"
         },
         {
           "nameJa": "ファイアロケット",
-          "romaji": "Faia Roketto"
+          "romaji": "Faia Roketto",
+          "nameKoTranslit": "파이어 로켓"
         }
       ],
       "summaryKo": "용기의 디지멘탈로 아머 진화한 모습. 온몸의 불꽃으로 적을 태운다."
@@ -584,11 +650,13 @@
       "attacks": [
         {
           "nameJa": "ライトニングブレード",
-          "romaji": "Raitoningu Burēdo"
+          "romaji": "Raitoningu Burēdo",
+          "nameKoTranslit": "라이트닝 블레이드"
         },
         {
           "nameJa": "ブルーサンダー",
-          "romaji": "Burū Sandā"
+          "romaji": "Burū Sandā",
+          "nameKoTranslit": "블루 썬더"
         }
       ],
       "summaryKo": "우정의 디지멘탈로 아머 진화한 모습. 번개처럼 민첩하게 달리며 적을 감전시킨다."
@@ -602,11 +670,13 @@
       "attacks": [
         {
           "nameJa": "プラズマシュート",
-          "romaji": "Purazuma Shūto"
+          "romaji": "Purazuma Shūto",
+          "nameKoTranslit": "플라즈마 슛"
         },
         {
           "nameJa": "シャイニングゴールドソーラーストーム",
-          "romaji": "Shainingu Gōrudo Sōrā Sutōmu"
+          "romaji": "Shainingu Gōrudo Sōrā Sutōmu",
+          "nameKoTranslit": "샤이닝 골드 솔라 스톰"
         }
       ],
       "summaryKo": "기적의 디지멘탈로 아머 진화한 모습. 황금 갑옷을 두른 로열 나이츠의 일원이다."
@@ -620,11 +690,13 @@
       "attacks": [
         {
           "nameJa": "カースオブクィーン",
-          "romaji": "Kāsu obu Kuīn"
+          "romaji": "Kāsu obu Kuīn",
+          "nameKoTranslit": "커스 오브 퀸"
         },
         {
           "nameJa": "ロゼッタストーン",
-          "romaji": "Rozetta Sutōn"
+          "romaji": "Rozetta Sutōn",
+          "nameKoTranslit": "로제타 스톤"
         }
       ],
       "summaryKo": "빛의 디지멘탈로 아머 진화한 모습. 강렬한 빛의 힘으로 어둠을 정화해 버린다."
@@ -638,11 +710,13 @@
       "attacks": [
         {
           "nameJa": "エスグリーマ",
-          "romaji": "Esugurīma"
+          "romaji": "Esugurīma",
+          "nameKoTranslit": "에스그리마"
         },
         {
           "nameJa": "デスペラードブラスター",
-          "romaji": "Desuperādo Burasutā"
+          "romaji": "Desuperādo Burasutā",
+          "nameKoTranslit": "데스페라도 블래스터"
         }
       ],
       "summaryKo": "엑스브이몬과 스팅몬이 죠그레스한 용인형 디지몬. 주인을 향한 충성심이 깊다."
@@ -655,11 +729,13 @@
       "attacks": [
         {
           "nameJa": "スパイキングフィニッシュ",
-          "romaji": "Supaikingu Finisshu"
+          "romaji": "Supaikingu Finisshu",
+          "nameKoTranslit": "스파이킹 피니시"
         },
         {
           "nameJa": "ヘルスクイーズ",
-          "romaji": "Heru Sukuīzu"
+          "romaji": "Heru Sukuīzu",
+          "nameKoTranslit": "헬 스퀴즈"
         }
       ],
       "summaryKo": "인간형에 가까운 곤충형 디지몬. 급소를 노리는 암살자 같은 솜씨와 냉철함을 지녔다."
@@ -672,11 +748,13 @@
       "attacks": [
         {
           "nameJa": "オキシジェンホーミング",
-          "romaji": "Okishijen Hōmingu"
+          "romaji": "Okishijen Hōmingu",
+          "nameKoTranslit": "옥시전 호밍"
         },
         {
           "nameJa": "サブマリンアタック",
-          "romaji": "Sabumarin Atakku"
+          "romaji": "Sabumarin Atakku",
+          "nameKoTranslit": "서브마린 어택"
         }
       ],
       "summaryKo": "성실의 디지멘탈로 아머 진화한 모습. 바닷속을 자유로이 헤엄치며 싸운다."
@@ -690,11 +768,13 @@
       "attacks": [
         {
           "nameJa": "ブンブンパンチ",
-          "romaji": "Bunbun Panchi"
+          "romaji": "Bunbun Panchi",
+          "nameKoTranslit": "붕붕 펀치"
         },
         {
           "nameJa": "ブイモンヘッド",
-          "romaji": "Buimon Heddo"
+          "romaji": "Buimon Heddo",
+          "nameKoTranslit": "브이몬 헤드"
         }
       ],
       "summaryKo": "고대종의 후예인 소룡형 디지몬. 장난꾸러기지만 정의감만은 누구보다도 강하다."
@@ -708,11 +788,13 @@
       "attacks": [
         {
           "nameJa": "ネバネバネット",
-          "romaji": "Nebaneba Netto"
+          "romaji": "Nebaneba Netto",
+          "nameKoTranslit": "끈적끈적 넷"
         },
         {
           "nameJa": "シルクスレッド",
-          "romaji": "Shiruku Sureddo"
+          "romaji": "Shiruku Sureddo",
+          "nameKoTranslit": "실크 스레드"
         }
       ],
       "summaryKo": "겁이 많은 유충형 디지몬. 아머 진화하면 믿기 힘든 힘을 발휘한다고 전해진다."
@@ -725,11 +807,13 @@
       "attacks": [
         {
           "nameJa": "ストロングクランチ",
-          "romaji": "Sutorongu Kuranchi"
+          "romaji": "Sutorongu Kuranchi",
+          "nameKoTranslit": "스트롱 크런치"
         },
         {
           "nameJa": "エクスレイザー",
-          "romaji": "Ekusu Reizā"
+          "romaji": "Ekusu Reizā",
+          "nameKoTranslit": "엑스 레이저"
         }
       ],
       "summaryKo": "브이몬의 힘을 이어받은 환룡형 디지몬. 바위산도 부수는 강대한 완력을 지녔다."
@@ -742,11 +826,13 @@
       "attacks": [
         {
           "nameJa": "ロデオギャロップ",
-          "romaji": "Rodeo Gyaroppu"
+          "romaji": "Rodeo Gyaroppu",
+          "nameKoTranslit": "로데오 갤럽"
         },
         {
           "nameJa": "シルバーブレイズ",
-          "romaji": "Shirubā Bureizu"
+          "romaji": "Shirubā Bureizu",
+          "nameKoTranslit": "실버 블레이즈"
         }
       ],
       "summaryKo": "희망의 디지멘탈로 아머 진화한 모습. 성스러운 빛으로 악한 자를 벌한다."
@@ -759,11 +845,13 @@
       "attacks": [
         {
           "nameJa": "セブンヘブンズ",
-          "romaji": "Sebun Hebunzu"
+          "romaji": "Sebun Hebunzu",
+          "nameKoTranslit": "세븐 헤븐즈"
         },
         {
           "nameJa": "テスタメント",
-          "romaji": "Tesutamento"
+          "romaji": "Tesutamento",
+          "nameKoTranslit": "테스타먼트"
         }
       ],
       "summaryKo": "은빛 갑옷과 열 장의 날개를 지닌 치천사형 디지몬. 모든 천사들을 다스린다."
@@ -777,11 +865,13 @@
       "attacks": [
         {
           "nameJa": "ニギミタマ",
-          "romaji": "Nigimitama"
+          "romaji": "Nigimitama",
+          "nameKoTranslit": "니기미타마"
         },
         {
           "nameJa": "アラミタマ",
-          "romaji": "Aramitama"
+          "romaji": "Aramitama",
+          "nameKoTranslit": "아라미타마"
         }
       ],
       "summaryKo": "안킬로몬과 엔젤몬이 죠그레스한 돌연변이형 디지몬. 성격이 몹시 온화하다."
@@ -793,12 +883,14 @@
       "type": "Mutation",
       "attacks": [
         {
-          "nameJa": "紅葉",
-          "romaji": "Momiji Oroshi"
+          "nameJa": "紅葉おろし",
+          "romaji": "Momiji Oroshi",
+          "nameKoTranslit": "모미지 오로시"
         },
         {
           "nameJa": "草薙",
-          "romaji": "Kusanagi"
+          "romaji": "Kusanagi",
+          "nameKoTranslit": "쿠사나기"
         }
       ],
       "summaryKo": "순수의 디지멘탈로 아머 진화한 모습. 닌자처럼 바람에 몸을 숨기고 적을 벤다."
@@ -811,11 +903,13 @@
       "attacks": [
         {
           "nameJa": "トップガン",
-          "romaji": "Toppu Gan"
+          "romaji": "Toppu Gan",
+          "nameKoTranslit": "톱 건"
         },
         {
           "nameJa": "デュアルソニック",
-          "romaji": "Dyuaru Sonikku"
+          "romaji": "Dyuaru Sonikku",
+          "nameKoTranslit": "듀얼 소닉"
         }
       ],
       "summaryKo": "아쿠이라몬과 테일몬이 죠그레스한 수인형 디지몬. 도약력이 매우 뛰어나다."
@@ -828,11 +922,13 @@
       "attacks": [
         {
           "nameJa": "ビークペッカー",
-          "romaji": "Bīku Pekkā"
+          "romaji": "Bīku Pekkā",
+          "nameKoTranslit": "비크 페커"
         },
         {
           "nameJa": "フェザースラッシュ",
-          "romaji": "Fezā Surasshu"
+          "romaji": "Fezā Surasshu",
+          "nameKoTranslit": "페더 슬래시"
         }
       ],
       "summaryKo": "언제나 침착하고 예의 바른 조류형 디지몬. 고대 특수종의 후예로 알려져 있다."
@@ -846,11 +942,13 @@
       "attacks": [
         {
           "nameJa": "マッハインパルス",
-          "romaji": "Mahha Inparusu"
+          "romaji": "Mahha Inparusu",
+          "nameKoTranslit": "마하 임펄스"
         },
         {
           "nameJa": "テンペストウィング",
-          "romaji": "Tenpesuto Wingu"
+          "romaji": "Tenpesuto Wingu",
+          "nameKoTranslit": "템페스트 윙"
         }
       ],
       "summaryKo": "사랑의 디지멘탈로 아머 진화한 모습. 바람을 타고 하늘의 싸움을 지배한다."
@@ -864,11 +962,13 @@
       "attacks": [
         {
           "nameJa": "ポジトロンレーザー",
-          "romaji": "Pojitoron Rēzā"
+          "romaji": "Pojitoron Rēzā",
+          "nameKoTranslit": "포지트론 레이저"
         },
         {
           "nameJa": "ギガデス",
-          "romaji": "Giga Desu"
+          "romaji": "Giga Desu",
+          "nameKoTranslit": "기가 데스"
         }
       ],
       "summaryKo": "모든 힘을 해방해 인간형으로 변한 고대용인형 디지몬. 행성마저 부순다고 한다."
@@ -882,11 +982,13 @@
       "attacks": [
         {
           "nameJa": "オメガブレード",
-          "romaji": "Omega Burēdo"
+          "romaji": "Omega Burēdo",
+          "nameKoTranslit": "오메가 블레이드"
         },
         {
           "nameJa": "ギガデス",
-          "romaji": "Giga Desu"
+          "romaji": "Giga Desu",
+          "nameKoTranslit": "기가 데스"
         }
       ],
       "summaryKo": "오메가몬의 힘을 얻은 고대성기사형 디지몬. 임페리얼드라몬의 최종 형태다."
@@ -900,11 +1002,13 @@
       "attacks": [
         {
           "nameJa": "メガデス",
-          "romaji": "Mega Desu"
+          "romaji": "Mega Desu",
+          "nameKoTranslit": "메가 데스"
         },
         {
           "nameJa": "ポジトロンレーザー",
-          "romaji": "Pojitoron Rēzā"
+          "romaji": "Pojitoron Rēzā",
+          "nameKoTranslit": "포지트론 레이저"
         }
       ],
       "summaryKo": "고대에 존재한 고대룡형 디지몬. 힘이 너무 강대해 다루기가 거의 불가능하다."

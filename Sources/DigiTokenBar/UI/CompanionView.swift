@@ -984,9 +984,10 @@ private struct DigimonDetailView: View {
             HStack(spacing: 14) {
                 valuePair(store.l.digimonGeneration, store.l.stageName(lore.level))
                 valuePair(store.l.digimonAttribute, store.l.attributeName(lore.attribute))
-                // 형태는 열린 집합(데이터에 40종 이상)이라 번역 없이 원문 그대로 — 7개 언어 테이블을
-                // 미리 채우면 데이터에 없는 값을 지어내게 된다.
-                valuePair(store.l.digimonType, lore.type)
+                // 형태는 열린 집합(데이터에 31종)이라 한국어만 번역하고(L.typeName) 나머지 6개
+                // 언어와 매핑 밖의 값은 원문 그대로 — 7개 언어 테이블을 미리 채우면 없는 값을
+                // 지어내게 된다.
+                valuePair(store.l.digimonType, store.l.typeName(dataValue: lore.type))
             }
             if let summary = lore.summaryKo, !summary.isEmpty {
                 detailTitle(store.l.digimonSummary)
@@ -997,8 +998,10 @@ private struct DigimonDetailView: View {
         .detailCard()
     }
 
-    /// 필살기 — 일본어 원어명 + 로마자. 한국 더빙명 필드는 데이터에 아직 없다(`DigimonAttack` 은
-    /// nameJa/romaji 만 담는다). 그 필드가 생기면 여기서 한국어 화면에만 우선 적용하면 된다.
+    /// 필살기 — 한국어 화면은 한국어 음차(강조) + 일본어 원어명(보조), 나머지 언어는 기존대로
+    /// 일본어 원어명(강조) + 로마자(보조). `nameKoTranslit` 는 공식 더빙명이 아니라 우리가 만든
+    /// 음차라 한국 더빙명 필드(`nameKo`, 아직 데이터 없음)가 채워지면 그쪽으로 교체한다
+    /// (`DigimonLore.Attack` 주석 참고).
     @ViewBuilder
     private func attacksSection(_ lore: DigimonLore) -> some View {
         if !lore.attacks.isEmpty {
@@ -1006,9 +1009,14 @@ private struct DigimonDetailView: View {
                 detailTitle(store.l.digimonAttacks)
                 ForEach(Array(lore.attacks.enumerated()), id: \.offset) { _, attack in
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(attack.nameJa).font(.caption.weight(.semibold))
-                        if !attack.romaji.isEmpty {
-                            Text(attack.romaji).font(.system(size: 9)).foregroundStyle(.secondary)
+                        if store.language == .ko, let translit = attack.nameKoTranslit, !translit.isEmpty {
+                            Text(translit).font(.caption.weight(.semibold))
+                            Text(attack.nameJa).font(.system(size: 9)).foregroundStyle(.secondary)
+                        } else {
+                            Text(attack.nameJa).font(.caption.weight(.semibold))
+                            if !attack.romaji.isEmpty {
+                                Text(attack.romaji).font(.system(size: 9)).foregroundStyle(.secondary)
+                            }
                         }
                     }
                 }
