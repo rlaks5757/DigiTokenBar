@@ -25,3 +25,17 @@ Package.resolved
 # Python 바이트코드 캐시
 __pycache__/
 .gstack/
+
+# archify visual-check 사이드카 — deliver/visual-check 를 돌릴 때마다 재생성되는
+# 검증 증거물(스크린샷·리포트)이다. 배포 산출물이 아니고 build-app.sh 도 복사하지 않는다.
+Resources/digivolution*.visual-check.*
+
+# 한 장짜리 종합 진화 트리 — 브라우저 열람 전용 산출물이다.
+# 앱은 이 파일을 쓰지 않는다(DigimonData 는 digivolution.<line>.html 만 찾고
+# build-app.sh 도 12장만 복사한다). 1.8MB base64 를 히스토리에 넣지 않는다.
+# 재생성: scratchpad/gen_full.py
+Resources/digivolution.html
+
+# 에이전트 작업 산출물 — 검증 스크립트·중간 보고서·스크린샷이 쌓이는 곳이다.
+# 저장소에 들어갈 물건이 아니다(재현은 보고서가 아니라 커밋된 소스로 한다).
+scratchpad/

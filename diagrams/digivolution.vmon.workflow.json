@@ -1,0 +1,400 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "디지몬 진화 경로 — 브이몬 라인",
+    "quality_profile": "showcase",
+    "legend": {
+      "mode": "auto",
+      "entries": {
+        "frontend": {
+          "label": "Child"
+        },
+        "backend": {
+          "label": "Adult"
+        },
+        "cloud": {
+          "label": "Perfect"
+        },
+        "security": {
+          "label": "Ultimate · 최종 도달체"
+        },
+        "messagebus": {
+          "label": "죠그레스 · 아머 결과"
+        },
+        "database": {
+          "label": "디지멘탈 아이템"
+        }
+      }
+    }
+  },
+  "lanes": [
+    {
+      "id": "vmon",
+      "label": "브이몬 라인 · 죠그레스 체인"
+    },
+    {
+      "id": "armor_vmon_1",
+      "label": "브이몬 아머 (1/2)",
+      "variant": "exception"
+    },
+    {
+      "id": "armor_vmon_2",
+      "label": "브이몬 아머 (2/2)",
+      "variant": "exception"
+    }
+  ],
+  "phases": [],
+  "groups": [],
+  "nodes": [
+    {
+      "id": "vmon",
+      "lane": "vmon",
+      "col": 0,
+      "type": "frontend",
+      "label": "브이몬",
+      "width": 138,
+      "height": 92,
+      "sublabel": "V-mon",
+      "brand": {
+        "url": "https://wikimon.net/images/4/4e/Vmon_vpet_vb.png",
+        "sha256": "bb4a2c9ee0d06641253505d4e260cc9483c2dcbd2e6be86912494268eb8a7088"
+      }
+    },
+    {
+      "id": "xvmon",
+      "lane": "vmon",
+      "col": 1,
+      "type": "backend",
+      "label": "XV-mon",
+      "width": 138,
+      "height": 92,
+      "brand": {
+        "url": "https://wikimon.net/images/7/7d/Xvmon_vpet_vb.png",
+        "sha256": "dc8c932e93df3c7c82e0dfa484c69056b9746d050a26e1d7cf4b7c06b082b39c"
+      }
+    },
+    {
+      "id": "stingmon",
+      "lane": "vmon",
+      "col": 2,
+      "type": "backend",
+      "label": "Stingmon",
+      "width": 138,
+      "height": 92,
+      "tag": "파트너 종",
+      "brand": {
+        "url": "https://wikimon.net/images/5/51/Stingmon_vpet_vb.png",
+        "sha256": "4b30dc701969a740345fba6bbd2e0fce1ce7931911194feff148e60308b4857f"
+      }
+    },
+    {
+      "id": "paildramon",
+      "lane": "vmon",
+      "col": 3,
+      "type": "messagebus",
+      "label": "파일드라몬",
+      "width": 138,
+      "height": 92,
+      "sublabel": "Paildramon",
+      "tag": "죠그레스",
+      "brand": {
+        "url": "https://wikimon.net/images/e/eb/Paildramon_vpet_vb.png",
+        "sha256": "09f061e9575cca6b194a29d8512b54090315b8824d7a2c7d7937813ec14db733"
+      }
+    },
+    {
+      "id": "impdragon",
+      "lane": "vmon",
+      "col": 4,
+      "type": "cloud",
+      "label": "황제드라몬",
+      "width": 138,
+      "height": 92,
+      "sublabel": "드래곤 모드",
+      "brand": {
+        "url": "https://wikimon.net/images/0/03/Imperialdramon_DM_vpet_xloader.png",
+        "sha256": "8bd27e196114afb588c029e9bcc43e09d32da764caf24e9d4cd3ce8456c7c337"
+      }
+    },
+    {
+      "id": "impfighter",
+      "lane": "vmon",
+      "col": 5,
+      "type": "cloud",
+      "label": "황제드라몬",
+      "width": 138,
+      "height": 92,
+      "sublabel": "파이터 모드",
+      "brand": {
+        "url": "https://wikimon.net/images/7/76/Imperialdramon_fighter_vpet_vb.png",
+        "sha256": "a886fabcc2ccf923930e5e40664d2611e3cfa2e777902d4f749c2cfb2aa88da4"
+      }
+    },
+    {
+      "id": "digimental_vmon_courage",
+      "lane": "armor_vmon_1",
+      "col": 1,
+      "type": "database",
+      "label": "디지멘탈",
+      "width": 138,
+      "height": 92,
+      "sublabel": "용기의 디지멘탈",
+      "brand": {
+        "url": "https://wikimon.net/images/2/2b/Digimental_courage.jpg",
+        "sha256": "a74fd90b8784267758cb2fdb793663bec71b5f0b41c9d2408fe12116c8677a77"
+      }
+    },
+    {
+      "id": "fladramon",
+      "lane": "armor_vmon_1",
+      "col": 2,
+      "type": "messagebus",
+      "label": "화염드라몬",
+      "width": 138,
+      "height": 92,
+      "sublabel": "Fladramon",
+      "brand": {
+        "url": "https://wikimon.net/images/3/3c/Fladramon_vpet_vb.png",
+        "sha256": "02c8f592a69d1e733362c1910826900038c1215a6413b17e9bb998ee2f32c7fa"
+      }
+    },
+    {
+      "id": "digimental_vmon_sincerity",
+      "lane": "armor_vmon_1",
+      "col": 3,
+      "type": "database",
+      "label": "디지멘탈",
+      "width": 138,
+      "height": 92,
+      "sublabel": "성실의 디지멘탈",
+      "brand": {
+        "url": "https://wikimon.net/images/3/34/Digimental_reliability.jpg",
+        "sha256": "6169e1c637096f03e069c1bb9728de204ee2562c12271a21f513747795ee3852"
+      }
+    },
+    {
+      "id": "depthmon",
+      "lane": "armor_vmon_1",
+      "col": 4,
+      "type": "messagebus",
+      "label": "Depthmon",
+      "width": 138,
+      "height": 92,
+      "brand": {
+        "url": "https://wikimon.net/images/2/2a/Depthmon_vpet_dark_color.png",
+        "sha256": "a83450fc08af94960e0d002590ef6971696232ed016a6ae00b5ef17c6b7702b3"
+      }
+    },
+    {
+      "id": "digimental_vmon_miracles",
+      "lane": "armor_vmon_2",
+      "col": 1,
+      "type": "database",
+      "label": "디지멘탈",
+      "width": 138,
+      "height": 92,
+      "sublabel": "기적의 디지멘탈",
+      "brand": {
+        "url": "https://wikimon.net/images/a/a8/Digimental_miracles.jpg",
+        "sha256": "f8214c235266944128fdfa93eacd9e63566d2b56bd0cedf83f4940e21080fa48"
+      }
+    },
+    {
+      "id": "magnamon",
+      "lane": "armor_vmon_2",
+      "col": 2,
+      "type": "messagebus",
+      "label": "매그너몬",
+      "width": 138,
+      "height": 92,
+      "sublabel": "Magnamon",
+      "brand": {
+        "url": "https://wikimon.net/images/f/fd/Magnamon_vpet_vb.png",
+        "sha256": "a659ce68acc91e9db553dd99c078533a68d6ded485be56f7e381932bc26f74f4"
+      }
+    },
+    {
+      "id": "digimental_vmon_friendship",
+      "lane": "armor_vmon_2",
+      "col": 3,
+      "type": "database",
+      "label": "디지멘탈",
+      "width": 138,
+      "height": 92,
+      "sublabel": "우정의 디지멘탈",
+      "brand": {
+        "url": "https://wikimon.net/images/1/13/Digimental_friendship.jpg",
+        "sha256": "3d0376bfecb2d24c2f1efa57cddf62965612325211dba5c3fc48a107a8a4a7bf"
+      }
+    },
+    {
+      "id": "lighdramon",
+      "lane": "armor_vmon_2",
+      "col": 4,
+      "type": "messagebus",
+      "label": "Lighdramon",
+      "width": 138,
+      "height": 92,
+      "brand": {
+        "url": "https://wikimon.net/images/2/2a/Lighdramon_vpet_vb.png",
+        "sha256": "a52b4398c350fa8e689b6c15e3df9357bee7640d07ffc96ba3feda15abb8c21b"
+      }
+    },
+    {
+      "id": "omegamon",
+      "lane": "armor_vmon_1",
+      "col": 5,
+      "type": "messagebus",
+      "label": "Omegamon",
+      "width": 138,
+      "height": 92,
+      "tag": "죠그레스",
+      "brand": {
+        "url": "https://wikimon.net/images/d/d4/Omegamon_vpet_vb.png",
+        "sha256": "6ba5e761d6c5b041a2b67468a2bfe876cb86e0d783c326a1b959e9797b7b323a"
+      }
+    },
+    {
+      "id": "imppaladin",
+      "lane": "armor_vmon_2",
+      "col": 5,
+      "type": "security",
+      "label": "황제드라몬",
+      "width": 138,
+      "height": 92,
+      "sublabel": "팔라딘 모드",
+      "tag": "최종 도달체",
+      "brand": {
+        "url": "https://wikimon.net/images/c/c2/Imperialdramon_paladin_vpet_vb.png",
+        "sha256": "f6340d86bfac7f4ced633ca4172a22b07283c4a8aaa359c40379839ad7232855"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "vmon-xvmon",
+      "from": "vmon",
+      "to": "xvmon",
+      "label": "레벨 상승",
+      "variant": "emphasis"
+    },
+    {
+      "id": "xvmon-paildramon",
+      "from": "xvmon",
+      "to": "paildramon",
+      "label": "죠그레스",
+      "variant": "security",
+      "role": "branch"
+    },
+    {
+      "id": "stingmon-paildramon",
+      "from": "stingmon",
+      "to": "paildramon",
+      "label": "죠그레스",
+      "variant": "security",
+      "role": "branch"
+    },
+    {
+      "id": "paildramon-impdragon",
+      "from": "paildramon",
+      "to": "impdragon",
+      "label": "체인 진화",
+      "variant": "default"
+    },
+    {
+      "id": "impdragon-impfighter",
+      "from": "impdragon",
+      "to": "impfighter",
+      "label": "모드 전환",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "vmon-digimental_vmon_courage",
+      "from": "vmon",
+      "to": "digimental_vmon_courage",
+      "label": "아이템 사용",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "digimental_vmon_courage-fladramon",
+      "from": "digimental_vmon_courage",
+      "to": "fladramon",
+      "label": "용기",
+      "variant": "default"
+    },
+    {
+      "id": "vmon-digimental_vmon_sincerity",
+      "from": "vmon",
+      "to": "digimental_vmon_sincerity",
+      "label": "아이템 사용",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "digimental_vmon_sincerity-depthmon",
+      "from": "digimental_vmon_sincerity",
+      "to": "depthmon",
+      "label": "성실",
+      "variant": "default"
+    },
+    {
+      "id": "vmon-digimental_vmon_miracles",
+      "from": "vmon",
+      "to": "digimental_vmon_miracles",
+      "label": "아이템 사용",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "digimental_vmon_miracles-magnamon",
+      "from": "digimental_vmon_miracles",
+      "to": "magnamon",
+      "label": "기적",
+      "variant": "default"
+    },
+    {
+      "id": "vmon-digimental_vmon_friendship",
+      "from": "vmon",
+      "to": "digimental_vmon_friendship",
+      "label": "아이템 사용",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "digimental_vmon_friendship-lighdramon",
+      "from": "digimental_vmon_friendship",
+      "to": "lighdramon",
+      "label": "우정",
+      "variant": "default"
+    },
+    {
+      "id": "impfighter-imppaladin",
+      "from": "impfighter",
+      "to": "imppaladin",
+      "label": "죠그레스",
+      "variant": "security",
+      "role": "branch"
+    },
+    {
+      "id": "omegamon-imppaladin",
+      "from": "omegamon",
+      "to": "imppaladin",
+      "label": "죠그레스",
+      "variant": "security",
+      "role": "branch"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "이 라인의 진화 경로",
+      "items": [
+        "정규 사다리는 Child → Adult → Perfect → Ultimate 로 오른다 (라인마다 단계 수가 다르다)",
+        "죠그레스/아머로 도달하는 개체는 파트너 종·디지멘탈과 함께 표시된다"
+      ]
+    }
+  ]
+}

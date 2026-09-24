@@ -25,6 +25,14 @@ cp Resources/digimon.json "$APP/Contents/Resources/digimon.json"
 # 디지몬 상세 데이터(레벨/속성/필살기/한국어 소개) — DigimonDetailsLoader 가 Bundle.main 에서 찾는다.
 cp Resources/digimon_details.json "$APP/Contents/Resources/digimon_details.json"
 [[ -s "$APP/Contents/Resources/digimon_details.json" ]] || { echo "✗ digimon_details.json 복사 실패" >&2; exit 1; }
+# 진화 다이어그램(라인별 12장, archify workflow) — 정적 HTML, Bundle.main 에서 찾아 브라우저로 연다.
+# 라인 키는 Resources/digimon.json 의 lines[].key 에서 직접 뽑는다 — 12개를 여기 다시
+# 하드코딩하면 Swift 쪽(DigimonLineChapter)·생성 스크립트와 별개인 세 번째 목록이 생긴다.
+LINE_KEYS=$(python3 -c "import json; print(' '.join(l['key'] for l in json.load(open('Resources/digimon.json'))['lines']))")
+for key in $LINE_KEYS; do
+    cp "Resources/digivolution.$key.html" "$APP/Contents/Resources/digivolution.$key.html"
+    [[ -s "$APP/Contents/Resources/digivolution.$key.html" ]] || { echo "✗ digivolution.$key.html 복사 실패" >&2; exit 1; }
+done
 
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>

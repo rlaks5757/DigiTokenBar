@@ -1,0 +1,226 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "디지몬 진화 경로 — 호크몬 라인",
+    "quality_profile": "showcase",
+    "legend": {
+      "mode": "auto",
+      "entries": {
+        "frontend": {
+          "label": "Child"
+        },
+        "backend": {
+          "label": "Adult"
+        },
+        "cloud": {
+          "label": "Perfect"
+        },
+        "security": {
+          "label": "Ultimate · 최종 도달체"
+        },
+        "messagebus": {
+          "label": "죠그레스 · 아머 결과"
+        },
+        "database": {
+          "label": "디지멘탈 아이템"
+        }
+      }
+    }
+  },
+  "lanes": [
+    {
+      "id": "hawkmon",
+      "label": "호크몬 라인"
+    },
+    {
+      "id": "armor_hawkmon",
+      "label": "호크몬 아머",
+      "variant": "exception"
+    },
+    {
+      "id": "jogress_silphymon",
+      "label": "죠그레스 — 실피몬",
+      "variant": "exception"
+    }
+  ],
+  "phases": [],
+  "groups": [],
+  "nodes": [
+    {
+      "id": "hawkmon",
+      "lane": "hawkmon",
+      "col": 0,
+      "type": "frontend",
+      "label": "Hawkmon",
+      "width": 138,
+      "height": 92,
+      "brand": {
+        "url": "https://wikimon.net/images/b/b7/Hawkmon_vpet_vb.png",
+        "sha256": "5b138da9a98e8c82295d77bc02089f557747e580defbd9963a2d02ce0bf9cf30"
+      }
+    },
+    {
+      "id": "aquilamon",
+      "lane": "hawkmon",
+      "col": 1,
+      "type": "backend",
+      "label": "Aquilamon",
+      "width": 138,
+      "height": 92,
+      "brand": {
+        "url": "https://wikimon.net/images/4/4b/Aquilamon_vpet_vb.png",
+        "sha256": "5b58b4208aef71b090e402d4fab5e097cabece499021a45151e530c771954641"
+      }
+    },
+    {
+      "id": "digimental_hawkmon_love",
+      "lane": "armor_hawkmon",
+      "col": 1,
+      "type": "database",
+      "label": "디지멘탈",
+      "width": 138,
+      "height": 92,
+      "sublabel": "사랑의 디지멘탈",
+      "brand": {
+        "url": "https://wikimon.net/images/d/de/Digimental_love.jpg",
+        "sha256": "b676657a82d6aa2436a788b7a01d98b7f5c211a4c66f1318180ef025daa86c04"
+      }
+    },
+    {
+      "id": "holsmon",
+      "lane": "armor_hawkmon",
+      "col": 2,
+      "type": "messagebus",
+      "label": "호루스몬",
+      "width": 138,
+      "height": 92,
+      "sublabel": "Holsmon",
+      "brand": {
+        "url": "https://wikimon.net/images/1/19/Holsmon_vpet_vb.png",
+        "sha256": "c8196e672571e8b0f250e79adbd12d35f0fd519dc5a8f961aaec07b1ea9d8c0a"
+      }
+    },
+    {
+      "id": "digimental_hawkmon_purity",
+      "lane": "armor_hawkmon",
+      "col": 3,
+      "type": "database",
+      "label": "디지멘탈",
+      "width": 138,
+      "height": 92,
+      "sublabel": "순수의 디지멘탈",
+      "brand": {
+        "url": "https://wikimon.net/images/3/33/Digimental_purity.jpg",
+        "sha256": "ac3a72e9b81584d61f25de759be2ef7d8ac26c95ef058b177a3fb2afcfaab750"
+      }
+    },
+    {
+      "id": "shurimon",
+      "lane": "armor_hawkmon",
+      "col": 4,
+      "type": "messagebus",
+      "label": "Shurimon",
+      "width": 138,
+      "height": 92,
+      "brand": {
+        "url": "https://wikimon.net/images/1/15/Shurimon_vpet_vb.png",
+        "sha256": "96f4e7ce32d79053e2ec0877ff83caf80150afee341a02a7e4e202c5ad599b5c"
+      }
+    },
+    {
+      "id": "tailmon",
+      "lane": "jogress_silphymon",
+      "col": 1,
+      "type": "frontend",
+      "label": "가트몬",
+      "width": 138,
+      "height": 92,
+      "sublabel": "Tailmon",
+      "tag": "파트너 종",
+      "brand": {
+        "url": "https://wikimon.net/images/9/91/Tailmon_vpet_vb.png",
+        "sha256": "f672b802dffd88bfceba0ea53a8abacf8e4e34f021f167c63e9d6be49b91fef6"
+      }
+    },
+    {
+      "id": "silphymon",
+      "lane": "jogress_silphymon",
+      "col": 5,
+      "type": "messagebus",
+      "label": "Silphymon",
+      "width": 138,
+      "height": 92,
+      "tag": "죠그레스",
+      "brand": {
+        "url": "https://wikimon.net/images/2/26/Silphymon_vpet_vb.png",
+        "sha256": "80c172e03bf5d501515705fded04b774f40b5e561f975d8635685f70e2649060"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "hawkmon-aquilamon",
+      "from": "hawkmon",
+      "to": "aquilamon",
+      "label": "레벨 상승",
+      "variant": "emphasis"
+    },
+    {
+      "id": "hawkmon-digimental_hawkmon_love",
+      "from": "hawkmon",
+      "to": "digimental_hawkmon_love",
+      "label": "아이템 사용",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "digimental_hawkmon_love-holsmon",
+      "from": "digimental_hawkmon_love",
+      "to": "holsmon",
+      "label": "사랑",
+      "variant": "default"
+    },
+    {
+      "id": "hawkmon-digimental_hawkmon_purity",
+      "from": "hawkmon",
+      "to": "digimental_hawkmon_purity",
+      "label": "아이템 사용",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "digimental_hawkmon_purity-shurimon",
+      "from": "digimental_hawkmon_purity",
+      "to": "shurimon",
+      "label": "순수",
+      "variant": "default"
+    },
+    {
+      "id": "aquilamon-silphymon",
+      "from": "aquilamon",
+      "to": "silphymon",
+      "label": "죠그레스",
+      "variant": "security",
+      "role": "branch"
+    },
+    {
+      "id": "tailmon-silphymon",
+      "from": "tailmon",
+      "to": "silphymon",
+      "label": "죠그레스",
+      "variant": "security",
+      "role": "branch"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "이 라인의 진화 경로",
+      "items": [
+        "정규 사다리는 Child → Adult → Perfect → Ultimate 로 오른다 (라인마다 단계 수가 다르다)",
+        "죠그레스/아머로 도달하는 개체는 파트너 종·디지멘탈과 함께 표시된다"
+      ]
+    }
+  ]
+}

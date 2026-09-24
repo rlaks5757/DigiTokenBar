@@ -1,0 +1,180 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "디지몬 진화 경로 — 추추몬 라인",
+    "quality_profile": "showcase",
+    "legend": {
+      "mode": "auto",
+      "entries": {
+        "frontend": {
+          "label": "Child"
+        },
+        "backend": {
+          "label": "Adult"
+        },
+        "cloud": {
+          "label": "Perfect"
+        },
+        "security": {
+          "label": "Ultimate · 최종 도달체"
+        },
+        "messagebus": {
+          "label": "죠그레스 · 아머 결과"
+        },
+        "database": {
+          "label": "디지멘탈 아이템"
+        }
+      }
+    }
+  },
+  "lanes": [
+    {
+      "id": "wormmon",
+      "label": "추추몬 라인"
+    },
+    {
+      "id": "jogress_imperial",
+      "label": "죠그레스 — 임페리얼드라몬 체인",
+      "variant": "exception"
+    }
+  ],
+  "phases": [],
+  "groups": [],
+  "nodes": [
+    {
+      "id": "wormmon",
+      "lane": "wormmon",
+      "col": 0,
+      "type": "frontend",
+      "label": "추추몬",
+      "width": 138,
+      "height": 92,
+      "sublabel": "Wormmon",
+      "brand": {
+        "url": "https://wikimon.net/images/6/67/Wormmon_vpet_vb.png",
+        "sha256": "eb13d4d4f424a393ba3e7b8459e661446fcc90f69cef5e07ee8429d211dadd76"
+      }
+    },
+    {
+      "id": "stingmon",
+      "lane": "wormmon",
+      "col": 1,
+      "type": "backend",
+      "label": "Stingmon",
+      "width": 138,
+      "height": 92,
+      "brand": {
+        "url": "https://wikimon.net/images/5/51/Stingmon_vpet_vb.png",
+        "sha256": "4b30dc701969a740345fba6bbd2e0fce1ce7931911194feff148e60308b4857f"
+      }
+    },
+    {
+      "id": "xvmon",
+      "lane": "jogress_imperial",
+      "col": 1,
+      "type": "backend",
+      "label": "XV-mon",
+      "width": 138,
+      "height": 92,
+      "tag": "파트너 종",
+      "brand": {
+        "url": "https://wikimon.net/images/7/7d/Xvmon_vpet_vb.png",
+        "sha256": "dc8c932e93df3c7c82e0dfa484c69056b9746d050a26e1d7cf4b7c06b082b39c"
+      }
+    },
+    {
+      "id": "paildramon",
+      "lane": "jogress_imperial",
+      "col": 2,
+      "type": "messagebus",
+      "label": "파일드라몬",
+      "width": 138,
+      "height": 92,
+      "sublabel": "Paildramon",
+      "tag": "죠그레스",
+      "brand": {
+        "url": "https://wikimon.net/images/e/eb/Paildramon_vpet_vb.png",
+        "sha256": "09f061e9575cca6b194a29d8512b54090315b8824d7a2c7d7937813ec14db733"
+      }
+    },
+    {
+      "id": "impdragon",
+      "lane": "jogress_imperial",
+      "col": 3,
+      "type": "cloud",
+      "label": "황제드라몬",
+      "width": 138,
+      "height": 92,
+      "sublabel": "드래곤 모드",
+      "brand": {
+        "url": "https://wikimon.net/images/0/03/Imperialdramon_DM_vpet_xloader.png",
+        "sha256": "8bd27e196114afb588c029e9bcc43e09d32da764caf24e9d4cd3ce8456c7c337"
+      }
+    },
+    {
+      "id": "impfighter",
+      "lane": "jogress_imperial",
+      "col": 4,
+      "type": "cloud",
+      "label": "황제드라몬",
+      "width": 138,
+      "height": 92,
+      "sublabel": "파이터 모드",
+      "brand": {
+        "url": "https://wikimon.net/images/7/76/Imperialdramon_fighter_vpet_vb.png",
+        "sha256": "a886fabcc2ccf923930e5e40664d2611e3cfa2e777902d4f749c2cfb2aa88da4"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "wormmon-stingmon",
+      "from": "wormmon",
+      "to": "stingmon",
+      "label": "레벨 상승",
+      "variant": "emphasis"
+    },
+    {
+      "id": "stingmon-paildramon",
+      "from": "stingmon",
+      "to": "paildramon",
+      "label": "죠그레스",
+      "variant": "security",
+      "role": "branch"
+    },
+    {
+      "id": "xvmon-paildramon",
+      "from": "xvmon",
+      "to": "paildramon",
+      "label": "죠그레스",
+      "variant": "security",
+      "role": "branch"
+    },
+    {
+      "id": "paildramon-impdragon",
+      "from": "paildramon",
+      "to": "impdragon",
+      "label": "체인 진화",
+      "variant": "default"
+    },
+    {
+      "id": "impdragon-impfighter",
+      "from": "impdragon",
+      "to": "impfighter",
+      "label": "모드 전환",
+      "variant": "dashed",
+      "role": "branch"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "이 라인의 진화 경로",
+      "items": [
+        "정규 사다리는 Child → Adult → Perfect → Ultimate 로 오른다 (라인마다 단계 수가 다르다)",
+        "죠그레스/아머로 도달하는 개체는 파트너 종·디지멘탈과 함께 표시된다"
+      ]
+    }
+  ]
+}

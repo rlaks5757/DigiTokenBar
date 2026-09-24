@@ -1,0 +1,107 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "디지몬 진화 경로 — 팔몬 라인",
+    "quality_profile": "showcase",
+    "legend": {
+      "mode": "auto",
+      "entries": {
+        "frontend": {
+          "label": "Child"
+        },
+        "backend": {
+          "label": "Adult"
+        },
+        "cloud": {
+          "label": "Perfect"
+        },
+        "security": {
+          "label": "Ultimate · 최종 도달체"
+        },
+        "messagebus": {
+          "label": "죠그레스 · 아머 결과"
+        },
+        "database": {
+          "label": "디지멘탈 아이템"
+        }
+      }
+    }
+  },
+  "lanes": [
+    {
+      "id": "palmon",
+      "label": "팔몬 라인"
+    }
+  ],
+  "phases": [],
+  "groups": [],
+  "nodes": [
+    {
+      "id": "palmon",
+      "lane": "palmon",
+      "col": 0,
+      "type": "frontend",
+      "label": "팔몬",
+      "width": 138,
+      "height": 92,
+      "sublabel": "Palmon",
+      "brand": {
+        "url": "https://wikimon.net/images/2/2a/Palmon_vpet_vb.png",
+        "sha256": "5db1c4f8c2d679632d9f17187a172839db23429c80de879ae2ee77835b5ab105"
+      }
+    },
+    {
+      "id": "togemon",
+      "lane": "palmon",
+      "col": 1,
+      "type": "backend",
+      "label": "Togemon",
+      "width": 138,
+      "height": 92,
+      "brand": {
+        "url": "https://wikimon.net/images/2/24/Togemon_vpet_vb.png",
+        "sha256": "b5e125b18d1ca3a2dd49c07861b1476231df104bd20327755347946f1dd0a94d"
+      }
+    },
+    {
+      "id": "lilimon",
+      "lane": "palmon",
+      "col": 2,
+      "type": "cloud",
+      "label": "Lilimon",
+      "width": 138,
+      "height": 92,
+      "brand": {
+        "url": "https://wikimon.net/images/2/2a/Lilimon_vpet_vb.png",
+        "sha256": "dad44a95b354b5c0d0bd1f30e431002784d871deb4a4bbd45d135f88aff8aae0"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "palmon-togemon",
+      "from": "palmon",
+      "to": "togemon",
+      "label": "레벨 상승",
+      "variant": "emphasis"
+    },
+    {
+      "id": "togemon-lilimon",
+      "from": "togemon",
+      "to": "lilimon",
+      "label": "레벨 상승",
+      "variant": "emphasis"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "이 라인의 진화 경로",
+      "items": [
+        "정규 사다리는 Child → Adult → Perfect → Ultimate 로 오른다 (라인마다 단계 수가 다르다)",
+        "죠그레스/아머로 도달하는 개체는 파트너 종·디지멘탈과 함께 표시된다"
+      ]
+    }
+  ]
+}

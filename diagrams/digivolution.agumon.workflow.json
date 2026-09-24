@@ -1,0 +1,178 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "디지몬 진화 경로 — 아구몬 라인",
+    "quality_profile": "showcase",
+    "legend": {
+      "mode": "auto",
+      "entries": {
+        "frontend": {
+          "label": "Child"
+        },
+        "backend": {
+          "label": "Adult"
+        },
+        "cloud": {
+          "label": "Perfect"
+        },
+        "security": {
+          "label": "Ultimate · 최종 도달체"
+        },
+        "messagebus": {
+          "label": "죠그레스 · 아머 결과"
+        },
+        "database": {
+          "label": "디지멘탈 아이템"
+        }
+      }
+    }
+  },
+  "lanes": [
+    {
+      "id": "agumon",
+      "label": "아구몬 라인"
+    },
+    {
+      "id": "jogress01",
+      "label": "01 죠그레스 — 오메가몬",
+      "variant": "exception"
+    }
+  ],
+  "phases": [],
+  "groups": [],
+  "nodes": [
+    {
+      "id": "agumon",
+      "lane": "agumon",
+      "col": 0,
+      "type": "frontend",
+      "label": "아구몬",
+      "width": 138,
+      "height": 92,
+      "sublabel": "Agumon",
+      "brand": {
+        "url": "https://wikimon.net/images/b/b9/Agumon_vpet_vb.png",
+        "sha256": "87a6cf897a204e1f01204e04140d321fdb4b4bd997a90d3e6c3bd965f86deedd"
+      }
+    },
+    {
+      "id": "greymon",
+      "lane": "agumon",
+      "col": 1,
+      "type": "backend",
+      "label": "Greymon",
+      "width": 138,
+      "height": 92,
+      "brand": {
+        "url": "https://wikimon.net/images/c/c6/Greymon_vpet_vb.png",
+        "sha256": "c393e1940aed38c0b088775ebd7c8d1597209be5eabb0d92e0d6e12b940a6ff6"
+      }
+    },
+    {
+      "id": "metalgreymon",
+      "lane": "agumon",
+      "col": 2,
+      "type": "cloud",
+      "label": "메탈그레이몬",
+      "width": 138,
+      "height": 92,
+      "sublabel": "Metal Greymon",
+      "brand": {
+        "url": "https://wikimon.net/images/f/f5/MetalGreymon_vpet_xloader.png",
+        "sha256": "17418f28ff73feba5c01f48fc53e5a5134da811cda69b517e8fafb02f97a334f"
+      }
+    },
+    {
+      "id": "wargreymon",
+      "lane": "agumon",
+      "col": 3,
+      "type": "security",
+      "label": "War Greymon",
+      "width": 138,
+      "height": 92,
+      "brand": {
+        "url": "https://wikimon.net/images/4/42/WarGreymon_vpet_xloader.png",
+        "sha256": "68f3a420a53ea85b596124ad6c4f951643dba9e269472f4d450231724d6ea82d"
+      }
+    },
+    {
+      "id": "metalgarurumon",
+      "lane": "jogress01",
+      "col": 0,
+      "type": "backend",
+      "label": "메탈가루몬",
+      "width": 138,
+      "height": 92,
+      "sublabel": "Metal Garurumon",
+      "tag": "파트너 종",
+      "brand": {
+        "url": "https://wikimon.net/images/5/58/MetalGarurumon_vpet_xloader.png",
+        "sha256": "e3d7ae80246029f7a0e6c489953f95a1a869a9ac50b07ed89bdd1b454ec89de9"
+      }
+    },
+    {
+      "id": "omegamon",
+      "lane": "jogress01",
+      "col": 4,
+      "type": "messagebus",
+      "label": "Omegamon",
+      "width": 138,
+      "height": 92,
+      "tag": "죠그레스",
+      "brand": {
+        "url": "https://wikimon.net/images/d/d4/Omegamon_vpet_vb.png",
+        "sha256": "6ba5e761d6c5b041a2b67468a2bfe876cb86e0d783c326a1b959e9797b7b323a"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "agumon-greymon",
+      "from": "agumon",
+      "to": "greymon",
+      "label": "레벨 상승",
+      "variant": "emphasis"
+    },
+    {
+      "id": "greymon-metalgreymon",
+      "from": "greymon",
+      "to": "metalgreymon",
+      "label": "레벨 상승",
+      "variant": "emphasis"
+    },
+    {
+      "id": "metalgreymon-wargreymon",
+      "from": "metalgreymon",
+      "to": "wargreymon",
+      "label": "레벨 상승",
+      "variant": "emphasis"
+    },
+    {
+      "id": "wargreymon-omegamon",
+      "from": "wargreymon",
+      "to": "omegamon",
+      "label": "죠그레스",
+      "variant": "security",
+      "role": "branch"
+    },
+    {
+      "id": "metalgarurumon-omegamon",
+      "from": "metalgarurumon",
+      "to": "omegamon",
+      "label": "죠그레스",
+      "variant": "security",
+      "role": "branch"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "이 라인의 진화 경로",
+      "items": [
+        "정규 사다리는 Child → Adult → Perfect → Ultimate 로 오른다 (라인마다 단계 수가 다르다)",
+        "죠그레스/아머로 도달하는 개체는 파트너 종·디지멘탈과 함께 표시된다"
+      ]
+    }
+  ]
+}

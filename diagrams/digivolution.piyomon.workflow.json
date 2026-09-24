@@ -1,0 +1,107 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "디지몬 진화 경로 — 피요몬 라인",
+    "quality_profile": "showcase",
+    "legend": {
+      "mode": "auto",
+      "entries": {
+        "frontend": {
+          "label": "Child"
+        },
+        "backend": {
+          "label": "Adult"
+        },
+        "cloud": {
+          "label": "Perfect"
+        },
+        "security": {
+          "label": "Ultimate · 최종 도달체"
+        },
+        "messagebus": {
+          "label": "죠그레스 · 아머 결과"
+        },
+        "database": {
+          "label": "디지멘탈 아이템"
+        }
+      }
+    }
+  },
+  "lanes": [
+    {
+      "id": "piyomon",
+      "label": "피요몬 라인"
+    }
+  ],
+  "phases": [],
+  "groups": [],
+  "nodes": [
+    {
+      "id": "piyomon",
+      "lane": "piyomon",
+      "col": 0,
+      "type": "frontend",
+      "label": "피요몬",
+      "width": 138,
+      "height": 92,
+      "sublabel": "Piyomon",
+      "brand": {
+        "url": "https://wikimon.net/images/4/49/Piyomon_vpet_vb.png",
+        "sha256": "cceed8d9f68e079057aaeab20a6bed0365b6fb9f5fcc093f9915536d541758dc"
+      }
+    },
+    {
+      "id": "birdramon",
+      "lane": "piyomon",
+      "col": 1,
+      "type": "backend",
+      "label": "Birdramon",
+      "width": 138,
+      "height": 92,
+      "brand": {
+        "url": "https://wikimon.net/images/5/50/Birdramon_vpet_vb.png",
+        "sha256": "e6bac549e1d6dc8fcc1135af9f0ab31ce80ee1992efaa1ce89ba35e186a8b1ce"
+      }
+    },
+    {
+      "id": "garudamon",
+      "lane": "piyomon",
+      "col": 2,
+      "type": "cloud",
+      "label": "Garudamon",
+      "width": 138,
+      "height": 92,
+      "brand": {
+        "url": "https://wikimon.net/images/3/3c/Garudamon_vpet_vb.png",
+        "sha256": "c9688ed031c3e4e7f2e3b1bed95ca81dacc0d3da4eb3f0790fa6204de84425fe"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "piyomon-birdramon",
+      "from": "piyomon",
+      "to": "birdramon",
+      "label": "레벨 상승",
+      "variant": "emphasis"
+    },
+    {
+      "id": "birdramon-garudamon",
+      "from": "birdramon",
+      "to": "garudamon",
+      "label": "레벨 상승",
+      "variant": "emphasis"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "이 라인의 진화 경로",
+      "items": [
+        "정규 사다리는 Child → Adult → Perfect → Ultimate 로 오른다 (라인마다 단계 수가 다르다)",
+        "죠그레스/아머로 도달하는 개체는 파트너 종·디지멘탈과 함께 표시된다"
+      ]
+    }
+  ]
+}

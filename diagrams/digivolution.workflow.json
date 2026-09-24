@@ -1,0 +1,1285 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "디지몬 진화 경로 — 어드벤처 01/02 (52종)",
+    "quality_profile": "showcase",
+    "legend": {
+      "mode": "auto",
+      "entries": {
+        "frontend": {
+          "label": "Child"
+        },
+        "backend": {
+          "label": "Adult"
+        },
+        "cloud": {
+          "label": "Perfect"
+        },
+        "security": {
+          "label": "Ultimate · 최종 도달체"
+        },
+        "messagebus": {
+          "label": "죠그레스 · 아머 결과"
+        },
+        "database": {
+          "label": "디지멘탈 아이템"
+        }
+      }
+    }
+  },
+  "lanes": [
+    {
+      "id": "agumon",
+      "label": "아구몬 라인"
+    },
+    {
+      "id": "jogress01",
+      "label": "01 죠그레스",
+      "variant": "exception"
+    },
+    {
+      "id": "gabumon",
+      "label": "가부몬 라인"
+    },
+    {
+      "id": "piyomon",
+      "label": "피요몬 라인"
+    },
+    {
+      "id": "tentomon",
+      "label": "텐토몬 라인"
+    },
+    {
+      "id": "palmon",
+      "label": "팔몬 라인"
+    },
+    {
+      "id": "gomamon",
+      "label": "쉬라몬 라인"
+    },
+    {
+      "id": "armor_patamon",
+      "label": "파닥몬 아머",
+      "variant": "exception"
+    },
+    {
+      "id": "patamon",
+      "label": "파닥몬 라인"
+    },
+    {
+      "id": "jogress_shakkoumon",
+      "label": "죠그레스 — 샤콩몬",
+      "variant": "exception"
+    },
+    {
+      "id": "armadimon",
+      "label": "아르마디몬 라인"
+    },
+    {
+      "id": "armor_armadimon",
+      "label": "아르마디몬 아머",
+      "variant": "exception"
+    },
+    {
+      "id": "armor_tailmon",
+      "label": "가트몬 아머",
+      "variant": "exception"
+    },
+    {
+      "id": "tailmon",
+      "label": "가트몬 라인"
+    },
+    {
+      "id": "jogress_silphymon",
+      "label": "죠그레스 — 실피몬",
+      "variant": "exception"
+    },
+    {
+      "id": "hawkmon",
+      "label": "호크몬 라인"
+    },
+    {
+      "id": "armor_hawkmon",
+      "label": "호크몬 아머",
+      "variant": "exception"
+    },
+    {
+      "id": "armor_vmon",
+      "label": "브이몬 아머",
+      "variant": "exception"
+    },
+    {
+      "id": "vmon",
+      "label": "브이몬 라인"
+    },
+    {
+      "id": "jogress_imperial",
+      "label": "죠그레스 — 임페리얼드라몬 체인",
+      "variant": "exception"
+    },
+    {
+      "id": "wormmon",
+      "label": "추추몬 라인"
+    }
+  ],
+  "phases": [],
+  "groups": [],
+  "mainPath": [
+    "vmon",
+    "xvmon",
+    "paildramon",
+    "impdragon",
+    "impfighter",
+    "imppaladin"
+  ],
+  "nodes": [
+    {
+      "id": "agumon",
+      "lane": "agumon",
+      "col": 0,
+      "type": "frontend",
+      "label": "아구몬",
+      "width": 138,
+      "height": 120,
+      "sublabel": "Agumon",
+      "brand": {
+        "url": "https://wikimon.net/images/b/b9/Agumon_vpet_vb.png",
+        "sha256": "87a6cf897a204e1f01204e04140d321fdb4b4bd997a90d3e6c3bd965f86deedd"
+      }
+    },
+    {
+      "id": "greymon",
+      "lane": "agumon",
+      "col": 1,
+      "type": "backend",
+      "label": "Greymon",
+      "width": 138,
+      "height": 120,
+      "brand": {
+        "url": "https://wikimon.net/images/c/c6/Greymon_vpet_vb.png",
+        "sha256": "c393e1940aed38c0b088775ebd7c8d1597209be5eabb0d92e0d6e12b940a6ff6"
+      }
+    },
+    {
+      "id": "metalgreymon",
+      "lane": "agumon",
+      "col": 2,
+      "type": "cloud",
+      "label": "메탈그레이몬",
+      "width": 138,
+      "height": 120,
+      "sublabel": "Metal Greymon",
+      "brand": {
+        "url": "https://wikimon.net/images/f/f5/MetalGreymon_vpet_xloader.png",
+        "sha256": "17418f28ff73feba5c01f48fc53e5a5134da811cda69b517e8fafb02f97a334f"
+      }
+    },
+    {
+      "id": "wargreymon",
+      "lane": "agumon",
+      "col": 3,
+      "type": "security",
+      "label": "War Greymon",
+      "width": 138,
+      "height": 120,
+      "brand": {
+        "url": "https://wikimon.net/images/4/42/WarGreymon_vpet_xloader.png",
+        "sha256": "68f3a420a53ea85b596124ad6c4f951643dba9e269472f4d450231724d6ea82d"
+      }
+    },
+    {
+      "id": "omegamon",
+      "lane": "jogress01",
+      "col": 4,
+      "type": "messagebus",
+      "label": "Omegamon",
+      "width": 138,
+      "height": 120,
+      "tag": "죠그레스",
+      "brand": {
+        "url": "https://wikimon.net/images/d/d4/Omegamon_vpet_vb.png",
+        "sha256": "6ba5e761d6c5b041a2b67468a2bfe876cb86e0d783c326a1b959e9797b7b323a"
+      }
+    },
+    {
+      "id": "gabumon",
+      "lane": "gabumon",
+      "col": 0,
+      "type": "frontend",
+      "label": "Gabumon",
+      "width": 138,
+      "height": 120,
+      "brand": {
+        "url": "https://wikimon.net/images/4/4d/Gabumon_vpet_vb.png",
+        "sha256": "60dd5c9dd2df0a52e5bdc938c1f3603410a358ff4ff1b3ad4b5a497cd50b3e49"
+      }
+    },
+    {
+      "id": "garurumon",
+      "lane": "gabumon",
+      "col": 1,
+      "type": "backend",
+      "label": "가루몬",
+      "width": 138,
+      "height": 120,
+      "sublabel": "Garurumon",
+      "brand": {
+        "url": "https://wikimon.net/images/2/2b/Garurumon_vpet_vb.png",
+        "sha256": "fd6cd0ee64968d9a9cc8b367bfa558c22856565b5e8595c6b6dce803f7cdbee1"
+      }
+    },
+    {
+      "id": "weregarurumon",
+      "lane": "gabumon",
+      "col": 2,
+      "type": "cloud",
+      "label": "워가루몬",
+      "width": 138,
+      "height": 120,
+      "sublabel": "Were Garurumon",
+      "brand": {
+        "url": "https://wikimon.net/images/f/fa/WereGarurumon_vpet_xloader.png",
+        "sha256": "962d271871b98b32241f13065a9b48f8166eddc4b8b5872f2f6e5236c890c3ea"
+      }
+    },
+    {
+      "id": "metalgarurumon",
+      "lane": "gabumon",
+      "col": 3,
+      "type": "security",
+      "label": "메탈가루몬",
+      "width": 138,
+      "height": 120,
+      "sublabel": "Metal Garurumon",
+      "brand": {
+        "url": "https://wikimon.net/images/5/58/MetalGarurumon_vpet_xloader.png",
+        "sha256": "e3d7ae80246029f7a0e6c489953f95a1a869a9ac50b07ed89bdd1b454ec89de9"
+      }
+    },
+    {
+      "id": "piyomon",
+      "lane": "piyomon",
+      "col": 0,
+      "type": "frontend",
+      "label": "피요몬",
+      "width": 138,
+      "height": 120,
+      "sublabel": "Piyomon",
+      "brand": {
+        "url": "https://wikimon.net/images/4/49/Piyomon_vpet_vb.png",
+        "sha256": "cceed8d9f68e079057aaeab20a6bed0365b6fb9f5fcc093f9915536d541758dc"
+      }
+    },
+    {
+      "id": "birdramon",
+      "lane": "piyomon",
+      "col": 1,
+      "type": "backend",
+      "label": "Birdramon",
+      "width": 138,
+      "height": 120,
+      "brand": {
+        "url": "https://wikimon.net/images/5/50/Birdramon_vpet_vb.png",
+        "sha256": "e6bac549e1d6dc8fcc1135af9f0ab31ce80ee1992efaa1ce89ba35e186a8b1ce"
+      }
+    },
+    {
+      "id": "garudamon",
+      "lane": "piyomon",
+      "col": 2,
+      "type": "cloud",
+      "label": "Garudamon",
+      "width": 138,
+      "height": 120,
+      "brand": {
+        "url": "https://wikimon.net/images/3/3c/Garudamon_vpet_vb.png",
+        "sha256": "c9688ed031c3e4e7f2e3b1bed95ca81dacc0d3da4eb3f0790fa6204de84425fe"
+      }
+    },
+    {
+      "id": "tentomon",
+      "lane": "tentomon",
+      "col": 0,
+      "type": "frontend",
+      "label": "텐토몬",
+      "width": 138,
+      "height": 120,
+      "sublabel": "Tentomon",
+      "brand": {
+        "url": "https://wikimon.net/images/e/ef/Tentomon_vpet_vb.png",
+        "sha256": "21cd69bf94e2e8d6e1d20c0bde88d29df058957701e13c604f5e279aec29623f"
+      }
+    },
+    {
+      "id": "kabuterimon",
+      "lane": "tentomon",
+      "col": 1,
+      "type": "backend",
+      "label": "Kabuterimon",
+      "width": 138,
+      "height": 120,
+      "brand": {
+        "url": "https://wikimon.net/images/2/2e/Kabuterimon_vpet_vb.png",
+        "sha256": "a222484a7c6257e5dbcaefd449b73e8c5556c485fb4ed207dd60948c4b6de49b"
+      }
+    },
+    {
+      "id": "atlurkabuterimon",
+      "lane": "tentomon",
+      "col": 2,
+      "type": "cloud",
+      "label": "Atlur Kabuterimon",
+      "width": 150,
+      "height": 120,
+      "sublabel": "Blue",
+      "brand": {
+        "url": "https://wikimon.net/images/f/f5/AtlurKabuterimon_vpet_xloader.png",
+        "sha256": "1e339cea602cb20832d2e76418c092f9a186a7e71a5b29a7295d2c25a48f9800"
+      }
+    },
+    {
+      "id": "palmon",
+      "lane": "palmon",
+      "col": 0,
+      "type": "frontend",
+      "label": "팔몬",
+      "width": 138,
+      "height": 120,
+      "sublabel": "Palmon",
+      "brand": {
+        "url": "https://wikimon.net/images/2/2a/Palmon_vpet_vb.png",
+        "sha256": "5db1c4f8c2d679632d9f17187a172839db23429c80de879ae2ee77835b5ab105"
+      }
+    },
+    {
+      "id": "togemon",
+      "lane": "palmon",
+      "col": 1,
+      "type": "backend",
+      "label": "Togemon",
+      "width": 138,
+      "height": 120,
+      "brand": {
+        "url": "https://wikimon.net/images/2/24/Togemon_vpet_vb.png",
+        "sha256": "b5e125b18d1ca3a2dd49c07861b1476231df104bd20327755347946f1dd0a94d"
+      }
+    },
+    {
+      "id": "lilimon",
+      "lane": "palmon",
+      "col": 2,
+      "type": "cloud",
+      "label": "Lilimon",
+      "width": 138,
+      "height": 120,
+      "brand": {
+        "url": "https://wikimon.net/images/2/2a/Lilimon_vpet_vb.png",
+        "sha256": "dad44a95b354b5c0d0bd1f30e431002784d871deb4a4bbd45d135f88aff8aae0"
+      }
+    },
+    {
+      "id": "gomamon",
+      "lane": "gomamon",
+      "col": 0,
+      "type": "frontend",
+      "label": "쉬라몬",
+      "width": 138,
+      "height": 120,
+      "sublabel": "Gomamon",
+      "brand": {
+        "url": "https://wikimon.net/images/6/6c/Gomamon_vpet_xloader.png",
+        "sha256": "305ade037a9fa8321570b1265fd3dec7574ee4af513034e0652383346b9014c2"
+      }
+    },
+    {
+      "id": "ikkakumon",
+      "lane": "gomamon",
+      "col": 1,
+      "type": "backend",
+      "label": "Ikkakumon",
+      "width": 138,
+      "height": 120,
+      "brand": {
+        "url": "https://wikimon.net/images/3/39/Ikkakumon_vpet_vb.png",
+        "sha256": "f2d4c413dcfe606f4377a82a4250b150a152d4ec4ec59d1b3f1c1df1d092d919"
+      }
+    },
+    {
+      "id": "zudomon",
+      "lane": "gomamon",
+      "col": 2,
+      "type": "cloud",
+      "label": "Zudomon",
+      "width": 138,
+      "height": 120,
+      "brand": {
+        "url": "https://wikimon.net/images/e/e9/Zudomon_vpet_vb.png",
+        "sha256": "634ed8da496b30a464a53a0559c7a567ece91fe2a968f41241bb8769e6364a86"
+      }
+    },
+    {
+      "id": "digimental_patamon",
+      "lane": "armor_patamon",
+      "col": 1,
+      "type": "database",
+      "label": "디지멘탈",
+      "width": 138,
+      "height": 120,
+      "sublabel": "1종"
+    },
+    {
+      "id": "pegasmon",
+      "lane": "armor_patamon",
+      "col": 2,
+      "type": "messagebus",
+      "label": "Pegasmon",
+      "width": 138,
+      "height": 120,
+      "sublabel": "희망의 디지멘탈",
+      "brand": {
+        "url": "https://wikimon.net/images/9/9c/Pegasmon_vpet_vb.png",
+        "sha256": "ec7a23334aab50bf3035fbb99cb5081fbcda3f68927a892f81e26374682e88be"
+      }
+    },
+    {
+      "id": "patamon",
+      "lane": "patamon",
+      "col": 0,
+      "type": "frontend",
+      "label": "파닥몬",
+      "width": 138,
+      "height": 120,
+      "sublabel": "Patamon",
+      "brand": {
+        "url": "https://wikimon.net/images/2/26/Patamon_vpet_vb.png",
+        "sha256": "2d3259efc7d0549a99e2408faf518b9cf15776b085a3fbacb510b578514dc6a2"
+      }
+    },
+    {
+      "id": "angemon",
+      "lane": "patamon",
+      "col": 1,
+      "type": "backend",
+      "label": "Angemon",
+      "width": 138,
+      "height": 120,
+      "brand": {
+        "url": "https://wikimon.net/images/7/7f/Angemon_vpet_vb.png",
+        "sha256": "ff30cf69d68c51860a486345cb467f36e4fd608ee528ecae6d45cd299d0d8cad"
+      }
+    },
+    {
+      "id": "holyangemon",
+      "lane": "patamon",
+      "col": 2,
+      "type": "cloud",
+      "label": "Holy Angemon",
+      "width": 138,
+      "height": 120,
+      "brand": {
+        "url": "https://wikimon.net/images/5/53/HolyAngemon_vpet_xloader.png",
+        "sha256": "98fd6129b02a229bbeb3a3444745b6133f2b901f6ff800edca1f47165a07a833"
+      }
+    },
+    {
+      "id": "seraphimon",
+      "lane": "patamon",
+      "col": 3,
+      "type": "security",
+      "label": "Seraphimon",
+      "width": 138,
+      "height": 120,
+      "brand": {
+        "url": "https://wikimon.net/images/4/4a/Seraphimon_vpet_vb.png",
+        "sha256": "67239b2887d343c94aa08ffc8d1e8ac9003f24445280ddb2f168b68ebfeb0fa6"
+      }
+    },
+    {
+      "id": "shakkoumon",
+      "lane": "jogress_shakkoumon",
+      "col": 2,
+      "type": "messagebus",
+      "label": "토우몬",
+      "width": 138,
+      "height": 120,
+      "sublabel": "Shakkoumon",
+      "tag": "죠그레스",
+      "brand": {
+        "url": "https://wikimon.net/images/b/b3/Shakkoumon_vpet_vb.png",
+        "sha256": "7f800577af098a69646d2182c919745dd510141c69302a9605e5cdd6f8264a94"
+      }
+    },
+    {
+      "id": "armadimon",
+      "lane": "armadimon",
+      "col": 0,
+      "type": "frontend",
+      "label": "Armadimon",
+      "width": 138,
+      "height": 120,
+      "brand": {
+        "url": "https://wikimon.net/images/0/0f/Armadimon_vpet_vb.png",
+        "sha256": "d798dc37e23b314f3142ca2568d90ed29e2b5c3bd15eaae50997a596369041ac"
+      }
+    },
+    {
+      "id": "ankylomon",
+      "lane": "armadimon",
+      "col": 1,
+      "type": "backend",
+      "label": "Ankylomon",
+      "width": 138,
+      "height": 120,
+      "brand": {
+        "url": "https://wikimon.net/images/f/f2/Ankylomon_vpet_vb.png",
+        "sha256": "e7f5b262b45f7b44ec7c8578299ac70795e44f1f60bbc9174bf045ecbd4fe4df"
+      }
+    },
+    {
+      "id": "digimental_armadimon",
+      "lane": "armor_armadimon",
+      "col": 1,
+      "type": "database",
+      "label": "디지멘탈",
+      "width": 138,
+      "height": 120,
+      "sublabel": "2종"
+    },
+    {
+      "id": "digmon",
+      "lane": "armor_armadimon",
+      "col": 2,
+      "type": "messagebus",
+      "label": "Digmon",
+      "width": 138,
+      "height": 120,
+      "sublabel": "지식의 디지멘탈",
+      "brand": {
+        "url": "https://wikimon.net/images/a/ae/Digmon_vpet_vb.png",
+        "sha256": "817536efd1a588194b6432ff7b27e95ef55227dc40fd267c363c20b16817583d"
+      }
+    },
+    {
+      "id": "submarimon",
+      "lane": "armor_armadimon",
+      "col": 3,
+      "type": "messagebus",
+      "label": "Submarimon",
+      "width": 138,
+      "height": 120,
+      "sublabel": "성실의 디지멘탈",
+      "brand": {
+        "url": "https://wikimon.net/images/7/7a/Submarimon_vpet_vb.png",
+        "sha256": "9c5a8030f31caa6f53764e7d4251b455e847c72a21fc1c7408f786b98405d14b"
+      }
+    },
+    {
+      "id": "digimental_tailmon",
+      "lane": "armor_tailmon",
+      "col": 1,
+      "type": "database",
+      "label": "디지멘탈",
+      "width": 138,
+      "height": 120,
+      "sublabel": "1종"
+    },
+    {
+      "id": "nefertimon",
+      "lane": "armor_tailmon",
+      "col": 2,
+      "type": "messagebus",
+      "label": "네페르티몬",
+      "width": 138,
+      "height": 120,
+      "sublabel": "Nefertimon · 빛의 디지멘탈",
+      "brand": {
+        "url": "https://wikimon.net/images/a/a8/Nefertimon_vpet_vb.png",
+        "sha256": "b2b04e53ddfc26aed93e422bcb725f4dd307043021ac010f975a969804459064"
+      }
+    },
+    {
+      "id": "tailmon",
+      "lane": "tailmon",
+      "col": 0,
+      "type": "frontend",
+      "label": "가트몬",
+      "width": 138,
+      "height": 120,
+      "sublabel": "Tailmon",
+      "brand": {
+        "url": "https://wikimon.net/images/9/91/Tailmon_vpet_vb.png",
+        "sha256": "f672b802dffd88bfceba0ea53a8abacf8e4e34f021f167c63e9d6be49b91fef6"
+      }
+    },
+    {
+      "id": "angewomon",
+      "lane": "tailmon",
+      "col": 2,
+      "type": "cloud",
+      "label": "Angewomon",
+      "width": 138,
+      "height": 120,
+      "brand": {
+        "url": "https://wikimon.net/images/b/b2/Angewomon_vpet_vb.png",
+        "sha256": "a6f7164a1478fde246a6837f4ecf2d1c7e4329595724d158c626d6f884a30d41"
+      }
+    },
+    {
+      "id": "holydramon",
+      "lane": "tailmon",
+      "col": 3,
+      "type": "security",
+      "label": "홀리드라몬",
+      "width": 138,
+      "height": 120,
+      "sublabel": "Holydramon",
+      "brand": {
+        "url": "https://wikimon.net/images/e/ef/Holydramon_vpet_vb.png",
+        "sha256": "03c8363fe67f89f763b47ffa53b8905be2f78d59df58bbf5e582f7b5564d2bf1"
+      }
+    },
+    {
+      "id": "silphymon",
+      "lane": "jogress_silphymon",
+      "col": 2,
+      "type": "messagebus",
+      "label": "Silphymon",
+      "width": 138,
+      "height": 120,
+      "tag": "죠그레스",
+      "brand": {
+        "url": "https://wikimon.net/images/2/26/Silphymon_vpet_vb.png",
+        "sha256": "80c172e03bf5d501515705fded04b774f40b5e561f975d8635685f70e2649060"
+      }
+    },
+    {
+      "id": "hawkmon",
+      "lane": "hawkmon",
+      "col": 0,
+      "type": "frontend",
+      "label": "Hawkmon",
+      "width": 138,
+      "height": 120,
+      "brand": {
+        "url": "https://wikimon.net/images/b/b7/Hawkmon_vpet_vb.png",
+        "sha256": "5b138da9a98e8c82295d77bc02089f557747e580defbd9963a2d02ce0bf9cf30"
+      }
+    },
+    {
+      "id": "aquilamon",
+      "lane": "hawkmon",
+      "col": 1,
+      "type": "backend",
+      "label": "Aquilamon",
+      "width": 138,
+      "height": 120,
+      "brand": {
+        "url": "https://wikimon.net/images/4/4b/Aquilamon_vpet_vb.png",
+        "sha256": "5b58b4208aef71b090e402d4fab5e097cabece499021a45151e530c771954641"
+      }
+    },
+    {
+      "id": "digimental_hawkmon",
+      "lane": "armor_hawkmon",
+      "col": 1,
+      "type": "database",
+      "label": "디지멘탈",
+      "width": 138,
+      "height": 120,
+      "sublabel": "2종"
+    },
+    {
+      "id": "holsmon",
+      "lane": "armor_hawkmon",
+      "col": 2,
+      "type": "messagebus",
+      "label": "호루스몬",
+      "width": 138,
+      "height": 120,
+      "sublabel": "Holsmon · 사랑의 디지멘탈",
+      "brand": {
+        "url": "https://wikimon.net/images/1/19/Holsmon_vpet_vb.png",
+        "sha256": "c8196e672571e8b0f250e79adbd12d35f0fd519dc5a8f961aaec07b1ea9d8c0a"
+      }
+    },
+    {
+      "id": "shurimon",
+      "lane": "armor_hawkmon",
+      "col": 3,
+      "type": "messagebus",
+      "label": "Shurimon",
+      "width": 138,
+      "height": 120,
+      "sublabel": "순수의 디지멘탈",
+      "brand": {
+        "url": "https://wikimon.net/images/1/15/Shurimon_vpet_vb.png",
+        "sha256": "96f4e7ce32d79053e2ec0877ff83caf80150afee341a02a7e4e202c5ad599b5c"
+      }
+    },
+    {
+      "id": "digimental_vmon",
+      "lane": "armor_vmon",
+      "col": 1,
+      "type": "database",
+      "label": "디지멘탈",
+      "width": 138,
+      "height": 120,
+      "sublabel": "4종"
+    },
+    {
+      "id": "fladramon",
+      "lane": "armor_vmon",
+      "col": 2,
+      "type": "messagebus",
+      "label": "화염드라몬",
+      "width": 138,
+      "height": 120,
+      "sublabel": "Fladramon · 용기의 디지멘탈",
+      "brand": {
+        "url": "https://wikimon.net/images/3/3c/Fladramon_vpet_vb.png",
+        "sha256": "02c8f592a69d1e733362c1910826900038c1215a6413b17e9bb998ee2f32c7fa"
+      }
+    },
+    {
+      "id": "depthmon",
+      "lane": "armor_vmon",
+      "col": 3,
+      "type": "messagebus",
+      "label": "Depthmon",
+      "width": 138,
+      "height": 120,
+      "sublabel": "성실의 디지멘탈",
+      "brand": {
+        "url": "https://wikimon.net/images/2/2a/Depthmon_vpet_dark_color.png",
+        "sha256": "a83450fc08af94960e0d002590ef6971696232ed016a6ae00b5ef17c6b7702b3"
+      }
+    },
+    {
+      "id": "magnamon",
+      "lane": "armor_vmon",
+      "col": 4,
+      "type": "messagebus",
+      "label": "매그너몬",
+      "width": 138,
+      "height": 120,
+      "sublabel": "Magnamon · 기적의 디지멘탈",
+      "brand": {
+        "url": "https://wikimon.net/images/f/fd/Magnamon_vpet_vb.png",
+        "sha256": "a659ce68acc91e9db553dd99c078533a68d6ded485be56f7e381932bc26f74f4"
+      }
+    },
+    {
+      "id": "lighdramon",
+      "lane": "armor_vmon",
+      "col": 5,
+      "type": "messagebus",
+      "label": "Lighdramon",
+      "width": 138,
+      "height": 120,
+      "sublabel": "우정의 디지멘탈",
+      "brand": {
+        "url": "https://wikimon.net/images/2/2a/Lighdramon_vpet_vb.png",
+        "sha256": "a52b4398c350fa8e689b6c15e3df9357bee7640d07ffc96ba3feda15abb8c21b"
+      }
+    },
+    {
+      "id": "vmon",
+      "lane": "vmon",
+      "col": 0,
+      "type": "frontend",
+      "label": "브이몬",
+      "width": 138,
+      "height": 120,
+      "sublabel": "V-mon",
+      "brand": {
+        "url": "https://wikimon.net/images/4/4e/Vmon_vpet_vb.png",
+        "sha256": "bb4a2c9ee0d06641253505d4e260cc9483c2dcbd2e6be86912494268eb8a7088"
+      }
+    },
+    {
+      "id": "xvmon",
+      "lane": "vmon",
+      "col": 1,
+      "type": "backend",
+      "label": "XV-mon",
+      "width": 138,
+      "height": 120,
+      "brand": {
+        "url": "https://wikimon.net/images/7/7d/Xvmon_vpet_vb.png",
+        "sha256": "dc8c932e93df3c7c82e0dfa484c69056b9746d050a26e1d7cf4b7c06b082b39c"
+      }
+    },
+    {
+      "id": "paildramon",
+      "lane": "jogress_imperial",
+      "col": 2,
+      "type": "messagebus",
+      "label": "파일드라몬",
+      "width": 138,
+      "height": 120,
+      "sublabel": "Paildramon",
+      "tag": "죠그레스",
+      "brand": {
+        "url": "https://wikimon.net/images/e/eb/Paildramon_vpet_vb.png",
+        "sha256": "09f061e9575cca6b194a29d8512b54090315b8824d7a2c7d7937813ec14db733"
+      }
+    },
+    {
+      "id": "wormmon",
+      "lane": "wormmon",
+      "col": 0,
+      "type": "frontend",
+      "label": "추추몬",
+      "width": 138,
+      "height": 120,
+      "sublabel": "Wormmon",
+      "brand": {
+        "url": "https://wikimon.net/images/6/67/Wormmon_vpet_vb.png",
+        "sha256": "eb13d4d4f424a393ba3e7b8459e661446fcc90f69cef5e07ee8429d211dadd76"
+      }
+    },
+    {
+      "id": "stingmon",
+      "lane": "wormmon",
+      "col": 1,
+      "type": "backend",
+      "label": "Stingmon",
+      "width": 138,
+      "height": 120,
+      "brand": {
+        "url": "https://wikimon.net/images/5/51/Stingmon_vpet_vb.png",
+        "sha256": "4b30dc701969a740345fba6bbd2e0fce1ce7931911194feff148e60308b4857f"
+      }
+    },
+    {
+      "id": "impdragon",
+      "lane": "jogress_imperial",
+      "col": 3,
+      "type": "cloud",
+      "label": "황제드라몬",
+      "width": 138,
+      "height": 120,
+      "sublabel": "드래곤 모드",
+      "brand": {
+        "url": "https://wikimon.net/images/0/03/Imperialdramon_DM_vpet_xloader.png",
+        "sha256": "8bd27e196114afb588c029e9bcc43e09d32da764caf24e9d4cd3ce8456c7c337"
+      }
+    },
+    {
+      "id": "impfighter",
+      "lane": "jogress_imperial",
+      "col": 4,
+      "type": "cloud",
+      "label": "황제드라몬",
+      "width": 138,
+      "height": 120,
+      "sublabel": "파이터 모드",
+      "brand": {
+        "url": "https://wikimon.net/images/7/76/Imperialdramon_fighter_vpet_vb.png",
+        "sha256": "a886fabcc2ccf923930e5e40664d2611e3cfa2e777902d4f749c2cfb2aa88da4"
+      }
+    },
+    {
+      "id": "imppaladin",
+      "lane": "jogress_imperial",
+      "col": 5,
+      "type": "security",
+      "label": "황제드라몬",
+      "width": 138,
+      "height": 120,
+      "sublabel": "팔라딘 모드",
+      "tag": "최종 도달체",
+      "brand": {
+        "url": "https://wikimon.net/images/c/c2/Imperialdramon_paladin_vpet_vb.png",
+        "sha256": "f6340d86bfac7f4ced633ca4172a22b07283c4a8aaa359c40379839ad7232855"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "agumon-greymon",
+      "from": "agumon",
+      "to": "greymon",
+      "label": "레벨 상승",
+      "variant": "emphasis"
+    },
+    {
+      "id": "greymon-metalgreymon",
+      "from": "greymon",
+      "to": "metalgreymon",
+      "label": "레벨 상승",
+      "variant": "emphasis"
+    },
+    {
+      "id": "metalgreymon-wargreymon",
+      "from": "metalgreymon",
+      "to": "wargreymon",
+      "label": "레벨 상승",
+      "variant": "emphasis"
+    },
+    {
+      "id": "wargreymon-omegamon",
+      "from": "wargreymon",
+      "to": "omegamon",
+      "label": "죠그레스",
+      "variant": "security",
+      "role": "branch"
+    },
+    {
+      "id": "gabumon-garurumon",
+      "from": "gabumon",
+      "to": "garurumon",
+      "label": "레벨 상승",
+      "variant": "emphasis"
+    },
+    {
+      "id": "garurumon-weregarurumon",
+      "from": "garurumon",
+      "to": "weregarurumon",
+      "label": "레벨 상승",
+      "variant": "emphasis"
+    },
+    {
+      "id": "weregarurumon-metalgarurumon",
+      "from": "weregarurumon",
+      "to": "metalgarurumon",
+      "label": "레벨 상승",
+      "variant": "emphasis"
+    },
+    {
+      "id": "metalgarurumon-omegamon",
+      "from": "metalgarurumon",
+      "to": "omegamon",
+      "label": "죠그레스",
+      "variant": "security",
+      "role": "branch"
+    },
+    {
+      "id": "piyomon-birdramon",
+      "from": "piyomon",
+      "to": "birdramon",
+      "label": "레벨 상승",
+      "variant": "emphasis"
+    },
+    {
+      "id": "birdramon-garudamon",
+      "from": "birdramon",
+      "to": "garudamon",
+      "label": "레벨 상승",
+      "variant": "emphasis"
+    },
+    {
+      "id": "tentomon-kabuterimon",
+      "from": "tentomon",
+      "to": "kabuterimon",
+      "label": "레벨 상승",
+      "variant": "emphasis"
+    },
+    {
+      "id": "kabuterimon-atlurkabuterimon",
+      "from": "kabuterimon",
+      "to": "atlurkabuterimon",
+      "label": "레벨 상승",
+      "variant": "emphasis"
+    },
+    {
+      "id": "palmon-togemon",
+      "from": "palmon",
+      "to": "togemon",
+      "label": "레벨 상승",
+      "variant": "emphasis"
+    },
+    {
+      "id": "togemon-lilimon",
+      "from": "togemon",
+      "to": "lilimon",
+      "label": "레벨 상승",
+      "variant": "emphasis"
+    },
+    {
+      "id": "gomamon-ikkakumon",
+      "from": "gomamon",
+      "to": "ikkakumon",
+      "label": "레벨 상승",
+      "variant": "emphasis"
+    },
+    {
+      "id": "ikkakumon-zudomon",
+      "from": "ikkakumon",
+      "to": "zudomon",
+      "label": "레벨 상승",
+      "variant": "emphasis"
+    },
+    {
+      "id": "digimental_patamon-pegasmon",
+      "from": "digimental_patamon",
+      "to": "pegasmon",
+      "label": "희망",
+      "variant": "default"
+    },
+    {
+      "id": "patamon-angemon",
+      "from": "patamon",
+      "to": "angemon",
+      "label": "레벨 상승",
+      "variant": "emphasis"
+    },
+    {
+      "id": "angemon-holyangemon",
+      "from": "angemon",
+      "to": "holyangemon",
+      "label": "레벨 상승",
+      "variant": "emphasis"
+    },
+    {
+      "id": "holyangemon-seraphimon",
+      "from": "holyangemon",
+      "to": "seraphimon",
+      "label": "레벨 상승",
+      "variant": "emphasis"
+    },
+    {
+      "id": "patamon-digimental_patamon",
+      "from": "patamon",
+      "to": "digimental_patamon",
+      "label": "아이템 사용",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "angemon-shakkoumon",
+      "from": "angemon",
+      "to": "shakkoumon",
+      "label": "죠그레스",
+      "variant": "security",
+      "role": "branch"
+    },
+    {
+      "id": "armadimon-ankylomon",
+      "from": "armadimon",
+      "to": "ankylomon",
+      "label": "레벨 상승",
+      "variant": "emphasis"
+    },
+    {
+      "id": "ankylomon-shakkoumon",
+      "from": "ankylomon",
+      "to": "shakkoumon",
+      "label": "죠그레스",
+      "variant": "security",
+      "role": "branch"
+    },
+    {
+      "id": "armadimon-digimental_armadimon",
+      "from": "armadimon",
+      "to": "digimental_armadimon",
+      "label": "아이템 사용",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "digimental_armadimon-digmon",
+      "from": "digimental_armadimon",
+      "to": "digmon",
+      "label": "지식",
+      "variant": "default"
+    },
+    {
+      "id": "digimental_armadimon-submarimon",
+      "from": "digimental_armadimon",
+      "to": "submarimon",
+      "label": "성실",
+      "variant": "default"
+    },
+    {
+      "id": "digimental_tailmon-nefertimon",
+      "from": "digimental_tailmon",
+      "to": "nefertimon",
+      "label": "빛",
+      "variant": "default"
+    },
+    {
+      "id": "tailmon-angewomon",
+      "from": "tailmon",
+      "to": "angewomon",
+      "label": "레벨 상승",
+      "variant": "emphasis"
+    },
+    {
+      "id": "angewomon-holydramon",
+      "from": "angewomon",
+      "to": "holydramon",
+      "label": "레벨 상승",
+      "variant": "emphasis"
+    },
+    {
+      "id": "tailmon-digimental_tailmon",
+      "from": "tailmon",
+      "to": "digimental_tailmon",
+      "label": "아이템 사용",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "tailmon-silphymon",
+      "from": "tailmon",
+      "to": "silphymon",
+      "label": "죠그레스",
+      "variant": "security",
+      "role": "branch"
+    },
+    {
+      "id": "hawkmon-aquilamon",
+      "from": "hawkmon",
+      "to": "aquilamon",
+      "label": "레벨 상승",
+      "variant": "emphasis"
+    },
+    {
+      "id": "aquilamon-silphymon",
+      "from": "aquilamon",
+      "to": "silphymon",
+      "label": "죠그레스",
+      "variant": "security",
+      "role": "branch"
+    },
+    {
+      "id": "hawkmon-digimental_hawkmon",
+      "from": "hawkmon",
+      "to": "digimental_hawkmon",
+      "label": "아이템 사용",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "digimental_hawkmon-holsmon",
+      "from": "digimental_hawkmon",
+      "to": "holsmon",
+      "label": "사랑",
+      "variant": "default"
+    },
+    {
+      "id": "digimental_hawkmon-shurimon",
+      "from": "digimental_hawkmon",
+      "to": "shurimon",
+      "label": "순수",
+      "variant": "default"
+    },
+    {
+      "id": "digimental_vmon-fladramon",
+      "from": "digimental_vmon",
+      "to": "fladramon",
+      "label": "용기",
+      "variant": "default"
+    },
+    {
+      "id": "digimental_vmon-depthmon",
+      "from": "digimental_vmon",
+      "to": "depthmon",
+      "label": "성실",
+      "variant": "default"
+    },
+    {
+      "id": "digimental_vmon-magnamon",
+      "from": "digimental_vmon",
+      "to": "magnamon",
+      "label": "기적",
+      "variant": "default"
+    },
+    {
+      "id": "digimental_vmon-lighdramon",
+      "from": "digimental_vmon",
+      "to": "lighdramon",
+      "label": "우정",
+      "variant": "default"
+    },
+    {
+      "id": "vmon-xvmon",
+      "from": "vmon",
+      "to": "xvmon",
+      "label": "레벨 상승",
+      "variant": "emphasis"
+    },
+    {
+      "id": "vmon-digimental_vmon",
+      "from": "vmon",
+      "to": "digimental_vmon",
+      "label": "아이템 사용",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "xvmon-paildramon",
+      "from": "xvmon",
+      "to": "paildramon",
+      "label": "죠그레스",
+      "variant": "security",
+      "role": "branch"
+    },
+    {
+      "id": "wormmon-stingmon",
+      "from": "wormmon",
+      "to": "stingmon",
+      "label": "레벨 상승",
+      "variant": "emphasis"
+    },
+    {
+      "id": "stingmon-paildramon",
+      "from": "stingmon",
+      "to": "paildramon",
+      "label": "죠그레스",
+      "variant": "security",
+      "role": "branch"
+    },
+    {
+      "id": "paildramon-impdragon",
+      "from": "paildramon",
+      "to": "impdragon",
+      "label": "체인 진화",
+      "variant": "default"
+    },
+    {
+      "id": "impdragon-impfighter",
+      "from": "impdragon",
+      "to": "impfighter",
+      "label": "모드 전환",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "impfighter-imppaladin",
+      "from": "impfighter",
+      "to": "imppaladin",
+      "label": "죠그레스",
+      "variant": "emphasis"
+    },
+    {
+      "id": "omegamon-imppaladin",
+      "from": "omegamon",
+      "to": "imppaladin",
+      "label": "죠그레스",
+      "variant": "security",
+      "role": "branch",
+      "route": "outside-right"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "네 가지 진화 경로",
+      "items": [
+        "정규 사다리는 Child → Adult → Perfect → Ultimate 로 오른다 (라인마다 단계 수가 다르다)",
+        "01 파트너 8라인은 최대 4단, 02 파트너 4라인은 Adult 에서 정규 사다리가 끝난다"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "사다리를 벗어나는 경로",
+      "items": [
+        "죠그레스는 부모가 둘이다 — 두 부모 라인이 합쳐져야 결과에 도달한다",
+        "아머 진화는 (Child + 디지멘탈) 복합키로 결과가 갈린다 — 성실 디지멘탈은 두 Child 가 공유한다"
+      ]
+    }
+  ]
+}

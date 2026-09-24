@@ -1,0 +1,225 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "디지몬 진화 경로 — 아르마디몬 라인",
+    "quality_profile": "showcase",
+    "legend": {
+      "mode": "auto",
+      "entries": {
+        "frontend": {
+          "label": "Child"
+        },
+        "backend": {
+          "label": "Adult"
+        },
+        "cloud": {
+          "label": "Perfect"
+        },
+        "security": {
+          "label": "Ultimate · 최종 도달체"
+        },
+        "messagebus": {
+          "label": "죠그레스 · 아머 결과"
+        },
+        "database": {
+          "label": "디지멘탈 아이템"
+        }
+      }
+    }
+  },
+  "lanes": [
+    {
+      "id": "armadimon",
+      "label": "아르마디몬 라인"
+    },
+    {
+      "id": "armor_armadimon",
+      "label": "아르마디몬 아머",
+      "variant": "exception"
+    },
+    {
+      "id": "jogress_shakkoumon",
+      "label": "죠그레스 — 샤콩몬",
+      "variant": "exception"
+    }
+  ],
+  "phases": [],
+  "groups": [],
+  "nodes": [
+    {
+      "id": "armadimon",
+      "lane": "armadimon",
+      "col": 0,
+      "type": "frontend",
+      "label": "Armadimon",
+      "width": 138,
+      "height": 92,
+      "brand": {
+        "url": "https://wikimon.net/images/0/0f/Armadimon_vpet_vb.png",
+        "sha256": "d798dc37e23b314f3142ca2568d90ed29e2b5c3bd15eaae50997a596369041ac"
+      }
+    },
+    {
+      "id": "ankylomon",
+      "lane": "armadimon",
+      "col": 1,
+      "type": "backend",
+      "label": "Ankylomon",
+      "width": 138,
+      "height": 92,
+      "brand": {
+        "url": "https://wikimon.net/images/f/f2/Ankylomon_vpet_vb.png",
+        "sha256": "e7f5b262b45f7b44ec7c8578299ac70795e44f1f60bbc9174bf045ecbd4fe4df"
+      }
+    },
+    {
+      "id": "digimental_armadimon_knowledge",
+      "lane": "armor_armadimon",
+      "col": 1,
+      "type": "database",
+      "label": "디지멘탈",
+      "width": 138,
+      "height": 92,
+      "sublabel": "지식의 디지멘탈",
+      "brand": {
+        "url": "https://wikimon.net/images/6/6a/Digimental_knowledge.jpg",
+        "sha256": "7c1efe3b080b9588e08dd9666136681dce3c7b4976fa5c4499947e2d76b53d40"
+      }
+    },
+    {
+      "id": "digmon",
+      "lane": "armor_armadimon",
+      "col": 2,
+      "type": "messagebus",
+      "label": "Digmon",
+      "width": 138,
+      "height": 92,
+      "brand": {
+        "url": "https://wikimon.net/images/a/ae/Digmon_vpet_vb.png",
+        "sha256": "817536efd1a588194b6432ff7b27e95ef55227dc40fd267c363c20b16817583d"
+      }
+    },
+    {
+      "id": "digimental_armadimon_sincerity",
+      "lane": "armor_armadimon",
+      "col": 3,
+      "type": "database",
+      "label": "디지멘탈",
+      "width": 138,
+      "height": 92,
+      "sublabel": "성실의 디지멘탈",
+      "brand": {
+        "url": "https://wikimon.net/images/3/34/Digimental_reliability.jpg",
+        "sha256": "6169e1c637096f03e069c1bb9728de204ee2562c12271a21f513747795ee3852"
+      }
+    },
+    {
+      "id": "submarimon",
+      "lane": "armor_armadimon",
+      "col": 4,
+      "type": "messagebus",
+      "label": "Submarimon",
+      "width": 138,
+      "height": 92,
+      "brand": {
+        "url": "https://wikimon.net/images/7/7a/Submarimon_vpet_vb.png",
+        "sha256": "9c5a8030f31caa6f53764e7d4251b455e847c72a21fc1c7408f786b98405d14b"
+      }
+    },
+    {
+      "id": "angemon",
+      "lane": "jogress_shakkoumon",
+      "col": 2,
+      "type": "backend",
+      "label": "Angemon",
+      "width": 138,
+      "height": 92,
+      "tag": "파트너 종",
+      "brand": {
+        "url": "https://wikimon.net/images/7/7f/Angemon_vpet_vb.png",
+        "sha256": "ff30cf69d68c51860a486345cb467f36e4fd608ee528ecae6d45cd299d0d8cad"
+      }
+    },
+    {
+      "id": "shakkoumon",
+      "lane": "jogress_shakkoumon",
+      "col": 4,
+      "type": "messagebus",
+      "label": "토우몬",
+      "width": 138,
+      "height": 92,
+      "sublabel": "Shakkoumon",
+      "tag": "죠그레스",
+      "brand": {
+        "url": "https://wikimon.net/images/b/b3/Shakkoumon_vpet_vb.png",
+        "sha256": "7f800577af098a69646d2182c919745dd510141c69302a9605e5cdd6f8264a94"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "armadimon-ankylomon",
+      "from": "armadimon",
+      "to": "ankylomon",
+      "label": "레벨 상승",
+      "variant": "emphasis"
+    },
+    {
+      "id": "armadimon-digimental_armadimon_knowledge",
+      "from": "armadimon",
+      "to": "digimental_armadimon_knowledge",
+      "label": "아이템 사용",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "digimental_armadimon_knowledge-digmon",
+      "from": "digimental_armadimon_knowledge",
+      "to": "digmon",
+      "label": "지식",
+      "variant": "default"
+    },
+    {
+      "id": "armadimon-digimental_armadimon_sincerity",
+      "from": "armadimon",
+      "to": "digimental_armadimon_sincerity",
+      "label": "아이템 사용",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "digimental_armadimon_sincerity-submarimon",
+      "from": "digimental_armadimon_sincerity",
+      "to": "submarimon",
+      "label": "성실",
+      "variant": "default"
+    },
+    {
+      "id": "ankylomon-shakkoumon",
+      "from": "ankylomon",
+      "to": "shakkoumon",
+      "label": "죠그레스",
+      "variant": "security",
+      "role": "branch"
+    },
+    {
+      "id": "angemon-shakkoumon",
+      "from": "angemon",
+      "to": "shakkoumon",
+      "label": "죠그레스",
+      "variant": "security",
+      "role": "branch"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "이 라인의 진화 경로",
+      "items": [
+        "정규 사다리는 Child → Adult → Perfect → Ultimate 로 오른다 (라인마다 단계 수가 다르다)",
+        "죠그레스/아머로 도달하는 개체는 파트너 종·디지멘탈과 함께 표시된다"
+      ]
+    }
+  ]
+}

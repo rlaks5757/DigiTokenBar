@@ -1,0 +1,224 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "디지몬 진화 경로 — 파닥몬 라인",
+    "quality_profile": "showcase",
+    "legend": {
+      "mode": "auto",
+      "entries": {
+        "frontend": {
+          "label": "Child"
+        },
+        "backend": {
+          "label": "Adult"
+        },
+        "cloud": {
+          "label": "Perfect"
+        },
+        "security": {
+          "label": "Ultimate · 최종 도달체"
+        },
+        "messagebus": {
+          "label": "죠그레스 · 아머 결과"
+        },
+        "database": {
+          "label": "디지멘탈 아이템"
+        }
+      }
+    }
+  },
+  "lanes": [
+    {
+      "id": "patamon",
+      "label": "파닥몬 라인"
+    },
+    {
+      "id": "armor_patamon",
+      "label": "파닥몬 아머",
+      "variant": "exception"
+    },
+    {
+      "id": "jogress_shakkoumon",
+      "label": "죠그레스 — 샤콩몬",
+      "variant": "exception"
+    }
+  ],
+  "phases": [],
+  "groups": [],
+  "nodes": [
+    {
+      "id": "patamon",
+      "lane": "patamon",
+      "col": 0,
+      "type": "frontend",
+      "label": "파닥몬",
+      "width": 138,
+      "height": 92,
+      "sublabel": "Patamon",
+      "brand": {
+        "url": "https://wikimon.net/images/2/26/Patamon_vpet_vb.png",
+        "sha256": "2d3259efc7d0549a99e2408faf518b9cf15776b085a3fbacb510b578514dc6a2"
+      }
+    },
+    {
+      "id": "angemon",
+      "lane": "patamon",
+      "col": 1,
+      "type": "backend",
+      "label": "Angemon",
+      "width": 138,
+      "height": 92,
+      "brand": {
+        "url": "https://wikimon.net/images/7/7f/Angemon_vpet_vb.png",
+        "sha256": "ff30cf69d68c51860a486345cb467f36e4fd608ee528ecae6d45cd299d0d8cad"
+      }
+    },
+    {
+      "id": "holyangemon",
+      "lane": "patamon",
+      "col": 2,
+      "type": "cloud",
+      "label": "Holy Angemon",
+      "width": 138,
+      "height": 92,
+      "brand": {
+        "url": "https://wikimon.net/images/5/53/HolyAngemon_vpet_xloader.png",
+        "sha256": "98fd6129b02a229bbeb3a3444745b6133f2b901f6ff800edca1f47165a07a833"
+      }
+    },
+    {
+      "id": "seraphimon",
+      "lane": "patamon",
+      "col": 3,
+      "type": "security",
+      "label": "Seraphimon",
+      "width": 138,
+      "height": 92,
+      "brand": {
+        "url": "https://wikimon.net/images/4/4a/Seraphimon_vpet_vb.png",
+        "sha256": "67239b2887d343c94aa08ffc8d1e8ac9003f24445280ddb2f168b68ebfeb0fa6"
+      }
+    },
+    {
+      "id": "digimental_patamon",
+      "lane": "armor_patamon",
+      "col": 1,
+      "type": "database",
+      "label": "디지멘탈",
+      "width": 138,
+      "height": 92,
+      "sublabel": "희망의 디지멘탈",
+      "brand": {
+        "url": "https://wikimon.net/images/a/aa/Digimental_hope.jpg",
+        "sha256": "e3feb40703dc33122b885ee31994173dea83e829874e8e67c6dfa2424a2c0511"
+      }
+    },
+    {
+      "id": "pegasmon",
+      "lane": "armor_patamon",
+      "col": 2,
+      "type": "messagebus",
+      "label": "Pegasmon",
+      "width": 138,
+      "height": 92,
+      "brand": {
+        "url": "https://wikimon.net/images/9/9c/Pegasmon_vpet_vb.png",
+        "sha256": "ec7a23334aab50bf3035fbb99cb5081fbcda3f68927a892f81e26374682e88be"
+      }
+    },
+    {
+      "id": "ankylomon",
+      "lane": "jogress_shakkoumon",
+      "col": 2,
+      "type": "backend",
+      "label": "Ankylomon",
+      "width": 138,
+      "height": 92,
+      "tag": "파트너 종",
+      "brand": {
+        "url": "https://wikimon.net/images/f/f2/Ankylomon_vpet_vb.png",
+        "sha256": "e7f5b262b45f7b44ec7c8578299ac70795e44f1f60bbc9174bf045ecbd4fe4df"
+      }
+    },
+    {
+      "id": "shakkoumon",
+      "lane": "jogress_shakkoumon",
+      "col": 4,
+      "type": "messagebus",
+      "label": "토우몬",
+      "width": 138,
+      "height": 92,
+      "sublabel": "Shakkoumon",
+      "tag": "죠그레스",
+      "brand": {
+        "url": "https://wikimon.net/images/b/b3/Shakkoumon_vpet_vb.png",
+        "sha256": "7f800577af098a69646d2182c919745dd510141c69302a9605e5cdd6f8264a94"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "patamon-angemon",
+      "from": "patamon",
+      "to": "angemon",
+      "label": "레벨 상승",
+      "variant": "emphasis"
+    },
+    {
+      "id": "angemon-holyangemon",
+      "from": "angemon",
+      "to": "holyangemon",
+      "label": "레벨 상승",
+      "variant": "emphasis"
+    },
+    {
+      "id": "holyangemon-seraphimon",
+      "from": "holyangemon",
+      "to": "seraphimon",
+      "label": "레벨 상승",
+      "variant": "emphasis"
+    },
+    {
+      "id": "patamon-digimental_patamon",
+      "from": "patamon",
+      "to": "digimental_patamon",
+      "label": "아이템 사용",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "digimental_patamon-pegasmon",
+      "from": "digimental_patamon",
+      "to": "pegasmon",
+      "label": "희망",
+      "variant": "default"
+    },
+    {
+      "id": "angemon-shakkoumon",
+      "from": "angemon",
+      "to": "shakkoumon",
+      "label": "죠그레스",
+      "variant": "security",
+      "role": "branch"
+    },
+    {
+      "id": "ankylomon-shakkoumon",
+      "from": "ankylomon",
+      "to": "shakkoumon",
+      "label": "죠그레스",
+      "variant": "security",
+      "role": "branch"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "이 라인의 진화 경로",
+      "items": [
+        "정규 사다리는 Child → Adult → Perfect → Ultimate 로 오른다 (라인마다 단계 수가 다르다)",
+        "죠그레스/아머로 도달하는 개체는 파트너 종·디지멘탈과 함께 표시된다"
+      ]
+    }
+  ]
+}

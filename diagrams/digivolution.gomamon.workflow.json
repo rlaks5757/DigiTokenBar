@@ -1,0 +1,107 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "디지몬 진화 경로 — 쉬라몬 라인",
+    "quality_profile": "showcase",
+    "legend": {
+      "mode": "auto",
+      "entries": {
+        "frontend": {
+          "label": "Child"
+        },
+        "backend": {
+          "label": "Adult"
+        },
+        "cloud": {
+          "label": "Perfect"
+        },
+        "security": {
+          "label": "Ultimate · 최종 도달체"
+        },
+        "messagebus": {
+          "label": "죠그레스 · 아머 결과"
+        },
+        "database": {
+          "label": "디지멘탈 아이템"
+        }
+      }
+    }
+  },
+  "lanes": [
+    {
+      "id": "gomamon",
+      "label": "쉬라몬 라인"
+    }
+  ],
+  "phases": [],
+  "groups": [],
+  "nodes": [
+    {
+      "id": "gomamon",
+      "lane": "gomamon",
+      "col": 0,
+      "type": "frontend",
+      "label": "쉬라몬",
+      "width": 138,
+      "height": 92,
+      "sublabel": "Gomamon",
+      "brand": {
+        "url": "https://wikimon.net/images/6/6c/Gomamon_vpet_xloader.png",
+        "sha256": "305ade037a9fa8321570b1265fd3dec7574ee4af513034e0652383346b9014c2"
+      }
+    },
+    {
+      "id": "ikkakumon",
+      "lane": "gomamon",
+      "col": 1,
+      "type": "backend",
+      "label": "Ikkakumon",
+      "width": 138,
+      "height": 92,
+      "brand": {
+        "url": "https://wikimon.net/images/3/39/Ikkakumon_vpet_vb.png",
+        "sha256": "f2d4c413dcfe606f4377a82a4250b150a152d4ec4ec59d1b3f1c1df1d092d919"
+      }
+    },
+    {
+      "id": "zudomon",
+      "lane": "gomamon",
+      "col": 2,
+      "type": "cloud",
+      "label": "Zudomon",
+      "width": 138,
+      "height": 92,
+      "brand": {
+        "url": "https://wikimon.net/images/e/e9/Zudomon_vpet_vb.png",
+        "sha256": "634ed8da496b30a464a53a0559c7a567ece91fe2a968f41241bb8769e6364a86"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "gomamon-ikkakumon",
+      "from": "gomamon",
+      "to": "ikkakumon",
+      "label": "레벨 상승",
+      "variant": "emphasis"
+    },
+    {
+      "id": "ikkakumon-zudomon",
+      "from": "ikkakumon",
+      "to": "zudomon",
+      "label": "레벨 상승",
+      "variant": "emphasis"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "이 라인의 진화 경로",
+      "items": [
+        "정규 사다리는 Child → Adult → Perfect → Ultimate 로 오른다 (라인마다 단계 수가 다르다)",
+        "죠그레스/아머로 도달하는 개체는 파트너 종·디지멘탈과 함께 표시된다"
+      ]
+    }
+  ]
+}

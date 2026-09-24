@@ -1,0 +1,205 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "디지몬 진화 경로 — 가트몬 라인",
+    "quality_profile": "showcase",
+    "legend": {
+      "mode": "auto",
+      "entries": {
+        "frontend": {
+          "label": "Child"
+        },
+        "backend": {
+          "label": "Adult"
+        },
+        "cloud": {
+          "label": "Perfect"
+        },
+        "security": {
+          "label": "Ultimate · 최종 도달체"
+        },
+        "messagebus": {
+          "label": "죠그레스 · 아머 결과"
+        },
+        "database": {
+          "label": "디지멘탈 아이템"
+        }
+      }
+    }
+  },
+  "lanes": [
+    {
+      "id": "tailmon",
+      "label": "가트몬 라인"
+    },
+    {
+      "id": "armor_tailmon",
+      "label": "가트몬 아머",
+      "variant": "exception"
+    },
+    {
+      "id": "jogress_silphymon",
+      "label": "죠그레스 — 실피몬",
+      "variant": "exception"
+    }
+  ],
+  "phases": [],
+  "groups": [],
+  "nodes": [
+    {
+      "id": "tailmon",
+      "lane": "tailmon",
+      "col": 0,
+      "type": "frontend",
+      "label": "가트몬",
+      "width": 138,
+      "height": 92,
+      "sublabel": "Tailmon",
+      "brand": {
+        "url": "https://wikimon.net/images/9/91/Tailmon_vpet_vb.png",
+        "sha256": "f672b802dffd88bfceba0ea53a8abacf8e4e34f021f167c63e9d6be49b91fef6"
+      }
+    },
+    {
+      "id": "angewomon",
+      "lane": "tailmon",
+      "col": 1,
+      "type": "cloud",
+      "label": "Angewomon",
+      "width": 138,
+      "height": 92,
+      "brand": {
+        "url": "https://wikimon.net/images/b/b2/Angewomon_vpet_vb.png",
+        "sha256": "a6f7164a1478fde246a6837f4ecf2d1c7e4329595724d158c626d6f884a30d41"
+      }
+    },
+    {
+      "id": "holydramon",
+      "lane": "tailmon",
+      "col": 2,
+      "type": "security",
+      "label": "홀리드라몬",
+      "width": 138,
+      "height": 92,
+      "sublabel": "Holydramon",
+      "brand": {
+        "url": "https://wikimon.net/images/e/ef/Holydramon_vpet_vb.png",
+        "sha256": "03c8363fe67f89f763b47ffa53b8905be2f78d59df58bbf5e582f7b5564d2bf1"
+      }
+    },
+    {
+      "id": "digimental_tailmon",
+      "lane": "armor_tailmon",
+      "col": 1,
+      "type": "database",
+      "label": "디지멘탈",
+      "width": 138,
+      "height": 92,
+      "sublabel": "빛의 디지멘탈",
+      "brand": {
+        "url": "https://wikimon.net/images/c/c0/Digimental_light.jpg",
+        "sha256": "4a5c607337326e06c0431e0dd72266b4c96c7e019c3c82646eada587eb80987e"
+      }
+    },
+    {
+      "id": "nefertimon",
+      "lane": "armor_tailmon",
+      "col": 2,
+      "type": "messagebus",
+      "label": "네페르티몬",
+      "width": 138,
+      "height": 92,
+      "sublabel": "Nefertimon",
+      "brand": {
+        "url": "https://wikimon.net/images/a/a8/Nefertimon_vpet_vb.png",
+        "sha256": "b2b04e53ddfc26aed93e422bcb725f4dd307043021ac010f975a969804459064"
+      }
+    },
+    {
+      "id": "hawkmon",
+      "lane": "jogress_silphymon",
+      "col": 1,
+      "type": "frontend",
+      "label": "Hawkmon",
+      "width": 138,
+      "height": 92,
+      "tag": "파트너 종",
+      "brand": {
+        "url": "https://wikimon.net/images/b/b7/Hawkmon_vpet_vb.png",
+        "sha256": "5b138da9a98e8c82295d77bc02089f557747e580defbd9963a2d02ce0bf9cf30"
+      }
+    },
+    {
+      "id": "silphymon",
+      "lane": "jogress_silphymon",
+      "col": 2,
+      "type": "messagebus",
+      "label": "Silphymon",
+      "width": 138,
+      "height": 92,
+      "tag": "죠그레스",
+      "brand": {
+        "url": "https://wikimon.net/images/2/26/Silphymon_vpet_vb.png",
+        "sha256": "80c172e03bf5d501515705fded04b774f40b5e561f975d8635685f70e2649060"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "tailmon-angewomon",
+      "from": "tailmon",
+      "to": "angewomon",
+      "label": "레벨 상승",
+      "variant": "emphasis"
+    },
+    {
+      "id": "angewomon-holydramon",
+      "from": "angewomon",
+      "to": "holydramon",
+      "label": "레벨 상승",
+      "variant": "emphasis"
+    },
+    {
+      "id": "tailmon-digimental_tailmon",
+      "from": "tailmon",
+      "to": "digimental_tailmon",
+      "label": "아이템 사용",
+      "variant": "dashed",
+      "role": "branch"
+    },
+    {
+      "id": "digimental_tailmon-nefertimon",
+      "from": "digimental_tailmon",
+      "to": "nefertimon",
+      "label": "빛",
+      "variant": "default"
+    },
+    {
+      "id": "tailmon-silphymon",
+      "from": "tailmon",
+      "to": "silphymon",
+      "label": "죠그레스",
+      "variant": "security",
+      "role": "branch"
+    },
+    {
+      "id": "hawkmon-silphymon",
+      "from": "hawkmon",
+      "to": "silphymon",
+      "label": "죠그레스",
+      "variant": "security",
+      "role": "branch"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "이 라인의 진화 경로",
+      "items": [
+        "정규 사다리는 Child → Adult → Perfect → Ultimate 로 오른다 (라인마다 단계 수가 다르다)",
+        "죠그레스/아머로 도달하는 개체는 파트너 종·디지멘탈과 함께 표시된다"
+      ]
+    }
+  ]
+}
