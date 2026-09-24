@@ -41,8 +41,16 @@ private let armorFixedNow = Date(timeIntervalSince1970: 1_700_000_000)
 final class ArmorEvolutionTests: XCTestCase {
 
     /// state 는 `private(set)` 이라 테스트는 **파일 시드**로 초기 상태를 준다(기존 픽스처 패턴).
+    ///
+    /// 언어는 **시드에 명시 고정**한다. `CompanionState.language` 기본값은 `.systemDefault` 라
+    /// `Locale.preferredLanguages` 를 읽으므로, 고정하지 않으면 개발자 맥(ko)에서는 통과하고
+    /// 영어 CI 러너에서는 영문 표기가 나와 이름 단언이 깨진다(테스트가 주변 환경에 기댄 것).
+    /// `setLanguage` 가 아니라 시드로 주는 이유: 그건 `save()` 를 불러 세이브를 덮어써서
+    /// `testNamesSurviveRestartBeforeLineLoads` 의 "재시작 직후 복원" 전제를 흐린다.
     private func store(_ line: EvoLine, seed state: CompanionState = CompanionState(),
-                       rngSeed: UInt64 = 7) throws -> CompanionStore {
+                       language: AppLanguage = .ko, rngSeed: UInt64 = 7) throws -> CompanionStore {
+        var state = state
+        state.language = language
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("armor-\(UUID().uuidString).json")
         try JSONEncoder().encode(state).write(to: url)
@@ -250,7 +258,7 @@ final class ArmorEvolutionTests: XCTestCase {
         guard let entry = s.state.dex.first(where: \.isArmored) else {
             return XCTFail("아머 도감 항목 없음")
         }
-        // 기본 언어(ko)에서 한국어 표기가 나와야 한다 — 영문이 나오면 로케일 해석이 끊긴 것이다.
+        // 시드가 ko 로 고정돼 있다(호스트 로케일 무관) — 영문이 나오면 로케일 해석이 끊긴 것이다.
         XCTAssertEqual(s.dexStoredChainNames(entry)?[305], "화염드라몬")
         XCTAssertFalse(entry.needsNamesRefresh, "백필이 영구히 재조회하게 두면 안 된다")
         XCTAssertEqual(s.dexSpecies.first { $0.id == 305 }?.name, "화염드라몬")
@@ -330,8 +338,13 @@ final class ArmorEvolutionTests: XCTestCase {
         let s = try await hatched(vmonLine)
         XCTAssertTrue(s.useDigimental(.digimentalCourage))
         XCTAssertEqual(s.displayName, "화염드라몬")
-        XCTAssertNotEqual(s.displayName, "#305")
         XCTAssertEqual(s.ladderName, "브이몬", "되돌아갈 대상은 사다리 종이다")
+        // 본래 의도(#305 로 떨어지지 않는다)는 언어와 무관하다 — 어느 언어에서도 성립해야 한다.
+        for lang in AppLanguage.allCases {
+            s.setLanguage(lang)
+            XCTAssertNotEqual(s.displayName, "#305", "\(lang) 에서 아머체 이름이 종 번호로 떨어졌다")
+            XCTAssertNotEqual(s.ladderName, "#349", "\(lang) 에서 사다리 이름이 종 번호로 떨어졌다")
+        }
     }
 
     // MARK: ⑩ 진행 표시는 사다리를 따른다 (의도된 동작)
@@ -516,7 +529,11 @@ final class ArmorEvolutionTests: XCTestCase {
 
         XCTAssertEqual(s.displayName, "화염드라몬")
         XCTAssertEqual(s.ladderName, "브이몬", "라인 미로딩이라고 알 표기로 떨어지면 안 된다")
+        // 이 테스트의 축(라인 미로딩 폴백이 살아 있나)은 언어와 무관하다. "Token Egg" 는 로케일
+        // 무관 리터럴이고(`CompanionStore.ladderName`), `#id` 는 이름 해석이 끊겼다는 신호다.
         XCTAssertNotEqual(s.ladderName, "Token Egg")
+        XCTAssertNotEqual(s.ladderName, "#349", "라인 미로딩 폴백이 종 번호로 떨어졌다")
+        XCTAssertNotEqual(s.displayName, "#305", "아머 이름이 종 번호로 떨어졌다")
     }
 
     /// "Token Egg" 폴백은 개체 자체가 없을 때만 맞다 — 그 경로는 그대로 남아야 한다.
