@@ -132,6 +132,179 @@ final class DigimonEvolutionDiagramTests: XCTestCase {
         "nefertimon":326,
     ]
 
+    // MARK: - (c) 렌더된 HTML 의 컨테이너 포함 관계
+
+    // cae199d 에서 일부 노드 박스 높이만 92→111 로 키우고 그 박스를 감싸는 c-lane 밴드와
+    // exception-lane(c-security-group)은 그대로 둬서, 박스 하단이 밴드 밖으로 15px
+    // 튀어나간 채로 12장 중 6장이 나갔다. 기존 테스트는 전부 스펙 JSON(노드 목록/브랜드)만
+    // 봤고 "렌더된 좌표가 서로 어떤 관계인가"를 보는 단언이 하나도 없어서 green 이었다.
+    // 아래 세 가지는 그 기하 관계를 직접 잰다.
+
+    private struct Rect {
+        var x, y, width, height: Double
+        var bottom: Double { y + height }
+        func contains(_ inner: Rect) -> Bool {
+            inner.x >= x && inner.y >= y && inner.bottom <= bottom && inner.x + inner.width <= x + width
+        }
+    }
+
+    private struct DiagramGeometry {
+        var lanes: [Rect] = []
+        /// exception-lane. 소속 레인을 frame id 로 잇는다("lane-2" ↔ "lane-2-exception").
+        var exceptionLanes: [String: Rect] = [:]
+        var laneIDs: [String: Rect] = [:]
+        /// 노드 박스만. 엣지 라벨 배킹은 제외한다(아래 파싱 주석 참고).
+        var nodeBoxes: [Rect] = []
+        var legendTitle: (y: Double, fontSize: Double)?
+    }
+
+    private func lineDiagramHTMLURL(_ lineKey: String) -> URL {
+        repoRootURL().appendingPathComponent("Resources/digivolution.\(lineKey).html")
+    }
+
+    /// 렌더된 SVG 에서 기하만 뽑는다.
+    ///
+    /// 노드 박스 판별이 까다롭다: `c-mask` 클래스는 **두 가지**에 쓰인다 — 노드 박스와,
+    /// 엣지에 붙는 라벨의 불투명 배킹(height 14). 배킹은 레인 밖으로 나가는 엣지에 붙어
+    /// 있어서 레인 안에 있지 않다(예: tailmon 에 y=16, y=474 짜리가 있다). 그래서
+    /// `c-mask` 를 전부 노드 박스로 치면 손대면 안 되는 6장에서도 빨개진다.
+    /// 판별 기준: 노드 박스는 바로 뒤에 **동일 x/y/width/height 의 색상 rect 쌍둥이**가
+    /// 따라온다(마스크 + 채색 2겹). 배킹은 쌍둥이 없이 `<text>` 가 따라온다.
+    /// `[data-node-id]` 로 세면 안 된다 — 숨겨진 중복 때문에 실제의 2배가 나온다.
+    private func parseDiagramGeometry(_ html: String) throws -> DiagramGeometry {
+        var geo = DiagramGeometry()
+
+        func attributes(_ tag: String) -> [String: String] {
+            var out: [String: String] = [:]
+            let pattern = try! NSRegularExpression(pattern: "([\\w-]+)=\"([^\"]*)\"")
+            let ns = tag as NSString
+            for m in pattern.matches(in: tag, range: NSRange(location: 0, length: ns.length)) {
+                out[ns.substring(with: m.range(at: 1))] = ns.substring(with: m.range(at: 2))
+            }
+            return out
+        }
+
+        func rect(_ a: [String: String]) -> Rect? {
+            guard let x = Double(a["x"] ?? ""), let y = Double(a["y"] ?? ""),
+                  let w = Double(a["width"] ?? ""), let h = Double(a["height"] ?? "")
+            else { return nil }
+            return Rect(x: x, y: y, width: w, height: h)
+        }
+
+        let ns = html as NSString
+        let rectRE = try NSRegularExpression(pattern: "<rect\\b[^>]*>")
+        let rectTags: [(attrs: [String: String], rect: Rect?)] = rectRE
+            .matches(in: html, range: NSRange(location: 0, length: ns.length))
+            .map { m in
+                let a = attributes(ns.substring(with: m.range))
+                return (a, rect(a))
+            }
+
+        for (index, entry) in rectTags.enumerated() {
+            guard let r = entry.rect else { continue }
+            let classes = Set((entry.attrs["class"] ?? "").split(separator: " ").map(String.init))
+            let frameID = entry.attrs["data-composition-frame-id"]
+
+            if classes.contains("c-lane") {
+                geo.lanes.append(r)
+                if let frameID { geo.laneIDs[frameID] = r }
+            }
+            if classes.contains("c-security-group") {
+                if let frameID { geo.exceptionLanes[frameID] = r }
+            }
+            if classes.contains("c-mask") {
+                // 쌍둥이(다음 rect 가 같은 기하 + 다른 클래스)가 있으면 노드 박스.
+                if index + 1 < rectTags.count, let twin = rectTags[index + 1].rect,
+                   twin.x == r.x, twin.y == r.y, twin.width == r.width, twin.height == r.height,
+                   !Set((rectTags[index + 1].attrs["class"] ?? "").split(separator: " ").map(String.init))
+                        .contains("c-mask") {
+                    geo.nodeBoxes.append(r)
+                }
+            }
+        }
+
+        let titleRE = try NSRegularExpression(pattern: "<text\\b[^>]*>Legend</text>")
+        if let m = titleRE.firstMatch(in: html, range: NSRange(location: 0, length: ns.length)) {
+            let a = attributes(ns.substring(with: m.range))
+            if let y = Double(a["y"] ?? "") {
+                geo.legendTitle = (y: y, fontSize: Double(a["font-size"] ?? "") ?? 12)
+            }
+        }
+        return geo
+    }
+
+    private func allLineGeometries() throws -> [(key: String, geo: DiagramGeometry)] {
+        let ds = try DigimonData.loaded()
+        // 12개 라인 키로만 연다. Resources/ 엔 visual-check 산출물과 통합본
+        // digivolution.html 도 같이 있어서 glob 으로 쓸어담으면 범위 밖 파일까지 들어온다.
+        XCTAssertEqual(ds.linesByKey.count, 12, "라인 수가 12가 아님 — 이 테스트의 전제가 깨짐")
+        return try ds.linesByKey.keys.sorted().map { key in
+            let url = lineDiagramHTMLURL(key)
+            let html = try String(contentsOf: url, encoding: .utf8)
+            return (key, try parseDiagramGeometry(html))
+        }
+    }
+
+    /// 모든 노드 박스는 자기 레인 밴드 안에 들어있어야 한다.
+    /// 박스 높이만 키우고 밴드를 안 키우면(cae199d) 여기서 잡힌다.
+    func testNodeBoxesStayInsideTheirLaneBand() throws {
+        var totalBoxes = 0
+        for (key, geo) in try allLineGeometries() {
+            XCTAssertFalse(geo.lanes.isEmpty, "'\(key)' 에 c-lane 이 하나도 없음 — 파싱이 깨진 것")
+            XCTAssertFalse(geo.nodeBoxes.isEmpty, "'\(key)' 에 노드 박스가 하나도 없음 — 파싱이 깨진 것")
+            totalBoxes += geo.nodeBoxes.count
+            for box in geo.nodeBoxes {
+                let owner = geo.lanes.first { $0.contains(box) }
+                XCTAssertNotNil(owner,
+                    "'\(key)': 노드 박스(y=\(box.y), h=\(box.height), 하단 \(box.bottom))가 "
+                    + "어느 레인 밴드에도 담기지 않음. 레인: "
+                    + geo.lanes.map { "y=\($0.y) h=\($0.height)" }.joined(separator: ", "))
+            }
+        }
+        // 필터가 조용히 비어버리면(쌍둥이 판별이 깨지면) 위 루프가 공허하게 통과한다.
+        XCTAssertEqual(totalBoxes, 77, "12장의 노드 박스 총수가 달라짐 — 파싱 필터나 다이어그램 구성이 변경됨")
+    }
+
+    /// exception-lane(c-security-group)은 자기 레인에서 상하 6px 씩 안쪽으로 파생된다.
+    ///
+    /// 여기서 "그룹이 박스를 포함한다"를 단언하지 않는 건, 그게 **기준선에서 이미 거짓**이기
+    /// 때문이다: 박스는 레인 y+34 에서 높이 92 라 하단이 y+126 인데, 그룹 하단은 y+124 다
+    /// (12장 전부, 손대지 않은 6장 포함). 즉 노드 박스는 원래 exception-lane 을 2px 넘친다.
+    /// 실제로 깨진 불변식은 포함 관계가 아니라 **파생 관계**다 — cae199d 는 레인만 놔두고
+    /// 박스를 키웠고, 레인을 고칠 때 그룹을 같이 안 고치면 이 단언이 빨개진다.
+    func testExceptionLaneIsDerivedFromItsLane() throws {
+        var checked = 0
+        for (key, geo) in try allLineGeometries() {
+            for (groupID, group) in geo.exceptionLanes {
+                let laneID = groupID.replacingOccurrences(of: "-exception", with: "")
+                let lane = try XCTUnwrap(geo.laneIDs[laneID],
+                    "'\(key)': exception-lane '\(groupID)' 에 대응하는 레인 '\(laneID)' 없음")
+                XCTAssertEqual(group.y, lane.y + 6, accuracy: 0.001,
+                    "'\(key)': '\(groupID)' 의 y 가 레인 y+6 이 아님")
+                XCTAssertEqual(group.height, lane.height - 12, accuracy: 0.001,
+                    "'\(key)': '\(groupID)' 높이가 레인 높이-12 가 아님 "
+                    + "(레인 \(lane.height) → 기대 \(lane.height - 12), 실제 \(group.height)). "
+                    + "레인만 키우고 exception-lane 을 안 키운 것")
+                checked += 1
+            }
+        }
+        XCTAssertEqual(checked, 13, "exception-lane 총수가 달라짐 — 다이어그램 구성이 변경됨")
+    }
+
+    /// 노드 박스가 Legend 제목 글자 영역을 침범하면 안 된다.
+    /// 제목의 baseline 이 아니라 **글자 상단**(baseline - font-size)과 비교한다 —
+    /// baseline 으로 재면 기준선에서도 여유가 9px 나 있어서 회귀를 못 잡는다.
+    func testNodeBoxesDoNotOverlapLegendTitle() throws {
+        for (key, geo) in try allLineGeometries() {
+            let title = try XCTUnwrap(geo.legendTitle, "'\(key)' 에 Legend 제목이 없음")
+            let titleTop = title.y - title.fontSize
+            for box in geo.nodeBoxes where box.bottom > titleTop {
+                XCTFail("'\(key)': 노드 박스 하단(\(box.bottom))이 Legend 제목 상단"
+                    + "(\(titleTop) = baseline \(title.y) - \(title.fontSize))을 침범함")
+            }
+        }
+    }
+
     private func loadDiagramSpec(_ lineKey: String) throws -> DiagramSpec {
         let url = diagramSpecURL(lineKey)
         let data = try Data(contentsOf: url)
