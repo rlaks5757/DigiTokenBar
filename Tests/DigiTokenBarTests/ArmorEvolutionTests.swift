@@ -19,7 +19,9 @@ private func armorNode(_ id: Int, _ children: [EvoNode] = []) -> EvoNode {
 private func armorLine(base: Int, tree: EvoNode, rarity: Rarity = .uncommon) -> EvoLine {
     var names: [Int: [String: String]] = [:]
     func walk(_ n: EvoNode) {
-        names[n.speciesID] = ["en": DigimonData.name(for: n.speciesID)?.apiName ?? "#\(n.speciesID)"]
+        // 실제 provider(`DigimonLineProvider`)와 같은 로케일 맵을 싣는다 — `["en": apiName]` 로
+        // 스텁하면 프로덕션 경로가 한국어로 바뀌어도 테스트만 영어로 통과해 배선을 못 본다.
+        names[n.speciesID] = DigimonData.name(for: n.speciesID)?.localizedNames ?? [:]
         n.children.forEach(walk)
     }
     walk(tree)
@@ -248,9 +250,12 @@ final class ArmorEvolutionTests: XCTestCase {
         guard let entry = s.state.dex.first(where: \.isArmored) else {
             return XCTFail("아머 도감 항목 없음")
         }
-        XCTAssertEqual(s.dexStoredChainNames(entry)?[305], "Fladramon")
+        // 기본 언어(ko)에서 한국어 표기가 나와야 한다 — 영문이 나오면 로케일 해석이 끊긴 것이다.
+        XCTAssertEqual(s.dexStoredChainNames(entry)?[305], "화염드라몬")
         XCTAssertFalse(entry.needsNamesRefresh, "백필이 영구히 재조회하게 두면 안 된다")
-        XCTAssertEqual(s.dexSpecies.first { $0.id == 305 }?.name, "Fladramon")
+        XCTAssertEqual(s.dexSpecies.first { $0.id == 305 }?.name, "화염드라몬")
+        s.setLanguage(.en)
+        XCTAssertEqual(s.dexSpecies.first { $0.id == 305 }?.name, "Fladramon", "영어는 영문 표기")
     }
 
     /// 같은 아머체를 다시 착용해도 동행 기록에 같은 줄이 반복되지 않는다.
@@ -324,9 +329,9 @@ final class ArmorEvolutionTests: XCTestCase {
     func testArmorDisplayNameIsNotSpeciesNumber() async throws {
         let s = try await hatched(vmonLine)
         XCTAssertTrue(s.useDigimental(.digimentalCourage))
-        XCTAssertEqual(s.displayName, "Fladramon")
+        XCTAssertEqual(s.displayName, "화염드라몬")
         XCTAssertNotEqual(s.displayName, "#305")
-        XCTAssertEqual(s.ladderName, "V-mon", "되돌아갈 대상은 사다리 종이다")
+        XCTAssertEqual(s.ladderName, "브이몬", "되돌아갈 대상은 사다리 종이다")
     }
 
     // MARK: ⑩ 진행 표시는 사다리를 따른다 (의도된 동작)
@@ -509,8 +514,8 @@ final class ArmorEvolutionTests: XCTestCase {
         XCTAssertNil(s.currentLine, "전제: 라인 미로딩 창을 재현해야 하는 테스트다")
         XCTAssertTrue(s.isArmored, "아머 해제 컨트롤이 이 시점에 이미 렌더된다")
 
-        XCTAssertEqual(s.displayName, "Fladramon")
-        XCTAssertEqual(s.ladderName, "V-mon", "라인 미로딩이라고 알 표기로 떨어지면 안 된다")
+        XCTAssertEqual(s.displayName, "화염드라몬")
+        XCTAssertEqual(s.ladderName, "브이몬", "라인 미로딩이라고 알 표기로 떨어지면 안 된다")
         XCTAssertNotEqual(s.ladderName, "Token Egg")
     }
 
@@ -538,7 +543,7 @@ final class ArmorEvolutionTests: XCTestCase {
         // ① 첫 착용 → 발화된다.
         XCTAssertTrue(s.useDigimental(.digimentalCourage))
         XCTAssertEqual(s.celebrationSeq, seq0 + 1, "아머체 첫 획득은 축하 연출이 떠야 한다")
-        XCTAssertEqual(s.justEvolvedTo, "Fladramon")
+        XCTAssertEqual(s.justEvolvedTo, "화염드라몬")
 
         // ② 해제 후 같은 아머 재착용 → 조용히 전환된다.
         XCTAssertTrue(s.removeArmor())
@@ -551,10 +556,10 @@ final class ArmorEvolutionTests: XCTestCase {
         XCTAssertTrue(s.useDigimental(.digimentalMiracles))
         XCTAssertEqual(s.displaySpeciesID, 315)
         XCTAssertEqual(s.celebrationSeq, seq0 + 2, "다른 아머체는 처음이므로 발화해야 한다")
-        XCTAssertEqual(s.justEvolvedTo, "Magnamon")
+        XCTAssertEqual(s.justEvolvedTo, "매그너몬")
 
         // ④ 이전 아머로 복귀 → 조용히 전환된다(해제를 끼지 않는 별도 경로).
-        // 여기서 `justEvolvedTo` 는 ③ 이 남긴 "Magnamon" 그대로다 — 조용한 경로는 그 값도
+        // 여기서 `justEvolvedTo` 는 ③ 이 남긴 "매그너몬" 그대로다 — 조용한 경로는 그 값도
         // `eventUntil` 도 건드리지 않으므로 ③ 이 연 4초 창이 끝날 때 함께 만료된다(창을 못 늘린다).
         // 그래서 이 경로의 판정은 이름이 아니라 **연출이 다시 쏘였나**다.
         let toastBeforeReturn = s.justEvolvedTo
@@ -588,6 +593,6 @@ final class ArmorEvolutionTests: XCTestCase {
         XCTAssertTrue(s.useDigimental(.digimentalCourage))
         XCTAssertGreaterThan(s.celebrationSeq, seqAfterFirst + 1,
                              "새 개체의 첫 아머는 다시 발화해야 한다(hatch 연출 + 아머 연출)")
-        XCTAssertEqual(s.justEvolvedTo, "Fladramon")
+        XCTAssertEqual(s.justEvolvedTo, "화염드라몬")
     }
 }

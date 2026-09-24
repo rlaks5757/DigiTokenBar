@@ -503,7 +503,10 @@ final class CompanionStoreTests: XCTestCase {
 
         let folded = s.dexSpecies
         XCTAssertEqual(folded.map(\.id), [1, 2, 3], "6칸이 아니라 종별 1칸, 도감 번호 오름차순")
-        XCTAssertEqual(folded.map(\.name), ["포1", "포2", "포3"], "저장된 이름을 현재 언어로")
+        // 격자(`dexSpecies`)는 표시 경로라 **번들 데이터를 저장값보다 우선**한다. 이 픽스처의
+        // id 1/3 은 실제 종(아구몬/엔젤몬)과 겹쳐서 번들 이름으로 뜨고, 데이터에 없는 2 만
+        // 저장값("포2")으로 남는다 — 저장분이 실제로 읽히는지는 그 2 번 칸이 증명한다.
+        XCTAssertEqual(folded.map(\.name), ["아구몬", "포2", "엔젤몬"], "저장된 이름을 현재 언어로")
         XCTAssertEqual(folded.map(\.rarity), [.common, .common, .common])
     }
 
@@ -652,7 +655,9 @@ final class CompanionStoreTests: XCTestCase {
         await s.hatch(baseID: 1)
         let sp = s.dexSpecies
         XCTAssertEqual(sp.map(\.id), [1], "도달분만 — 아직 진화 전이라 2·3 은 미보유")
-        XCTAssertEqual(sp.first?.name, "포1")
+        // id 1 은 실제 종이라 격자가 번들 이름(아구몬)으로 표시한다 — 라인이 로드됐고 `#1` 로
+        // 떨어지지 않는다는 이 테스트의 요지는 그대로다.
+        XCTAssertEqual(sp.first?.name, "아구몬")
     }
 
     // MARK: 도감 이름 백필 (격자는 저장분만 읽는다)
@@ -662,11 +667,13 @@ final class CompanionStoreTests: XCTestCase {
     func testBackfillFillsNamesForEntriesSavedBeforeNamesExisted() async throws {
         let s = try storeWithNamelessEntry()
         XCTAssertNil(s.state.dex.first?.names, "구버전 저장분엔 이름이 없다")
-        XCTAssertEqual(s.dexSpecies.map(\.name), ["#1", "#2", "#3"], "백필 전엔 종 번호")
+        // 번들에 있는 1/3 은 격자가 곧바로 해석하므로, 백필이 실제로 채우는지는 데이터에 없는
+        // 2 번 칸(`#2` → "포2")이 판별한다 — 그 칸이 이 테스트의 가드다.
+        XCTAssertEqual(s.dexSpecies.map(\.name), ["아구몬", "#2", "엔젤몬"], "백필 전엔 종 번호")
 
         await s.backfillMissingDexNames()
 
-        XCTAssertEqual(s.dexSpecies.map(\.name), ["포1", "포2", "포3"])
+        XCTAssertEqual(s.dexSpecies.map(\.name), ["아구몬", "포2", "엔젤몬"])
         XCTAssertNotNil(s.state.dex.first?.names, "항목에 저장돼 다음 실행부터 네트워크 0")
     }
 
@@ -683,7 +690,7 @@ final class CompanionStoreTests: XCTestCase {
         await s.backfillMissingDexNames()
 
         XCTAssertEqual(provider.lineCalls, 0, "저장분은 건너뛴다")
-        XCTAssertEqual(s.dexSpecies.map(\.name), ["포1", "포2", "포3"])
+        XCTAssertEqual(s.dexSpecies.map(\.name), ["아구몬", "포2", "엔젤몬"])
     }
 
     /// 오프라인이면 폴백(`#id`)을 **저장하지 않는다** — 저장해 버리면 이름이 영원히 번호로 굳는다.
@@ -698,13 +705,13 @@ final class CompanionStoreTests: XCTestCase {
                                      fileURL: url, rng: SeededRNG(seed: 7))
         await offline.backfillMissingDexNames()
         XCTAssertNil(offline.state.dex.first?.names, "폴백은 저장하지 않는다")
-        XCTAssertEqual(offline.dexSpecies.map(\.name), ["#1", "#2", "#3"])
+        XCTAssertEqual(offline.dexSpecies.map(\.name), ["아구몬", "#2", "엔젤몬"])
 
         // 같은 저장 파일을 온라인 provider 로 다시 연다(= 다음 진입).
         let online = CompanionStore(provider: StubProvider(value: linear3), clock: { fixedNow },
                                     fileURL: url, rng: SeededRNG(seed: 7))
         await online.backfillMissingDexNames()
-        XCTAssertEqual(online.dexSpecies.map(\.name), ["포1", "포2", "포3"])
+        XCTAssertEqual(online.dexSpecies.map(\.name), ["아구몬", "포2", "엔젤몬"])
     }
 
     // MARK: 도감 "키우는 중" 표식 (현재 형태 한 칸)

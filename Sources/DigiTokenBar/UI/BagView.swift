@@ -113,7 +113,7 @@ private struct ItemCard: View {
             return "+\(TokenFormatter.compact(selectedCandyCount * RareCandy.xp)) XP"
         }
         guard let armorID = store.armorResult(for: kind) else { return "" }
-        return l.armorEvolveHint(DigimonData.name(for: armorID)?.apiName ?? "#\(armorID)")
+        return l.armorEvolveHint(CompanionStore.dataName(armorID, store.language))
     }
     private func performUse() {
         if kind == .rareCandy {

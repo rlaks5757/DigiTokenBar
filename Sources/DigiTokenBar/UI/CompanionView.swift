@@ -1229,8 +1229,9 @@ private struct DexEntryRow: View {
     private static let cardPadding: CGFloat = 8
 
     var body: some View {
-        // 저장분 우선(즉시·언어대응), 없으면 async 로 채운 resolved 사용.
-        let names = store.dexStoredChainNames(entry) ?? (resolved.isEmpty ? nil : resolved)
+        // 우선순위 규칙은 store 에 있다 — `body` 안의 식은 테스트가 닿지 못해서, 여기에 두면
+        // 저장값만 보는 접근자로 되돌려도 아무 테스트가 실패하지 않는다(배선이 조용히 끊긴다).
+        let names = store.dexRowChainNames(entry, resolved: resolved)
         VStack(alignment: .leading, spacing: 3) {
             HStack {
                 Text(store.l.rarityLabel(entry.rarity).uppercased())

@@ -30,9 +30,9 @@ struct DigimonLineProvider: DigimonLineProviding {
             guard let name = DigimonData.name(for: stage.id) else {
                 preconditionFailure("DigimonDataLoader already guarantees a name for every line stage id")
             }
-            // "en" 은 PokéAPI 언어코드 관례(AppLanguage.en.apiCodes)와 동일한 키이자
-            // DigimonNameLocalization.resolve 의 최종 폴백 코드이므로, 언어 무관하게 항상 이 이름이 뜬다.
-            names[stage.id] = ["en": name.apiName]
+            // 로케일 맵 전체를 싣는다. `DigimonName.localizedNames` 가 `en` 을 `apiName` 으로
+            // 합성하므로, 표기 데이터가 없는 언어도 종 번호가 아니라 영어로 폴백한다.
+            names[stage.id] = name.localizedNames
         }
         return EvoLine(baseID: digiLine.baseID, tree: tree, rarity: digiLine.rarity, names: names)
     }

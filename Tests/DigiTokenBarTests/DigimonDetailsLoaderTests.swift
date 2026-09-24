@@ -95,13 +95,20 @@ final class DigimonDetailsLoaderTests: XCTestCase {
         XCTAssertEqual(armorLeveled, armorResultIDs)
     }
 
-    func testKoreanNameIsPresentOnlyForLocalizedSpecies() throws {
+    /// **52종 전부** 한국어 표기를 갖는다 — 한 종이라도 빠지면 그 칸만 영문으로 떠서 한 화면에
+    /// 두 언어가 섞인다. `digimon.json` 과의 일치는
+    /// `DigimonKoreanNameTests.testKoreanNamesMatchTheDetailsSource` 가 따로 고정한다.
+    ///
+    /// 개수만 재면 한 종이 빠진 자리를 다른 종이 메워도 통과하므로, ko 가 빠진 종 집합이
+    /// **공집합**임을 단언한다 — 빠진 id 가 실패 메시지에 그대로 찍힌다.
+    func testKoreanNameIsPresentForEverySpecies() throws {
         let ds = try loadReal()
-        let withKo = Set(ds.byID.filter { $0.value.nameKo != nil }.keys)
-        XCTAssertEqual(withKo.count, 23)
+        let withKo = Set(ds.byID.filter { $0.value.nameKo?.isEmpty == false }.keys)
+        XCTAssertEqual(Set(ds.byID.keys).subtracting(withKo), [],
+                       "ko 표기가 빠진 종이 있다")
+        XCTAssertEqual(withKo.count, 52)
         XCTAssertEqual(ds.byID[1]?.nameKo, "아구몬")
-        // 정발명이 확인되지 않은 종은 키 자체가 없어야 한다(빈 문자열/null 금지).
-        XCTAssertNil(ds.byID[3]?.nameKo)
+        XCTAssertEqual(ds.byID[3]?.nameKo, "엔젤몬")
         // 위키 원문에는 백신종/바이러스종 구분자가 붙어 있지만("메탈그레이몬(백신종)"), 이 52종에
         // 바이러스종이 없어 구분할 대상이 없다 — 한국어 화면에만 괄호가 붙는 것을 막는 가드.
         XCTAssertEqual(ds.byID[169]?.nameKo, "메탈그레이몬")

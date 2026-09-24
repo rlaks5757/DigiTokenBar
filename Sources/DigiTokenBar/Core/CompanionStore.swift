@@ -225,15 +225,18 @@ final class CompanionStore {
     /// 화면에 그릴 이름 — 아머 착용 중이면 아머체 이름.
     ///
     /// 아머체는 `EvoLine.names`(라인 stages 만 채운다)에 없어서 `line.localizedName` 이 `"#305"` 를
-    /// 반환한다. 라인 밖 종은 `DigimonData.name(for:)` 로 해결한다 — 데이터가 `apiName` 하나만
-    /// 들고 있어 전 언어에서 같은 표기가 나온다(`DigimonLineProvider` 가 라인 이름을 채울 때
-    /// `["en": apiName]` 로 쓰는 것과 같은 한계).
+    /// 반환한다. 라인 밖 종은 `DigimonData.name(for:)` 의 로케일 맵으로 해결한다 — 폴백 순서는
+    /// 라인 이름과 같은 `AppLanguage.resolveName` 단일 소스를 탄다.
     var displayName: String {
         guard let a = state.active else { return "Token Egg" }
-        if let armorID = a.armorID {
-            return DigimonData.name(for: armorID)?.apiName ?? "#\(armorID)"
-        }
+        if let armorID = a.armorID { return Self.dataName(armorID, state.language) }
         return ladderName
+    }
+
+    /// 라인 밖 종(아머체 등)의 현재 언어 이름. 세 호출부(표시 이름·사다리 이름·가방 힌트)가
+    /// 같은 해석을 쓰도록 한 곳에 모은다.
+    static func dataName(_ id: Int, _ lang: AppLanguage) -> String {
+        DigimonData.name(for: id).flatMap { lang.resolveName($0.localizedNames) } ?? "#\(id)"
     }
     /// 사다리 종의 이름 — 아머 착용 중에도 **아머를 벗으면 무엇이 되는가**를 가리킨다.
     /// 아머 해제 확인 문구가 이걸 쓴다(표시 이름을 쓰면 "화염드라몬으로 돌아갈까요?" 가 된다).
@@ -245,7 +248,7 @@ final class CompanionStore {
     var ladderName: String {
         guard let a = state.active else { return "Token Egg" }
         if let line = currentLine { return line.localizedName(a.currentID, state.language) }
-        return DigimonData.name(for: a.currentID)?.apiName ?? "#\(a.currentID)"
+        return Self.dataName(a.currentID, state.language)
     }
     /// 성장 기계의 축 — **항상 사다리 종**. 스프라이트/이름 표시는 `displaySpeciesID` 를 쓴다.
     var currentSpeciesID: Int? { state.active?.currentID }
@@ -424,8 +427,7 @@ final class CompanionStore {
             }
         }
         return acc.sorted { $0.key < $1.key }.map { id, a in
-            let name = a.names.flatMap { state.language.resolveName($0) } ?? "#\(id)"
-            return DexSpecies(id: id, name: name, rarity: a.rarity,
+            return DexSpecies(id: id, name: dexDisplayName(id, stored: a.names), rarity: a.rarity,
                               isRaising: id == state.active?.currentID)
         }
     }
@@ -442,11 +444,59 @@ final class CompanionStore {
         }
     }
 
+    /// 도감 한 칸의 표시 이름 — **번들 데이터를 항목에 굳은 이름보다 우선한다.**
+    ///
+    /// 이름은 항목 생성 시점에 세이브에 굳는다(`recordArmorDexEntry`, 졸업 시 라인 이름). 그래서
+    /// 저장된 값만 읽으면 표기가 추가되기 **전에** 만들어진 기존 행은 영원히 옛 표기(영문)로 남는다.
+    /// 세이브 스키마를 건드리는 마이그레이션 대신 읽기 시점에 다시 해석해서, 구버전 행도 데이터가
+    /// 아는 종이면 곧바로 현재 언어로 뜨게 한다. 저장값은 데이터셋에 없는 종(예: 데이터에서 빠진
+    /// 구종)을 위한 폴백으로 남는다.
+    private func dexDisplayName(_ id: Int, stored: [String: String]?) -> String {
+        if let name = DigimonData.name(for: id).flatMap({ state.language.resolveName($0.localizedNames) }) {
+            return name
+        }
+        return stored.flatMap { state.language.resolveName($0) } ?? "#\(id)"
+    }
+
     /// 도감 항목 진화 체인 각 종의 이름(speciesID → 현재 언어 이름). 저장돼 있으면 즉시(네트워크 0),
     /// 없으면 nil(뷰가 async 조회로 폴백).
+    ///
+    /// ⚠️ **저장된 값만 본다 — 번들 데이터로 덮어쓰지 말 것.** 이건 표시 경로가 아니라 백필 기계
+    /// (`needsNamesRefresh`/`dexResolveChainNames`)의 관측창이라, 번들 이름을 우선하면 "무엇이
+    /// 저장돼 있는가" 를 물을 방법이 없어져 백필 회귀가 조용히 통과한다. 표시용 해석이 필요하면
+    /// `dexDisplayChainNames` 를 쓴다.
     func dexStoredChainNames(_ entry: DexEntry) -> [Int: String]? {
         guard let names = entry.names, !names.isEmpty else { return nil }
         return names.compactMapValues { state.language.resolveName($0) }
+    }
+
+    /// 동행 기록 등 **표시**용 체인 이름 — 저장값 대신 번들 데이터를 우선한다(`dexDisplayName`).
+    /// 표기가 추가되기 전에 저장된 행도 현재 언어로 뜨게 하면서, 위 저장값 접근자의 계약은
+    /// 건드리지 않는다.
+    ///
+    /// ⚠️ **`entry.names` 가 아니라 `chainOrder` 를 기준으로 돈다.** 저장값 유무로 막으면 이
+    /// 표시 경로가 `names == nil` 인 행에 **아예 적용되지 않고** 폴백(`dexResolveChainNames`)으로
+    /// 넘어가는데, 그건 오프라인에서 번들을 전혀 보지 않고 `#id` 를 돌려준다 — 같은 화면에서
+    /// 격자는 `아구몬`, 동행 기록 행은 `#1` 이 된다. `names == nil` 은 과거 세이브만이 아니라
+    /// 졸업·방생·활성 저장이 `currentLine` 없이 일어나면 **지금도** 생긴다.
+    ///
+    /// `stored:` 에는 그 id 의 저장값을 넘긴다(nil 금지) — 번들이 이미 우선이라 저장값은 52종
+    /// **밖** id 에서만 쓰이는데, nil 을 넘기면 데이터셋에서 빠진 구종의 저장 이름을 버리게 된다.
+    func dexDisplayChainNames(_ entry: DexEntry) -> [Int: String]? {
+        guard !entry.chainOrder.isEmpty else { return nil }
+        return entry.chainOrder.reduce(into: [Int: String]()) { out, id in
+            out[id] = dexDisplayName(id, stored: entry.names?[id])
+        }
+    }
+
+    /// 동행 기록 행이 실제로 쓰는 이름 맵 — 표시 해석과 async 폴백의 합류 지점.
+    ///
+    /// 뷰(`DexEntryRow`)가 아니라 여기서 합치는 이유: SwiftUI `body` 안의 식은 XCTest 가 닿지
+    /// 못해서, 뷰에 두면 `dexStoredChainNames`(저장값만 보는 백필 관측창)로 되돌려도 테스트가
+    /// 0건 실패한다 — 배선이 조용히 끊긴다. 뷰는 이 메서드를 호출만 하고, 우선순위 규칙은
+    /// 테스트가 직접 잡을 수 있는 이 자리에 둔다.
+    func dexRowChainNames(_ entry: DexEntry, resolved: [Int: String]) -> [Int: String]? {
+        dexDisplayChainNames(entry) ?? (resolved.isEmpty ? nil : resolved)
     }
 
     /// Refresh missing/legacy multilingual names; current versions require no lookup.
@@ -480,6 +530,13 @@ final class CompanionStore {
                 }
             }
             result.names = merged.isEmpty ? nil : merged
+            // `currentNamesVersion` 은 한국어 표기를 넣으면서도 **올리지 않았다.** 올리면 기존
+            // 항목이 전부 `needsNamesRefresh` 가 되는데, 아머 폼은 어느 ladder line 에도 없어서
+            // 라인 조회가 그 종의 이름을 영원히 못 채운다 — 매 진입마다 재조회만 하는 영구
+            // 루프가 된다(`ArmorEvolutionTests` 의 아머 항목 재조회 가드가 이걸 지킨다).
+            // 대가: 표기가 추가되기 전에 저장된 행의 **저장값**은 영문인 채로 남는다. 표시
+            // 경로가 번들을 저장값보다 우선하므로(`dexDisplayName`) 화면에는 드러나지 않지만,
+            // 저장값 자체를 읽는 경로가 새로 생기면 그쪽은 옛 표기를 보게 된다.
             if original.chainOrder.allSatisfy({ line.names[$0]?.isEmpty == false }) {
                 result.namesVersion = DexEntry.currentNamesVersion
             }
@@ -948,8 +1005,9 @@ final class CompanionStore {
             profile: a.profile,
             // 이름을 여기서 심는다. 비워 두면 도감 칸이 `#305` 로 남는 데 더해 `needsNamesRefresh` 가
             // 영영 true 라 backfillMissingDexNames 가 매번 라인을 조회하는데, 사다리 라인엔 아머체가
-            // 없어 절대 채워지지 않는다. "en" 키는 라인 이름이 쓰는 폴백 코드와 같다.
-            names: DigimonData.name(for: armorID).map { [armorID: ["en": $0.apiName]] },
+            // 없어 절대 채워지지 않는다. 표시는 읽기 시점에 번들 데이터로 다시 해석하므로
+            // (`dexDisplayName`) 여기 굳은 값이 언어를 고정하지는 않는다.
+            names: DigimonData.name(for: armorID).map { [armorID: $0.localizedNames] },
             armoredAt: now))
         return true
     }

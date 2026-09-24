@@ -122,13 +122,32 @@ struct DigimonName: Sendable {
     /// Dragon Mode, id 900)은 실제 digi-api 조회를 시도하면 실패하므로, 런타임 fetch 호출부가
     /// 이 값으로 걸러야 한다 — EVOLUTION.md §3 Imperialdramon 체인 참고.
     let isInternalID: Bool
+    /// 로케일별 표시 이름(langCode → 이름). **`en` 은 여기 담지 않는다** — `apiName` 이 곧 영어
+    /// 표기이고, 같은 문자열을 두 벌 들면 한쪽만 고쳐져 갈라진다. 영어는 `localizedNames` 가
+    /// `apiName` 으로 합성한다. 공식 표기 출처가 없는 언어(ja/es/fr/pt/de)는 **비워 둔다** —
+    /// 지어낸 표기를 넣으면 틀린 정보가 뜨지만, 비워 두면 `resolve` 의 `en` 폴백이 올바르게 걸린다.
+    let localeNames: [String: String]
 
-    init(apiName: String, spriteStem: String, spriteStemVerified: Bool, spriteSeriesPin: String? = nil, isInternalID: Bool = false) {
+    init(apiName: String, spriteStem: String, spriteStemVerified: Bool, spriteSeriesPin: String? = nil,
+         isInternalID: Bool = false, localeNames: [String: String] = [:]) {
         self.apiName = apiName
         self.spriteStem = spriteStem
         self.spriteStemVerified = spriteStemVerified
         self.spriteSeriesPin = spriteSeriesPin
         self.isInternalID = isInternalID
+        self.localeNames = localeNames
+    }
+
+    /// `AppLanguage.resolveName` / `DigimonNameLocalization.resolve` 에 그대로 넘기는 langCode→이름 맵.
+    /// `en` 은 `apiName` 에서 합성하므로 ko 데이터가 없는 언어도 `#<id>` 가 아니라 영어로 폴백한다.
+    /// 이름을 표시하는 모든 경로는 `apiName` 을 직접 읽지 말고 이 프로퍼티를 거쳐야 한다.
+    ///
+    /// `en` 은 **데이터에 들어 있어도 `apiName` 이 이긴다.** `localeNames` 문서가 "en 은 여기
+    /// 담지 않는다" 를 계약으로 두는데, JSON 에 흘러든 `en` 이 이기게 두면 그 계약을 어긴 데이터가
+    /// 조용히 표시까지 도달해 두 출처가 갈라진다(주석이 금지한 바로 그 상황). 합성값을 우선해
+    /// 계약을 코드로 강제한다.
+    var localizedNames: [String: String] {
+        localeNames.merging(["en": apiName]) { _, synthesized in synthesized }
     }
 
     /// 시도할 스프라이트 파일명 후보 목록(우선순위 순). `spriteSeriesPin` 이 있으면 그 파일명

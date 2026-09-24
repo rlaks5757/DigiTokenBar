@@ -73,6 +73,9 @@ private struct RawDataset: Decodable {
         let spriteSeriesPin: String?
         /// digi-api 에 없는 내부 전용 id 인지. 없으면 false(§ DigimonName.isInternalID 문서 참고).
         let isInternalID: Bool?
+        /// 로케일별 표시 이름(langCode → 이름). 없으면 빈 맵 — 영어는 `apiName` 에서 합성하므로
+        /// 이 필드가 통째로 빠진 구버전 JSON 도 그대로 디코딩되고 영어로 표시된다(하위호환).
+        let names: [String: String]?
     }
     struct Stage: Decodable {
         let id: Int
@@ -161,7 +164,8 @@ enum DigimonDataLoader {
                 spriteStem: s.spriteStem,
                 spriteStemVerified: s.spriteStemVerified,
                 spriteSeriesPin: s.spriteSeriesPin,
-                isInternalID: s.isInternalID ?? false)
+                isInternalID: s.isInternalID ?? false,
+                localeNames: s.names ?? [:])
         }
 
         // 2) 라인 구성 + species 참조 무결성 + 종별 레벨 충돌 검증.

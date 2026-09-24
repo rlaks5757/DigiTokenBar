@@ -1,108 +1,789 @@
 {
   "dataVersion": 1,
-  "series": ["adventure01", "adventure02"],
+  "series": [
+    "adventure01",
+    "adventure02"
+  ],
   "species": [
-    { "id": 1, "apiName": "Agumon", "spriteStem": "Agumon", "spriteStemVerified": true },
-    { "id": 34, "apiName": "Greymon", "spriteStem": "Greymon", "spriteStemVerified": true },
-    { "id": 169, "apiName": "Metal Greymon", "spriteStem": "MetalGreymon", "spriteStemVerified": true },
-    { "id": 202, "apiName": "War Greymon", "spriteStem": "WarGreymon", "spriteStemVerified": true },
-
-    { "id": 16, "apiName": "Gabumon", "spriteStem": "Gabumon", "spriteStemVerified": true },
-    { "id": 33, "apiName": "Garurumon", "spriteStem": "Garurumon", "spriteStemVerified": true },
-    { "id": 205, "apiName": "Were Garurumon", "spriteStem": "WereGarurumon", "spriteStemVerified": true },
-    { "id": 168, "apiName": "Metal Garurumon", "spriteStem": "MetalGarurumon", "spriteStemVerified": true },
-
-    { "id": 101, "apiName": "Piyomon", "spriteStem": "Piyomon", "spriteStemVerified": true },
-    { "id": 5, "apiName": "Birdramon", "spriteStem": "Birdramon", "spriteStemVerified": true },
-    { "id": 165, "apiName": "Garudamon", "spriteStem": "Garudamon", "spriteStemVerified": true },
-
-    { "id": 85, "apiName": "Tentomon", "spriteStem": "Tentomon", "spriteStemVerified": true },
-    { "id": 35, "apiName": "Kabuterimon", "spriteStem": "Kabuterimon", "spriteStemVerified": true },
-    { "id": 40, "apiName": "Atlur Kabuterimon (Blue)", "spriteStem": "AtlurKabuterimon", "spriteStemVerified": true },
-
-    { "id": 81, "apiName": "Palmon", "spriteStem": "Palmon", "spriteStemVerified": true },
-    { "id": 195, "apiName": "Togemon", "spriteStem": "Togemon", "spriteStemVerified": true },
-    { "id": 166, "apiName": "Lilimon", "spriteStem": "Lilimon", "spriteStemVerified": true },
-
-    { "id": 117, "apiName": "Gomamon", "spriteStem": "Gomamon", "spriteStemVerified": true },
-    { "id": 124, "apiName": "Ikkakumon", "spriteStem": "Ikkakumon", "spriteStemVerified": true },
-    { "id": 96, "apiName": "Zudomon", "spriteStem": "Zudomon", "spriteStemVerified": true },
-
-    { "id": 98, "apiName": "Patamon", "spriteStem": "Patamon", "spriteStemVerified": true },
-    { "id": 3, "apiName": "Angemon", "spriteStem": "Angemon", "spriteStemVerified": true },
-    { "id": 121, "apiName": "Holy Angemon", "spriteStem": "HolyAngemon", "spriteStemVerified": true },
-    { "id": 384, "apiName": "Seraphimon", "spriteStem": "Seraphimon", "spriteStemVerified": true },
-
-    { "id": 83, "apiName": "Tailmon", "spriteStem": "Tailmon", "spriteStemVerified": true },
-    { "id": 38, "apiName": "Angewomon", "spriteStem": "Angewomon", "spriteStemVerified": true },
-    { "id": 123, "apiName": "Holydramon", "spriteStem": "Holydramon", "spriteStemVerified": true },
-
-    { "id": 349, "apiName": "V-mon", "spriteStem": "Vmon", "spriteStemVerified": true },
-    { "id": 358, "apiName": "XV-mon", "spriteStem": "Xvmon", "spriteStemVerified": true },
-
-    { "id": 356, "apiName": "Wormmon", "spriteStem": "Wormmon", "spriteStemVerified": true },
-    { "id": 336, "apiName": "Stingmon", "spriteStem": "Stingmon", "spriteStemVerified": true },
-
-    { "id": 399, "apiName": "Hawkmon", "spriteStem": "Hawkmon", "spriteStemVerified": true },
-    { "id": 267, "apiName": "Aquilamon", "spriteStem": "Aquilamon", "spriteStemVerified": true },
-
-    { "id": 271, "apiName": "Armadimon", "spriteStem": "Armadimon", "spriteStemVerified": true },
-    { "id": 266, "apiName": "Ankylomon", "spriteStem": "Ankylomon", "spriteStemVerified": true },
-
-    { "id": 312, "apiName": "Lighdramon", "spriteStem": "Lighdramon", "spriteStemVerified": true },
-    { "id": 331, "apiName": "Paildramon", "spriteStem": "Paildramon", "spriteStemVerified": true },
-    { "id": 390, "apiName": "Silphymon", "spriteStem": "Silphymon", "spriteStemVerified": true },
-    { "id": 387, "apiName": "Shakkoumon", "spriteStem": "Shakkoumon", "spriteStemVerified": true },
-    { "id": 183, "apiName": "Omegamon", "spriteStem": "Omegamon", "spriteStemVerified": true },
-    { "id": 405, "apiName": "Imperialdramon(Fighter Mode)", "spriteStem": "Imperialdramon_fighter", "spriteStemVerified": true, "spriteSeriesPin": "vb" },
-    { "id": 481, "apiName": "Imperialdramon(Paladin Mode)", "spriteStem": "Imperialdramon_paladin", "spriteStemVerified": true, "spriteSeriesPin": "vb" },
-    { "id": 900, "apiName": "Imperialdramon(Dragon Mode)", "spriteStem": "Imperialdramon_DM", "spriteStemVerified": true, "spriteSeriesPin": "xloader", "isInternalID": true },
-
-    { "id": 305, "apiName": "Fladramon", "spriteStem": "Fladramon", "spriteStemVerified": true },
-    { "id": 298, "apiName": "Depthmon", "spriteStem": "Depthmon", "spriteStemVerified": true, "spriteSeriesPin": "dark_color" },
-    { "id": 315, "apiName": "Magnamon", "spriteStem": "Magnamon", "spriteStemVerified": true },
-    { "id": 401, "apiName": "Holsmon", "spriteStem": "Holsmon", "spriteStemVerified": true },
-    { "id": 389, "apiName": "Shurimon", "spriteStem": "Shurimon", "spriteStemVerified": true },
-    { "id": 299, "apiName": "Digmon", "spriteStem": "Digmon", "spriteStemVerified": true },
-    { "id": 337, "apiName": "Submarimon", "spriteStem": "Submarimon", "spriteStemVerified": true },
-    { "id": 363, "apiName": "Pegasmon", "spriteStem": "Pegasmon", "spriteStemVerified": true },
-    { "id": 326, "apiName": "Nefertimon", "spriteStem": "Nefertimon", "spriteStemVerified": true }
+    {
+      "id": 1,
+      "apiName": "Agumon",
+      "spriteStem": "Agumon",
+      "spriteStemVerified": true,
+      "names": {
+        "ko": "아구몬"
+      }
+    },
+    {
+      "id": 34,
+      "apiName": "Greymon",
+      "spriteStem": "Greymon",
+      "spriteStemVerified": true,
+      "names": {
+        "ko": "그레이몬"
+      }
+    },
+    {
+      "id": 169,
+      "apiName": "Metal Greymon",
+      "spriteStem": "MetalGreymon",
+      "spriteStemVerified": true,
+      "names": {
+        "ko": "메탈그레이몬"
+      }
+    },
+    {
+      "id": 202,
+      "apiName": "War Greymon",
+      "spriteStem": "WarGreymon",
+      "spriteStemVerified": true,
+      "names": {
+        "ko": "워그레이몬"
+      }
+    },
+    {
+      "id": 16,
+      "apiName": "Gabumon",
+      "spriteStem": "Gabumon",
+      "spriteStemVerified": true,
+      "names": {
+        "ko": "파피몬"
+      }
+    },
+    {
+      "id": 33,
+      "apiName": "Garurumon",
+      "spriteStem": "Garurumon",
+      "spriteStemVerified": true,
+      "names": {
+        "ko": "가루몬"
+      }
+    },
+    {
+      "id": 205,
+      "apiName": "Were Garurumon",
+      "spriteStem": "WereGarurumon",
+      "spriteStemVerified": true,
+      "names": {
+        "ko": "워가루몬"
+      }
+    },
+    {
+      "id": 168,
+      "apiName": "Metal Garurumon",
+      "spriteStem": "MetalGarurumon",
+      "spriteStemVerified": true,
+      "names": {
+        "ko": "메탈가루몬"
+      }
+    },
+    {
+      "id": 101,
+      "apiName": "Piyomon",
+      "spriteStem": "Piyomon",
+      "spriteStemVerified": true,
+      "names": {
+        "ko": "피요몬"
+      }
+    },
+    {
+      "id": 5,
+      "apiName": "Birdramon",
+      "spriteStem": "Birdramon",
+      "spriteStemVerified": true,
+      "names": {
+        "ko": "버드라몬"
+      }
+    },
+    {
+      "id": 165,
+      "apiName": "Garudamon",
+      "spriteStem": "Garudamon",
+      "spriteStemVerified": true,
+      "names": {
+        "ko": "가루다몬"
+      }
+    },
+    {
+      "id": 85,
+      "apiName": "Tentomon",
+      "spriteStem": "Tentomon",
+      "spriteStemVerified": true,
+      "names": {
+        "ko": "텐토몬"
+      }
+    },
+    {
+      "id": 35,
+      "apiName": "Kabuterimon",
+      "spriteStem": "Kabuterimon",
+      "spriteStemVerified": true,
+      "names": {
+        "ko": "캅테리몬"
+      }
+    },
+    {
+      "id": 40,
+      "apiName": "Atlur Kabuterimon (Blue)",
+      "spriteStem": "AtlurKabuterimon",
+      "spriteStemVerified": true,
+      "names": {
+        "ko": "아트라캅테리몬(청)"
+      }
+    },
+    {
+      "id": 81,
+      "apiName": "Palmon",
+      "spriteStem": "Palmon",
+      "spriteStemVerified": true,
+      "names": {
+        "ko": "팔몬"
+      }
+    },
+    {
+      "id": 195,
+      "apiName": "Togemon",
+      "spriteStem": "Togemon",
+      "spriteStemVerified": true,
+      "names": {
+        "ko": "니드몬"
+      }
+    },
+    {
+      "id": 166,
+      "apiName": "Lilimon",
+      "spriteStem": "Lilimon",
+      "spriteStemVerified": true,
+      "names": {
+        "ko": "릴리몬"
+      }
+    },
+    {
+      "id": 117,
+      "apiName": "Gomamon",
+      "spriteStem": "Gomamon",
+      "spriteStemVerified": true,
+      "names": {
+        "ko": "쉬라몬"
+      }
+    },
+    {
+      "id": 124,
+      "apiName": "Ikkakumon",
+      "spriteStem": "Ikkakumon",
+      "spriteStemVerified": true,
+      "names": {
+        "ko": "원뿔몬"
+      }
+    },
+    {
+      "id": 96,
+      "apiName": "Zudomon",
+      "spriteStem": "Zudomon",
+      "spriteStemVerified": true,
+      "names": {
+        "ko": "쥬드몬"
+      }
+    },
+    {
+      "id": 98,
+      "apiName": "Patamon",
+      "spriteStem": "Patamon",
+      "spriteStemVerified": true,
+      "names": {
+        "ko": "파닥몬"
+      }
+    },
+    {
+      "id": 3,
+      "apiName": "Angemon",
+      "spriteStem": "Angemon",
+      "spriteStemVerified": true,
+      "names": {
+        "ko": "엔젤몬"
+      }
+    },
+    {
+      "id": 121,
+      "apiName": "Holy Angemon",
+      "spriteStem": "HolyAngemon",
+      "spriteStemVerified": true,
+      "names": {
+        "ko": "홀리엔젤몬"
+      }
+    },
+    {
+      "id": 384,
+      "apiName": "Seraphimon",
+      "spriteStem": "Seraphimon",
+      "spriteStemVerified": true,
+      "names": {
+        "ko": "세라피몬"
+      }
+    },
+    {
+      "id": 83,
+      "apiName": "Tailmon",
+      "spriteStem": "Tailmon",
+      "spriteStemVerified": true,
+      "names": {
+        "ko": "가트몬"
+      }
+    },
+    {
+      "id": 38,
+      "apiName": "Angewomon",
+      "spriteStem": "Angewomon",
+      "spriteStemVerified": true,
+      "names": {
+        "ko": "엔젤우몬"
+      }
+    },
+    {
+      "id": 123,
+      "apiName": "Holydramon",
+      "spriteStem": "Holydramon",
+      "spriteStemVerified": true,
+      "names": {
+        "ko": "홀리드라몬"
+      }
+    },
+    {
+      "id": 349,
+      "apiName": "V-mon",
+      "spriteStem": "Vmon",
+      "spriteStemVerified": true,
+      "names": {
+        "ko": "브이몬"
+      }
+    },
+    {
+      "id": 358,
+      "apiName": "XV-mon",
+      "spriteStem": "Xvmon",
+      "spriteStemVerified": true,
+      "names": {
+        "ko": "엑스브이몬"
+      }
+    },
+    {
+      "id": 356,
+      "apiName": "Wormmon",
+      "spriteStem": "Wormmon",
+      "spriteStemVerified": true,
+      "names": {
+        "ko": "추추몬"
+      }
+    },
+    {
+      "id": 336,
+      "apiName": "Stingmon",
+      "spriteStem": "Stingmon",
+      "spriteStemVerified": true,
+      "names": {
+        "ko": "스팅몬"
+      }
+    },
+    {
+      "id": 399,
+      "apiName": "Hawkmon",
+      "spriteStem": "Hawkmon",
+      "spriteStemVerified": true,
+      "names": {
+        "ko": "호크몬"
+      }
+    },
+    {
+      "id": 267,
+      "apiName": "Aquilamon",
+      "spriteStem": "Aquilamon",
+      "spriteStemVerified": true,
+      "names": {
+        "ko": "아큐라몬"
+      }
+    },
+    {
+      "id": 271,
+      "apiName": "Armadimon",
+      "spriteStem": "Armadimon",
+      "spriteStemVerified": true,
+      "names": {
+        "ko": "아르마몬"
+      }
+    },
+    {
+      "id": 266,
+      "apiName": "Ankylomon",
+      "spriteStem": "Ankylomon",
+      "spriteStemVerified": true,
+      "names": {
+        "ko": "안킬로몬"
+      }
+    },
+    {
+      "id": 312,
+      "apiName": "Lighdramon",
+      "spriteStem": "Lighdramon",
+      "spriteStemVerified": true,
+      "names": {
+        "ko": "라이드라몬"
+      }
+    },
+    {
+      "id": 331,
+      "apiName": "Paildramon",
+      "spriteStem": "Paildramon",
+      "spriteStemVerified": true,
+      "names": {
+        "ko": "파일드라몬"
+      }
+    },
+    {
+      "id": 390,
+      "apiName": "Silphymon",
+      "spriteStem": "Silphymon",
+      "spriteStemVerified": true,
+      "names": {
+        "ko": "실피드몬"
+      }
+    },
+    {
+      "id": 387,
+      "apiName": "Shakkoumon",
+      "spriteStem": "Shakkoumon",
+      "spriteStemVerified": true,
+      "names": {
+        "ko": "토우몬"
+      }
+    },
+    {
+      "id": 183,
+      "apiName": "Omegamon",
+      "spriteStem": "Omegamon",
+      "spriteStemVerified": true,
+      "names": {
+        "ko": "오메가몬"
+      }
+    },
+    {
+      "id": 405,
+      "apiName": "Imperialdramon(Fighter Mode)",
+      "spriteStem": "Imperialdramon_fighter",
+      "spriteStemVerified": true,
+      "spriteSeriesPin": "vb",
+      "names": {
+        "ko": "황제드라몬: 파이터 모드"
+      }
+    },
+    {
+      "id": 481,
+      "apiName": "Imperialdramon(Paladin Mode)",
+      "spriteStem": "Imperialdramon_paladin",
+      "spriteStemVerified": true,
+      "spriteSeriesPin": "vb",
+      "names": {
+        "ko": "황제드라몬: 팔라딘 모드"
+      }
+    },
+    {
+      "id": 900,
+      "apiName": "Imperialdramon(Dragon Mode)",
+      "spriteStem": "Imperialdramon_DM",
+      "spriteStemVerified": true,
+      "spriteSeriesPin": "xloader",
+      "isInternalID": true,
+      "names": {
+        "ko": "황제드라몬: 드래곤 모드"
+      }
+    },
+    {
+      "id": 305,
+      "apiName": "Fladramon",
+      "spriteStem": "Fladramon",
+      "spriteStemVerified": true,
+      "names": {
+        "ko": "화염드라몬"
+      }
+    },
+    {
+      "id": 298,
+      "apiName": "Depthmon",
+      "spriteStem": "Depthmon",
+      "spriteStemVerified": true,
+      "spriteSeriesPin": "dark_color",
+      "names": {
+        "ko": "마린몬"
+      }
+    },
+    {
+      "id": 315,
+      "apiName": "Magnamon",
+      "spriteStem": "Magnamon",
+      "spriteStemVerified": true,
+      "names": {
+        "ko": "매그너몬"
+      }
+    },
+    {
+      "id": 401,
+      "apiName": "Holsmon",
+      "spriteStem": "Holsmon",
+      "spriteStemVerified": true,
+      "names": {
+        "ko": "호루스몬"
+      }
+    },
+    {
+      "id": 389,
+      "apiName": "Shurimon",
+      "spriteStem": "Shurimon",
+      "spriteStemVerified": true,
+      "names": {
+        "ko": "수리몬"
+      }
+    },
+    {
+      "id": 299,
+      "apiName": "Digmon",
+      "spriteStem": "Digmon",
+      "spriteStemVerified": true,
+      "names": {
+        "ko": "디그몬"
+      }
+    },
+    {
+      "id": 337,
+      "apiName": "Submarimon",
+      "spriteStem": "Submarimon",
+      "spriteStemVerified": true,
+      "names": {
+        "ko": "잠수몬"
+      }
+    },
+    {
+      "id": 363,
+      "apiName": "Pegasmon",
+      "spriteStem": "Pegasmon",
+      "spriteStemVerified": true,
+      "names": {
+        "ko": "페가수스몬"
+      }
+    },
+    {
+      "id": 326,
+      "apiName": "Nefertimon",
+      "spriteStem": "Nefertimon",
+      "spriteStemVerified": true,
+      "names": {
+        "ko": "네페르티몬"
+      }
+    }
   ],
   "lines": [
-    { "key": "agumon", "stages": [{ "id": 1, "level": "child" }, { "id": 34, "level": "adult" }, { "id": 169, "level": "perfect" }, { "id": 202, "level": "ultimate" }], "rarity": "legendary" },
-    { "key": "gabumon", "stages": [{ "id": 16, "level": "child" }, { "id": 33, "level": "adult" }, { "id": 205, "level": "perfect" }, { "id": 168, "level": "ultimate" }], "rarity": "legendary" },
-    { "key": "piyomon", "stages": [{ "id": 101, "level": "child" }, { "id": 5, "level": "adult" }, { "id": 165, "level": "perfect" }], "rarity": "common" },
-    { "key": "tentomon", "stages": [{ "id": 85, "level": "child" }, { "id": 35, "level": "adult" }, { "id": 40, "level": "perfect" }], "rarity": "common" },
-    { "key": "palmon", "stages": [{ "id": 81, "level": "child" }, { "id": 195, "level": "adult" }, { "id": 166, "level": "perfect" }], "rarity": "common" },
-    { "key": "gomamon", "stages": [{ "id": 117, "level": "child" }, { "id": 124, "level": "adult" }, { "id": 96, "level": "perfect" }], "rarity": "common" },
-    { "key": "patamon", "stages": [{ "id": 98, "level": "child" }, { "id": 3, "level": "adult" }, { "id": 121, "level": "perfect" }, { "id": 384, "level": "ultimate" }], "rarity": "rare" },
-    { "key": "tailmon", "stages": [{ "id": 83, "level": "child" }, { "id": 38, "level": "perfect" }, { "id": 123, "level": "ultimate" }], "rarity": "rare" },
-    { "key": "vmon", "stages": [{ "id": 349, "level": "child" }, { "id": 358, "level": "adult" }], "rarity": "uncommon" },
-    { "key": "wormmon", "stages": [{ "id": 356, "level": "child" }, { "id": 336, "level": "adult" }], "rarity": "uncommon" },
-    { "key": "hawkmon", "stages": [{ "id": 399, "level": "child" }, { "id": 267, "level": "adult" }], "rarity": "uncommon" },
-    { "key": "armadimon", "stages": [{ "id": 271, "level": "child" }, { "id": 266, "level": "adult" }], "rarity": "uncommon" }
+    {
+      "key": "agumon",
+      "stages": [
+        {
+          "id": 1,
+          "level": "child"
+        },
+        {
+          "id": 34,
+          "level": "adult"
+        },
+        {
+          "id": 169,
+          "level": "perfect"
+        },
+        {
+          "id": 202,
+          "level": "ultimate"
+        }
+      ],
+      "rarity": "legendary"
+    },
+    {
+      "key": "gabumon",
+      "stages": [
+        {
+          "id": 16,
+          "level": "child"
+        },
+        {
+          "id": 33,
+          "level": "adult"
+        },
+        {
+          "id": 205,
+          "level": "perfect"
+        },
+        {
+          "id": 168,
+          "level": "ultimate"
+        }
+      ],
+      "rarity": "legendary"
+    },
+    {
+      "key": "piyomon",
+      "stages": [
+        {
+          "id": 101,
+          "level": "child"
+        },
+        {
+          "id": 5,
+          "level": "adult"
+        },
+        {
+          "id": 165,
+          "level": "perfect"
+        }
+      ],
+      "rarity": "common"
+    },
+    {
+      "key": "tentomon",
+      "stages": [
+        {
+          "id": 85,
+          "level": "child"
+        },
+        {
+          "id": 35,
+          "level": "adult"
+        },
+        {
+          "id": 40,
+          "level": "perfect"
+        }
+      ],
+      "rarity": "common"
+    },
+    {
+      "key": "palmon",
+      "stages": [
+        {
+          "id": 81,
+          "level": "child"
+        },
+        {
+          "id": 195,
+          "level": "adult"
+        },
+        {
+          "id": 166,
+          "level": "perfect"
+        }
+      ],
+      "rarity": "common"
+    },
+    {
+      "key": "gomamon",
+      "stages": [
+        {
+          "id": 117,
+          "level": "child"
+        },
+        {
+          "id": 124,
+          "level": "adult"
+        },
+        {
+          "id": 96,
+          "level": "perfect"
+        }
+      ],
+      "rarity": "common"
+    },
+    {
+      "key": "patamon",
+      "stages": [
+        {
+          "id": 98,
+          "level": "child"
+        },
+        {
+          "id": 3,
+          "level": "adult"
+        },
+        {
+          "id": 121,
+          "level": "perfect"
+        },
+        {
+          "id": 384,
+          "level": "ultimate"
+        }
+      ],
+      "rarity": "rare"
+    },
+    {
+      "key": "tailmon",
+      "stages": [
+        {
+          "id": 83,
+          "level": "child"
+        },
+        {
+          "id": 38,
+          "level": "perfect"
+        },
+        {
+          "id": 123,
+          "level": "ultimate"
+        }
+      ],
+      "rarity": "rare"
+    },
+    {
+      "key": "vmon",
+      "stages": [
+        {
+          "id": 349,
+          "level": "child"
+        },
+        {
+          "id": 358,
+          "level": "adult"
+        }
+      ],
+      "rarity": "uncommon"
+    },
+    {
+      "key": "wormmon",
+      "stages": [
+        {
+          "id": 356,
+          "level": "child"
+        },
+        {
+          "id": 336,
+          "level": "adult"
+        }
+      ],
+      "rarity": "uncommon"
+    },
+    {
+      "key": "hawkmon",
+      "stages": [
+        {
+          "id": 399,
+          "level": "child"
+        },
+        {
+          "id": 267,
+          "level": "adult"
+        }
+      ],
+      "rarity": "uncommon"
+    },
+    {
+      "key": "armadimon",
+      "stages": [
+        {
+          "id": 271,
+          "level": "child"
+        },
+        {
+          "id": 266,
+          "level": "adult"
+        }
+      ],
+      "rarity": "uncommon"
+    }
   ],
   "jogress": [
-    { "a": 358, "b": 336, "result": 331 },
-    { "a": 83, "b": 267, "result": 390 },
-    { "a": 266, "b": 3, "result": 387 },
-    { "a": 202, "b": 168, "result": 183 },
-    { "a": 405, "b": 183, "result": 481 }
+    {
+      "a": 358,
+      "b": 336,
+      "result": 331
+    },
+    {
+      "a": 83,
+      "b": 267,
+      "result": 390
+    },
+    {
+      "a": 266,
+      "b": 3,
+      "result": 387
+    },
+    {
+      "a": 202,
+      "b": 168,
+      "result": 183
+    },
+    {
+      "a": 405,
+      "b": 183,
+      "result": 481
+    }
   ],
   "chain": [
-    { "from": 331, "fromLevel": "perfect", "to": 900, "toLevel": "ultimate" },
-    { "from": 900, "fromLevel": "ultimate", "to": 405, "toLevel": "ultimate" }
+    {
+      "from": 331,
+      "fromLevel": "perfect",
+      "to": 900,
+      "toLevel": "ultimate"
+    },
+    {
+      "from": 900,
+      "fromLevel": "ultimate",
+      "to": 405,
+      "toLevel": "ultimate"
+    }
   ],
   "armor": [
-    { "childID": 349, "digimental": "courage", "result": 305 },
-    { "childID": 349, "digimental": "sincerity", "result": 298 },
-    { "childID": 349, "digimental": "miracles", "result": 315 },
-    { "childID": 349, "digimental": "friendship", "result": 312 },
-    { "childID": 399, "digimental": "love", "result": 401 },
-    { "childID": 399, "digimental": "purity", "result": 389 },
-    { "childID": 271, "digimental": "knowledge", "result": 299 },
-    { "childID": 271, "digimental": "sincerity", "result": 337 },
-    { "childID": 98, "digimental": "hope", "result": 363 },
-    { "childID": 83, "digimental": "light", "result": 326 }
+    {
+      "childID": 349,
+      "digimental": "courage",
+      "result": 305
+    },
+    {
+      "childID": 349,
+      "digimental": "sincerity",
+      "result": 298
+    },
+    {
+      "childID": 349,
+      "digimental": "miracles",
+      "result": 315
+    },
+    {
+      "childID": 349,
+      "digimental": "friendship",
+      "result": 312
+    },
+    {
+      "childID": 399,
+      "digimental": "love",
+      "result": 401
+    },
+    {
+      "childID": 399,
+      "digimental": "purity",
+      "result": 389
+    },
+    {
+      "childID": 271,
+      "digimental": "knowledge",
+      "result": 299
+    },
+    {
+      "childID": 271,
+      "digimental": "sincerity",
+      "result": 337
+    },
+    {
+      "childID": 98,
+      "digimental": "hope",
+      "result": 363
+    },
+    {
+      "childID": 83,
+      "digimental": "light",
+      "result": 326
+    }
   ]
 }

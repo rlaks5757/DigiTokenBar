@@ -27,6 +27,7 @@
       "level": "adult",
       "attribute": "vaccine",
       "type": "Angel",
+      "nameKo": "엔젤몬",
       "attacks": [
         {
           "nameJa": "ヘブンズナックル",
@@ -46,6 +47,7 @@
       "level": "adult",
       "attribute": "vaccine",
       "type": "Giant Bird",
+      "nameKo": "버드라몬",
       "attacks": [
         {
           "nameJa": "メテオウィング",
@@ -65,6 +67,7 @@
       "level": "child",
       "attribute": "data",
       "type": "Reptile",
+      "nameKo": "파피몬",
       "attacks": [
         {
           "nameJa": "プチファイアー",
@@ -104,6 +107,7 @@
       "level": "adult",
       "attribute": "vaccine",
       "type": "Dinosaur",
+      "nameKo": "그레이몬",
       "attacks": [
         {
           "nameJa": "メガフレイム",
@@ -123,6 +127,7 @@
       "level": "adult",
       "attribute": "vaccine",
       "type": "Insect",
+      "nameKo": "캅테리몬",
       "attacks": [
         {
           "nameJa": "メガブラスター",
@@ -142,6 +147,7 @@
       "level": "perfect",
       "attribute": "vaccine",
       "type": "Archangel",
+      "nameKo": "엔젤우몬",
       "attacks": [
         {
           "nameJa": "ホーリーアロー",
@@ -161,6 +167,7 @@
       "level": "perfect",
       "attribute": "data",
       "type": "Insect",
+      "nameKo": "아트라캅테리몬(청)",
       "attacks": [
         {
           "nameJa": "ホーンバスター",
@@ -240,6 +247,7 @@
       "level": "perfect",
       "attribute": "vaccine",
       "type": "Marine Beast",
+      "nameKo": "쥬드몬",
       "attacks": [
         {
           "nameJa": "ハンマースパーク",
@@ -319,6 +327,7 @@
       "level": "perfect",
       "attribute": "vaccine",
       "type": "Archangel",
+      "nameKo": "홀리엔젤몬",
       "attacks": [
         {
           "nameJa": "ヘブンズゲート",
@@ -358,6 +367,7 @@
       "level": "adult",
       "attribute": "vaccine",
       "type": "Marine Beast",
+      "nameKo": "원뿔몬",
       "attacks": [
         {
           "nameJa": "ハープーンバルカン",
@@ -377,6 +387,7 @@
       "level": "perfect",
       "attribute": "vaccine",
       "type": "Bird Man",
+      "nameKo": "가루다몬",
       "attacks": [
         {
           "nameJa": "シャドーウィング",
@@ -396,6 +407,7 @@
       "level": "perfect",
       "attribute": "data",
       "type": "Fairy",
+      "nameKo": "릴리몬",
       "attacks": [
         {
           "nameJa": "フラウカノン",
@@ -455,6 +467,7 @@
       "level": "ultimate",
       "attribute": "vaccine",
       "type": "Holy Knight",
+      "nameKo": "오메가몬",
       "attacks": [
         {
           "nameJa": "ガルルキャノン",
@@ -474,6 +487,7 @@
       "level": "adult",
       "attribute": "data",
       "type": "Plant",
+      "nameKo": "니드몬",
       "attacks": [
         {
           "nameJa": "チクチクバンバン",
@@ -493,6 +507,7 @@
       "level": "ultimate",
       "attribute": "vaccine",
       "type": "Dragon Man",
+      "nameKo": "워그레이몬",
       "attacks": [
         {
           "nameJa": "ガイアフォース",
@@ -532,6 +547,7 @@
       "level": "adult",
       "attribute": "free",
       "type": "Ankylosaur",
+      "nameKo": "안킬로몬",
       "attacks": [
         {
           "nameJa": "メガトンプレス",
@@ -551,6 +567,7 @@
       "level": "adult",
       "attribute": "free",
       "type": "Giant Bird",
+      "nameKo": "아큐라몬",
       "attacks": [
         {
           "nameJa": "グライドホーン",
@@ -570,6 +587,7 @@
       "level": "child",
       "attribute": "free",
       "type": "Mammal",
+      "nameKo": "아르마몬",
       "attacks": [
         {
           "nameJa": "スクラッチビート",
@@ -589,6 +607,7 @@
       "level": "armor",
       "attribute": "free",
       "type": "Aquatic Beast Man",
+      "nameKo": "마린몬",
       "attacks": [
         {
           "nameJa": "バブルボム",
@@ -608,6 +627,7 @@
       "level": "armor",
       "attribute": "free",
       "type": "Insect",
+      "nameKo": "디그몬",
       "attacks": [
         {
           "nameJa": "ゴールドラッシュ",
@@ -647,6 +667,7 @@
       "level": "armor",
       "attribute": "free",
       "type": "Beast",
+      "nameKo": "라이드라몬",
       "attacks": [
         {
           "nameJa": "ライトニングブレード",
@@ -726,6 +747,7 @@
       "level": "adult",
       "attribute": "free",
       "type": "Insect",
+      "nameKo": "스팅몬",
       "attacks": [
         {
           "nameJa": "スパイキングフィニッシュ",
@@ -745,6 +767,7 @@
       "level": "armor",
       "attribute": "free",
       "type": "Aquatic",
+      "nameKo": "잠수몬",
       "attacks": [
         {
           "nameJa": "オキシジェンホーミング",
@@ -804,6 +827,7 @@
       "level": "adult",
       "attribute": "free",
       "type": "Mythical Dragon",
+      "nameKo": "엑스브이몬",
       "attacks": [
         {
           "nameJa": "ストロングクランチ",
@@ -823,6 +847,7 @@
       "level": "armor",
       "attribute": "free",
       "type": "Holy Beast",
+      "nameKo": "페가수스몬",
       "attacks": [
         {
           "nameJa": "ロデオギャロップ",
@@ -842,6 +867,7 @@
       "level": "ultimate",
       "attribute": "vaccine",
       "type": "Seraph",
+      "nameKo": "세라피몬",
       "attacks": [
         {
           "nameJa": "セブンヘブンズ",
@@ -881,6 +907,7 @@
       "level": "armor",
       "attribute": "free",
       "type": "Mutation",
+      "nameKo": "수리몬",
       "attacks": [
         {
           "nameJa": "紅葉おろし",
@@ -900,6 +927,7 @@
       "level": "perfect",
       "attribute": "free",
       "type": "Beast Man",
+      "nameKo": "실피드몬",
       "attacks": [
         {
           "nameJa": "トップガン",
@@ -919,6 +947,7 @@
       "level": "child",
       "attribute": "free",
       "type": "Bird",
+      "nameKo": "호크몬",
       "attacks": [
         {
           "nameJa": "ビークペッカー",
