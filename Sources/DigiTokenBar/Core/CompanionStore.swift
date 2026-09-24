@@ -190,7 +190,7 @@ final class CompanionStore {
         if let selected = state.representativeSpeciesID {
             next = RepresentativeSubject(speciesID: selected)
         } else {
-            next = RepresentativeSubject(speciesID: currentSpeciesID)
+            next = RepresentativeSubject(speciesID: displaySpeciesID)
         }
         if representativeSubject != next { representativeSubject = next }
     }
@@ -222,15 +222,44 @@ final class CompanionStore {
     /// 알이 부화 준비(100%)가 되었으나 PokéAPI 요청/후보 선택 실패로 다음 갱신을 기다리는 상태.
     private(set) var isHatchRetryDelayed = false
 
+    /// 화면에 그릴 이름 — 아머 착용 중이면 아머체 이름.
+    ///
+    /// 아머체는 `EvoLine.names`(라인 stages 만 채운다)에 없어서 `line.localizedName` 이 `"#305"` 를
+    /// 반환한다. 라인 밖 종은 `DigimonData.name(for:)` 로 해결한다 — 데이터가 `apiName` 하나만
+    /// 들고 있어 전 언어에서 같은 표기가 나온다(`DigimonLineProvider` 가 라인 이름을 채울 때
+    /// `["en": apiName]` 로 쓰는 것과 같은 한계).
     var displayName: String {
-        guard let a = state.active, let line = currentLine else { return "Token Egg" }
-        return line.localizedName(a.currentID, state.language)
+        guard let a = state.active else { return "Token Egg" }
+        if let armorID = a.armorID {
+            return DigimonData.name(for: armorID)?.apiName ?? "#\(armorID)"
+        }
+        return ladderName
     }
+    /// 사다리 종의 이름 — 아머 착용 중에도 **아머를 벗으면 무엇이 되는가**를 가리킨다.
+    /// 아머 해제 확인 문구가 이걸 쓴다(표시 이름을 쓰면 "화염드라몬으로 돌아갈까요?" 가 된다).
+    ///
+    /// 라인은 **비동기 로드**라 재시작 직후엔 nil 인데 `armorID` 는 세이브에서 즉시 복원되므로
+    /// 아머 해제 컨트롤이 그 창에 이미 떠 있다. 라인만 보고 "Token Egg" 를 반환하면 확인 문구가
+    /// "Token Egg 으로 돌아갈까요?" 가 되므로, 라인 미로딩 시엔 위 아머 분기와 같은 경로로 폴백한다.
+    /// "Token Egg" 는 개체 자체가 없을 때만 맞다.
+    var ladderName: String {
+        guard let a = state.active else { return "Token Egg" }
+        if let line = currentLine { return line.localizedName(a.currentID, state.language) }
+        return DigimonData.name(for: a.currentID)?.apiName ?? "#\(a.currentID)"
+    }
+    /// 성장 기계의 축 — **항상 사다리 종**. 스프라이트/이름 표시는 `displaySpeciesID` 를 쓴다.
     var currentSpeciesID: Int? { state.active?.currentID }
+    /// 표시 축 — 아머 착용 중이면 아머체. 스프라이트·대표 종(메뉴바/플로팅 펫)이 읽는 값.
+    var displaySpeciesID: Int? { state.active?.displayID }
     var isFinalStage: Bool {
         guard let a = state.active, let line = currentLine else { return false }
         return line.tree.node(withID: a.currentID)?.children.isEmpty ?? true
     }
+    /// 🚨 아래 진행 표시들(`isFinalStage`/`stageText`/`progress`/`tokensToNext`/`lineNodes`)은
+    /// 아머 착용 중에도 **계속 `currentID`(사다리 종)를 읽는다. 표시 접근자로 바꾸지 말 것.**
+    /// 성장은 실제로 사다리에서 일어나므로("화염드라몬 스프라이트 + 1/4 진행" 은 버그가 아니라
+    /// 오버레이 모델의 정확한 귀결이다), 여기를 `displayID` 로 "고치면" `line.tree.node(withID:)` 가
+    /// 아머체를 못 찾아 nil 을 반환하고 성장 정지·졸업 오염이 재발한다.
     var stageText: String {
         guard let a = state.active else { return "" }
         return isFinalStage ? l.finalForm : l.stage(a.stageIndex + 1, a.totalForms)
@@ -608,6 +637,12 @@ final class CompanionStore {
             if node.children.isEmpty {
                 graduate(); break
             } else {
+                // 정규 진화가 아머보다 우선한다 — 자동 해제 후 진화(사용자 확정).
+                // **명시적으로** 지운다: `currentID` 가 사다리 종을 유지하도록 설계했기 때문에
+                // 아머 착용 중에도 `node(withID:)` 는 정상적으로 노드를 찾는다. 즉 위의 nil-node
+                // `break` 로는 이 상황이 걸리지 않으며, 그래야 아머 착용 중에도 성장이 멈추지 않는다.
+                // 여기서 안 지우면 진화 후 사다리 종과 무관한 아머가 남는다(다음 sanitize 까지 표시 오염).
+                state.active!.armorID = nil
                 let nextIndex = a.stageIndex + 1
                 let next: EvoNode
                 if a.plannedPathIDs.indices.contains(nextIndex),
@@ -702,6 +737,11 @@ final class CompanionStore {
         normalized.plannedPathIDs = plan
         normalized.stageIndex = realized.path.count - 1
         normalized.totalForms = plan.count
+        // `longestValidPath` 는 절단만 하는 게 아니라 **루트를 갈아끼운다**(저장된 머리가 라인 루트와
+        // 다르면 `[루트]` 로 통째 교체). 그래서 로드 경계(`SaveTransfer.sanitized`)에서 유효했던
+        // 아머가 여기서 근거를 잃을 수 있다 — 같은 판정을 정규화 후에 한 번 더 건다.
+        normalized.armorID = SaveTransfer.validArmorID(normalized.armorID,
+                                                       forLadderSpecies: normalized.currentID)
         return normalized
     }
 
@@ -817,6 +857,102 @@ final class CompanionStore {
         return .progressed
     }
 
+    // MARK: 아머 진화 (디지멘탈)
+
+    /// 현재 아머 착용 중인 종 id. nil = 미착용.
+    var armorSpeciesID: Int? { state.active?.armorID }
+    var isArmored: Bool { state.active?.armorID != nil }
+
+    /// 이 디지멘탈로 지금 아머 진화할 수 있나 — **데이터 조회가 곧 게이트다.**
+    ///
+    /// `DigiLevel == .child` 로 판정하지 않는다: Tailmon(83)은 데이터상 Child 지만 작중 Adult 급이라
+    /// 레벨 축 판정은 경계 사례에서 어긋난다(`DigimonData` tailmonLine 주석). 매핑이 있으면 가능,
+    /// 없으면(성숙기 이상·대상 아닌 종) 불가 — 조회 하나가 두 판정을 동시에 한다.
+    ///
+    /// 기준은 항상 **사다리 종**(`currentID`)이다. 아머체는 `armorResults` 의 childID 가 아니라
+    /// 아머체 기준으로 조회하면 항상 nil 이 되어 교체(A→B)가 막힌다.
+    func armorResult(for kind: ItemKind) -> Int? {
+        guard let a = state.active, let digimental = kind.digimental else { return nil }
+        return DigimonData.armorResult(childID: a.currentID, digimental: digimental)
+    }
+
+    func canArmorEvolve(_ kind: ItemKind) -> Bool {
+        itemCount(kind) > 0 && armorResult(for: kind) != nil
+    }
+
+    /// 디지멘탈 사용 — 아머 오버레이를 씌운다. 이미 착용 중이면 **교체**(해제 후 재사용과 같은 결과).
+    ///
+    /// **디지멘탈은 소모되지 않는다**(열쇠형, 사용자 확정). 자유 전환과 맞물려 재고 0 때문에
+    /// 되돌리지 못하는 상태가 생기지 않는다. 악용 여지는 §7 불변조건이 닫는다 — 아래에서
+    /// `armorID` 외에는 어떤 사다리 필드도 건드리지 않으므로 왕복해도 XP·임계값 이득이 0 이다.
+    @discardableResult
+    func useDigimental(_ kind: ItemKind) -> Bool {
+        guard canArmorEvolve(kind), let armorID = armorResult(for: kind) else { return false }
+        state.active!.armorID = armorID
+        // 연출·알림은 **그 아머체를 처음 얻었을 때만** — 디지멘탈은 비소모라 착용/해제가 무료고,
+        // 그대로 두면 10회 토글이 "진화했어요!" 알림 10개가 된다. 도감이 종 단위로 접히는 것과
+        // 같은 기준(=도감에 이미 있나)으로 접어 비대칭을 없앤다. 재착용·이전 아머 복귀는 조용히 전환.
+        // 네 효과를 조건 하나로 묶는다: 테스트가 볼 수 없는 알림을 볼 수 있는 연출이 대신 지킨다.
+        if recordArmorDexEntry(armorID) {
+            justEvolvedTo = displayName
+            fireCelebration(.evolve)
+            eventUntil = clock().addingTimeInterval(4)
+            notifyCompanionEvent(l.notifEvolveTitle, l.notifEvolveBody(displayName))
+        }
+        AppLog.write("armor: equipped \(armorID) via \(kind.rawValue) on \(state.active!.currentID)")
+        save()
+        return true
+    }
+
+    /// 아머 해제 — 사다리 종으로 되돌아간다. 도감 기록은 **지우지 않는다**(쌓이기만 한다).
+    @discardableResult
+    func removeArmor() -> Bool {
+        guard state.active?.armorID != nil else { return false }
+        state.active!.armorID = nil
+        justEvolvedTo = nil   // 아머 착용 토스트가 해제 후에도 남아 있지 않게
+        eventUntil = nil
+        save()
+        return true
+    }
+
+    /// 아머체의 영구 도감 기록 — 되돌려도 남는다.
+    ///
+    /// 아머체는 `pathIDs` 에 없어서 `dexSpecies`/`ownsSpecies` 가 저절로 잡지 못하고,
+    /// `MonState.armorID` 에서 유도하면 해제하는 순간 기록이 증발한다(도감의 "쌓이기만 한다" 위반).
+    /// `releasedDexEntry` 와 같은 형태의 `DexEntry` 를 쓰면 희귀도·항목별 격리 디코딩·정렬·
+    /// `ownsSpecies` 커버리지가 전부 기존 배선 그대로 딸려온다.
+    /// - Returns: 새 항목을 추가했으면 true(= 이 아머체를 처음 얻음), 이미 있었으면 false.
+    @discardableResult
+    private func recordArmorDexEntry(_ armorID: Int) -> Bool {
+        // 재착용이 같은 줄을 반복해서 쌓지 않게 종 단위로 접는다. id 는 개체 instanceID 를 그대로 쓰면
+        // 나중에 같은 개체가 졸업할 때 만드는 항목과 충돌하므로(둘 다 instanceID 를 id 로 쓴다)
+        // 아머 접두어 + 아머체 id 로 갈라 둔다.
+        //
+        // ⚠️ 이 키는 도감 외관만 좌우하는 게 아니라 **알림·연출을 쏠지**를 결정한다(`useDigimental`).
+        // `profile` 은 hatch(무조건 generate)·구버전 마이그레이션·sanitize(빈 문자열 복구) 3중으로
+        // 항상 채워져 아래 폴백은 도달 불가다. 만약 타면 키가 개체가 아니라 **종** 단위가 되어,
+        // 같은 종을 새로 키운 개체의 첫 아머 진화가 조용해진다. 그래서 여기만 `:339`/`:754` 와 달리
+        // `?? UUID()`(충돌 회피)가 아니라 `?? baseID`(충돌 유도)를 쓴다 — 접는 것이 목적이라서다.
+        let entryID = "armor-\(state.active?.profile?.instanceID ?? "\(state.active?.baseID ?? 0)")-\(armorID)"
+        guard !state.dex.contains(where: { $0.id == entryID }) else { return false }
+        guard let a = state.active else { return false }
+        let now = clock()
+        state.dex.append(DexEntry(
+            id: entryID,
+            baseID: a.baseID,
+            finalID: armorID,
+            chainOrder: [armorID],
+            rarity: a.rarity,
+            // caughtAt 은 동행 기록 정렬 키다 — 비우면 이 줄이 구버전 항목들과 함께 맨 뒤로 가라앉는다.
+            caughtAt: now,
+            profile: a.profile,
+            // 이름을 여기서 심는다. 비워 두면 도감 칸이 `#305` 로 남는 데 더해 `needsNamesRefresh` 가
+            // 영영 true 라 backfillMissingDexNames 가 매번 라인을 조회하는데, 사다리 라인엔 아머체가
+            // 없어 절대 채워지지 않는다. "en" 키는 라인 이름이 쓰는 폴백 코드와 같다.
+            names: DigimonData.name(for: armorID).map { [armorID: ["en": $0.apiName]] },
+            armoredAt: now))
+        return true
+    }
 
     // MARK: 상점 (재화 = 사용한 토큰)
 

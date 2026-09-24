@@ -965,6 +965,7 @@ struct L {
     var retry: String { t("다시 시도", "Retry", "再試行", "Reintentar", "Réessayer", "Tentar de novo", "Erneut versuchen") }
 
     // MARK: 도감 상세 패널 (디지몬 설정 정보)
+    var evolutionDiagram: String { t("진화 트리 보기", "View evolution tree", "進化ツリーを見る", "Ver árbol evolutivo", "Voir l’arbre d’évolution", "Ver árvore evolutiva", "Entwicklungsbaum ansehen") }
     var digimonGeneration: String { t("세대", "Generation", "世代", "Generación", "Génération", "Geração", "Generation") }
     var digimonAttribute: String { t("속성", "Attribute", "属性", "Atributo", "Attribut", "Atributo", "Attribut") }
     var digimonType: String { t("형태", "Type", "型", "Tipo", "Type", "Tipo", "Typ") }
@@ -1045,7 +1046,20 @@ struct L {
     }
     var useAfterHatch: String { t("부화 후 사용할 수 있어요", "Usable after hatching", "孵化後に使えます", "Se puede usar después de eclosionar", "Utilisable après l'éclosion", "Dá para usar depois que chocar", "Nach dem Schlüpfen verwendbar") }
     var useNeedsDigimon: String { t("사용할 디지몬이 없어요", "No Digimon to use it on", "使えるデジモンがいません", "No hay ningún Digimon en quien usarlo", "Aucun Digimon sur qui l'utiliser", "Nenhum Digimon para usar o item", "Kein Digimon, bei dem du es verwenden kannst") }
-    var useArmorEvolutionComingSoon: String { t("아머 진화는 준비 중이에요", "Armor evolution is coming soon", "アーマー進化は準備中です", "La armor-evolución llegará pronto", "L'armor-évolution arrive bientôt", "A armor-evolução está por vir", "Rüstungs-Evolution ist in Vorbereitung") }
+    /// 디지멘탈 사용 불가 — 이 종엔 이 디지멘탈 매핑이 없다(성숙기 이상이거나 아머 대상이 아닌 종).
+    var useArmorNoMatch: String { t("이 디지몬에게는 맞지 않아요", "It doesn't fit this Digimon", "このデジモンには合いません", "No le queda a este Digimon", "Ça ne va pas à ce Digimon", "Não serve para este Digimon", "Es passt zu diesem Digimon nicht") }
+    /// 아머 진화 안내(가방 사용 컨트롤 힌트) — 결과 아머체 이름.
+    func armorEvolveHint(_ name: String) -> String {
+        t("\(name)(으)로 아머 진화", "Armor-evolve into \(name)", "\(name) にアーマー進化", "Armor-evolución a \(name)", "Armor-évolution en \(name)", "Armor-evolução para \(name)", "Rüstungs-Evolution zu \(name)")
+    }
+    /// Home 의 아머 해제 컨트롤.
+    var armorActive: String { t("아머 진화 중", "Armor-evolved", "アーマー進化中", "Con armor-evolución", "En armor-évolution", "Com armor-evolução", "Rüstungs-Evolution aktiv") }
+    var armorRemove: String { t("아머 해제", "Remove armor", "アーマー解除", "Quitar armadura", "Retirer l'armure", "Remover armadura", "Rüstung ablegen") }
+    func armorRemoveConfirm(_ name: String) -> String {
+        t("\(name)(으)로 돌아갈까요?", "Return to \(name)?", "\(name) に戻りますか？", "¿Volver a \(name)?", "Revenir à \(name) ?", "Voltar para \(name)?", "Zu \(name) zurückkehren?")
+    }
+    /// 도감 동행 기록 뱃지 — 아머 진화 기록(`isReleased` 뱃지와 같은 자리).
+    var armorDexBadge: String { t("아머", "Armor", "アーマー", "Armadura", "Armure", "Armadura", "Rüstung") }
 
     /// Rare Candy batch preview, including carryover and graduation waste.
     var candyGraduates: String {
@@ -1099,13 +1113,13 @@ struct L {
         case .digimentalCourage, .digimentalSincerity, .digimentalMiracles, .digimentalLove,
              .digimentalPurity, .digimentalKnowledge, .digimentalHope, .digimentalLight,
              .digimentalFriendship:
-            return t("Child 단계에서 사용하면 아머체로 진화해요.",
-                     "Use it on a Child-stage Digimon to armor-evolve.",
-                     "成長期に使うとアーマー体に進化します。",
-                     "Úsalo en un Digimon en etapa Child para lograr una armor-evolución.",
-                     "Utilise-le sur un Digimon au stade Enfant pour une armor-évolution.",
-                     "Use em um Digimon na fase Child para uma armor-evolução.",
-                     "Bei einem Digimon der Child-Stufe verwendet, löst es eine Rüstungs-Evolution aus.")
+            return t("Child 단계에서 사용하면 아머체로 진화해요. 사라지지 않고, 언제든 되돌릴 수 있어요.",
+                     "Use it on a Child-stage Digimon to armor-evolve. It is never used up, and you can revert anytime.",
+                     "成長期に使うとアーマー体に進化します。なくならず、いつでも戻せます。",
+                     "Úsalo en un Digimon en etapa Child para lograr una armor-evolución. No se gasta y puedes revertirlo cuando quieras.",
+                     "Utilise-le sur un Digimon au stade Enfant pour une armor-évolution. Il ne s'épuise jamais et tu peux revenir en arrière à tout moment.",
+                     "Use em um Digimon na fase Child para uma armor-evolução. Ele não acaba e você pode reverter quando quiser.",
+                     "Bei einem Digimon der Child-Stufe verwendet, löst es eine Rüstungs-Evolution aus. Es wird nicht verbraucht und lässt sich jederzeit rückgängig machen.")
         }
     }
 

@@ -407,13 +407,49 @@ struct CompanionHeader: View {
     @State private var candyXPShown = false
     @State private var candyXPAmount = 0     // 표시 순간 캡처(consume 후에도 텍스트 유지)
 
+    @State private var confirmingUnarmor = false
+
     /// 부화 임박(90%+) — 알이 흔들리고 문구가 바뀐다.
     private var eggImminent: Bool { store.isEgg && store.eggProgress >= 0.9 }
+
+    /// 아머 해제 — 인라인 확인(버튼 morph). ItemCard 와 같은 패턴이고, .sheet/.alert 는
+    /// transient 팝오버가 닫힐 때 고아 시트가 이후 클릭을 먹통내므로 쓰지 않는다(PopoverView 주석).
+    @ViewBuilder
+    private var armorControl: some View {
+        let l = store.l
+        HStack(spacing: 8) {
+            if confirmingUnarmor {
+                // 되돌아갈 대상은 **사다리 종**이다 — 표시 이름(현재 아머체)을 쓰면 안 된다.
+                Text(l.armorRemoveConfirm(store.ladderName))
+                    .font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                Spacer(minLength: 4)
+                Button(l.armorRemove) {
+                    confirmingUnarmor = false
+                    store.removeArmor()
+                }
+                .buttonStyle(.borderedProminent).controlSize(.small)
+                Button(l.cancel) { confirmingUnarmor = false }
+                    .buttonStyle(.borderless).controlSize(.small)
+            } else {
+                Text(l.armorActive)
+                    .font(.system(size: 8, weight: .bold))
+                    .padding(.horizontal, 5).padding(.vertical, 1)
+                    .background(.orange.opacity(0.15)).foregroundStyle(.orange)
+                    .clipShape(Capsule())
+                Spacer(minLength: 4)
+                Button(l.armorRemove) { confirmingUnarmor = true }
+                    .buttonStyle(.bordered).controlSize(.small)
+            }
+        }
+        .onChange(of: store.isArmored) { _, armored in
+            if !armored { confirmingUnarmor = false }   // 자동 해제(정규 진화)가 확인 상태를 남기지 않게
+        }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .center, spacing: 12) {
-                SpriteView(speciesID: store.currentSpeciesID, size: 76, bob: true)
+                SpriteView(speciesID: store.displaySpeciesID, size: 76, bob: true)
                     .frame(width: 76, height: 76)
                     .background(Color.secondary.opacity(0.06))
                     .clipShape(RoundedRectangle(cornerRadius: 12))
@@ -494,6 +530,9 @@ struct CompanionHeader: View {
                 }
                 Spacer()
             }
+            // 아머 해제는 **Home** 에 둔다 — 가방은 ownedItems(개수>0)만 그리므로, 디지멘탈을 하나도
+            // 안 가진 상태(다른 기기 세이브·손편집)에선 카드 자체가 없어 되돌릴 수단이 사라진다.
+            if store.isArmored { armorControl }
             if store.hasActive, !store.lineNodes.isEmpty {
                 // 폭을 안 주면 분기 라인(이브이)이 넘쳐 팝오버 콘텐츠 전체가 좌우로 잘린다.
                 EvoLineView(nodes: store.lineNodes, mysteryLabel: store.l.unknownNextEvolution,
@@ -906,6 +945,18 @@ private struct DigimonDetailView: View {
                 }
                 .buttonStyle(.borderless)
                 Spacer()
+                if let diagramURL = DigimonData.evolutionDiagramURL(speciesID: species.id) {
+                    Button {
+                        NSWorkspace.shared.open(diagramURL)
+                    } label: {
+                        Label(store.l.evolutionDiagram, systemImage: "point.3.connected.trianglepath.dotted")
+                    }
+                    .labelStyle(.iconOnly)
+                    .help(store.l.evolutionDiagram)
+                    .accessibilityLabel(store.l.evolutionDiagram)
+                    .buttonStyle(.bordered)
+                    .controlSize(.mini)
+                }
                 Text("#\(species.id)").font(.caption).foregroundStyle(.secondary)
             }
             ScrollView {
@@ -1193,6 +1244,14 @@ private struct DexEntryRow: View {
                         .padding(.horizontal, 5).padding(.vertical, 1)
                         .background(Color.accentColor.opacity(0.14))
                         .foregroundStyle(Color.accentColor)
+                        .clipShape(Capsule())
+                } else if entry.isArmored {
+                    // 아머 진화 기록 — 되돌려도 남는 별도 축이다(졸업도 놓아줌도 아니다).
+                    Text(store.l.armorDexBadge.uppercased())
+                        .font(.system(size: 8, weight: .bold))
+                        .padding(.horizontal, 5).padding(.vertical, 1)
+                        .background(Color.orange.opacity(0.15))
+                        .foregroundStyle(Color.orange)
                         .clipShape(Capsule())
                 } else if entry.isReleased {
                     // 놓아준 개체 — 종은 도감에 남지만 이 개체는 끝까지 키우지 않았다.

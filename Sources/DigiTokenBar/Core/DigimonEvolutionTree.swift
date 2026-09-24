@@ -96,3 +96,48 @@ extension DigimonDataset {
         return reached.contains(target)
     }
 }
+
+/// 종 id → 진화 다이어그램 라인 키(`Resources/digimon.json` 의 `lines[].key`, 12개) 조회.
+/// 다이어그램은 라인별로 분리된 12장이라(EVOLUTION.md 확장 결정), 상세 패널 버튼이 "이 종이
+/// 속한 라인"을 알아야 한다 — 도감의 아무 종이나 열 수 있으므로 `lines[].stages` 만으로는
+/// 부족하다(52종 중 36종만 커버, 나머지 16종은 죠그레스/아머/chain 결과라 어느 라인에도
+/// `stages` 로 속해 있지 않다).
+///
+/// 다이어그램 각 장이 실제로 어떤 종을 그리는지(diagrams/digivolution.<key>.workflow.json,
+/// scratchpad gen_full.py 의 챕터 구성)에 맞춰 정적으로 배정한다 — 그래프 순회로 자동 유도하지
+/// 않는 이유: 아머 결과(10종)는 `childID`로 라인이 하나로 정해지지만, 죠그레스/chain 결과
+/// (Omegamon/Paildramon/Shakkoumon/Silphymon/Imperialdramon 계열)는 **두 라인이 동시에
+/// 관여해 원천적으로 모호하다**(Omegamon 은 agumon·gabumon 라인 양쪽 최종 죠그레스 결과).
+/// 이 경우 실제로 다이어그램에 그려 넣은 라인(`lines[]` 배열에서 더 앞선 라인, gen_full.py
+/// 챕터 구성과 동일)으로 고정한다. Imperialdramon Paladin Mode(481)는 vmon(Fighter Mode)
+/// 체인·agumon/gabumon 죠그레스(Omegamon)를 동시에 부모로 요구해 두 라인에 걸쳐 있지만,
+/// vmon 챕터에 대표로 그려 넣었으므로(Omegamon 도 두 번째 부모로 함께 그려짐) vmon 을 배정한다.
+enum DigimonLineChapter {
+    /// 라인에 직접 속하지 않는 16종의 배정 근거는 위 문서 참고. 아머 결과 10종은 `armor[].childID`
+    /// 의 라인, 죠그레스/chain 결과 6종은 다이어그램에 실제로 그려진(대표) 라인을 쓴다.
+    private static let nonLineOverrides: [Int: String] = [
+        // 죠그레스/chain 결과 — 두 라인 중 다이어그램에 그려 넣은 쪽(= lines[] 배열에서 더 앞선 라인).
+        183: "agumon",     // Omegamon: agumon·gabumon 공통 죠그레스 → agumon 챕터가 대표(vmon 에도 두 번째 부모로 그려짐)
+        387: "patamon",    // Shakkoumon: patamon·armadimon 공통 죠그레스 → patamon 챕터에 그려짐
+        390: "tailmon",    // Silphymon: tailmon·hawkmon 공통 죠그레스 → tailmon 챕터에 그려짐
+        331: "vmon",       // Paildramon: vmon·wormmon 공통 죠그레스 → vmon 챕터에 그려짐
+        900: "vmon",       // Imperialdramon Dragon Mode: Paildramon 체인 후속 → vmon 챕터에 그려짐
+        405: "vmon",       // Imperialdramon Fighter Mode: 위와 동일 체인 → vmon 챕터에 그려짐
+        481: "vmon",       // Imperialdramon Paladin Mode: vmon 챕터에 그려짐 — vmon 을 대표로 배정
+    ]
+
+    /// 종 id → 라인 키. `dataset.linesByKey` 의 키(12개)와 항상 일치하는 값만 반환한다.
+    /// species 테이블에 없는 id 를 넘기면 nil(호출부가 버튼을 숨긴다).
+    static func lineKey(for speciesID: Int, dataset: DigimonDataset) -> String? {
+        for (key, line) in dataset.linesByKey where line.stages.contains(where: { $0.id == speciesID }) {
+            return key
+        }
+        if let overridden = nonLineOverrides[speciesID] {
+            return overridden
+        }
+        for (armorKey, result) in dataset.armorResults where result == speciesID {
+            return lineKey(for: armorKey.childID, dataset: dataset)
+        }
+        return nil
+    }
+}

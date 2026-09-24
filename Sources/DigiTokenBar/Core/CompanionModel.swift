@@ -402,8 +402,18 @@ struct MonState: Codable, Sendable {
     /// 개체 고유 전투 프로필. 구버전 저장은 nil이며 `CompanionStore`가 한 번만 마이그레이션한다.
     var profile: DigimonProfile?
     var hasGrowthBoost = false
+    /// 아머 진화 오버레이 — nil = 미착용, 값 = 현재 아머체 종 id. **표시 전용이다.**
+    /// 정규 사다리 상태(pathIDs/stageIndex/usedAtStage/totalForms/profile/hasGrowthBoost)는
+    /// 착용·해제·교체 어느 쪽에서도 변하지 않는다. 그래서 왕복해도 XP·임계값 이득이 0 이고
+    /// (무한 왕복 파밍 차단), 되돌리기가 이 필드를 nil 로 두는 한 줄로 끝난다.
+    var armorID: Int?
     // pathIDs 가 비면(손상된 상태 파일) baseID 로 폴백 — 렌더마다 읽히므로 out-of-bounds 크래시 방지.
     var currentID: Int { pathIDs.isEmpty ? baseID : pathIDs[min(stageIndex, pathIDs.count - 1)] }
+    /// 화면에 그릴 종 — 아머 착용 중이면 아머체, 아니면 사다리 종.
+    /// **`currentID` 와 반드시 갈라 둔다**: 아머체 id 는 `EvoLine.tree` 에 없어서
+    /// `line.tree.node(withID:)` 가 nil 을 반환한다. `currentID` 가 아머체를 돌려주면
+    /// `applyUsage` 의 진화 판정이 조용히 멈추고 `graduate()` 가 아머체를 최종체로 기록한다.
+    var displayID: Int { armorID ?? currentID }
     var phaseThreshold: Int {
         DigimonBalance.phaseThreshold(
             rarity: rarity,
@@ -414,7 +424,7 @@ struct MonState: Codable, Sendable {
 
     init(baseID: Int, pathIDs: [Int], plannedPathIDs: [Int]? = nil, stageIndex: Int, usedAtStage: Int,
          rarity: Rarity, totalForms: Int,
-         profile: DigimonProfile? = nil, hasGrowthBoost: Bool = false) {
+         profile: DigimonProfile? = nil, hasGrowthBoost: Bool = false, armorID: Int? = nil) {
         self.baseID = baseID
         self.pathIDs = pathIDs
         if let plannedPathIDs, !plannedPathIDs.isEmpty {
@@ -428,6 +438,7 @@ struct MonState: Codable, Sendable {
         self.totalForms = totalForms
         self.profile = profile
         self.hasGrowthBoost = hasGrowthBoost
+        self.armorID = armorID
     }
 
     // 하위호환 디코딩: 구버전 저장에 없는 부화 속성은 기본값.
@@ -452,6 +463,10 @@ struct MonState: Codable, Sendable {
         // 손상된 신규 프로필 하나 때문에 기존 성장 상태 전체를 잃지 않는다. nil이면 스토어가 재마이그레이션한다.
         profile = (try? c.decodeIfPresent(DigimonProfile.self, forKey: .profile)) ?? nil
         hasGrowthBoost = try c.decodeIfPresent(Bool.self, forKey: .hasGrowthBoost) ?? false
+        // 반드시 decodeIfPresent — 이 필드 이전 세이브엔 키가 없다. 엄격 decode 로 두면 MonState
+        // 디코딩이 통째로 실패하고, CompanionState 의 `active` 는 lenientOptional 이라 nil 로 흡수돼
+        // **기존 사용자의 디지몬이 전부 알로 되돌아간다**. 값 유효성은 로드 시 sanitize 가 본다.
+        armorID = try c.decodeIfPresent(Int.self, forKey: .armorID)
     }
 }
 
@@ -484,11 +499,20 @@ struct DexEntry: Codable, Sendable, Identifiable {
     var releasedAt: Date?
     /// 졸업이 아니라 놓아준 기록인가 — 동행 기록이 뱃지를 가르는 판정.
     var isReleased: Bool { releasedAt != nil }
+    /// 아머 진화 시각 — 디지멘탈로 아머체가 된 기록. nil = 아머 기록이 아니다(졸업분·놓아준 분).
+    ///
+    /// `releasedAt` 과 같은 이유로 존재한다: 아머체는 `pathIDs` 에 들어가지 않는 표시 오버레이라
+    /// 사다리에서 유도할 수 없고, 되돌리면 `MonState.armorID` 가 nil 이 되어 기록이 증발한다.
+    /// 도감의 "쌓이기만 한다" 약속을 지키려면 별도 항목으로 영속해야 한다.
+    var armoredAt: Date?
+    /// 아머 진화 기록인가 — 동행 기록이 뱃지를 가르는 판정(`isReleased` 와 같은 축).
+    var isArmored: Bool { armoredAt != nil }
 
     init(id: String = UUID().uuidString,
          baseID: Int, finalID: Int, chainOrder: [Int], rarity: Rarity,
          caughtAt: Date?,
-         profile: DigimonProfile? = nil, names: [Int: [String: String]]? = nil, releasedAt: Date? = nil) {
+         profile: DigimonProfile? = nil, names: [Int: [String: String]]? = nil, releasedAt: Date? = nil,
+         armoredAt: Date? = nil) {
         self.id = id
         self.baseID = baseID
         self.finalID = finalID
@@ -500,6 +524,7 @@ struct DexEntry: Codable, Sendable, Identifiable {
         self.namesVersion = chainOrder.allSatisfy { names?[$0]?.isEmpty == false }
             ? Self.currentNamesVersion : nil
         self.releasedAt = releasedAt
+        self.armoredAt = armoredAt
     }
 
     // 하위호환 디코딩 (MonState 와 동일 이유).
@@ -519,6 +544,8 @@ struct DexEntry: Codable, Sendable, Identifiable {
         namesVersion = try? c.decodeIfPresent(Int.self, forKey: .namesVersion)
         // 이 필드 이전에 저장된 항목은 전부 졸업분이다 — nil 이 곧 "졸업"이라 마이그레이션이 필요 없다.
         releasedAt = try c.decodeIfPresent(Date.self, forKey: .releasedAt)
+        // 이 필드 이전 항목은 전부 아머 기록이 아니다 — nil 이 곧 "아머 아님"이라 마이그레이션 불필요.
+        armoredAt = try c.decodeIfPresent(Date.self, forKey: .armoredAt)
     }
 }
 

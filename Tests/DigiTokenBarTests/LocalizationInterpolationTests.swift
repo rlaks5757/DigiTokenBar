@@ -107,6 +107,8 @@ final class LocalizationInterpolationTests: XCTestCase {
             expect(lang, "buyConfirm", l.buyConfirm(a), a)
             expect(lang, "ownedCount", l.ownedCount(4242), "4242")
             expect(lang, "eggConfirm", l.eggConfirm(a, b), a, b)
+            expect(lang, "armorEvolveHint", l.armorEvolveHint(a), a)
+            expect(lang, "armorRemoveConfirm", l.armorRemoveConfirm(a), a)
             // Constant-derived substitution: hardcode it and the candy blurb drifts
             // away from the real XP value.
             // 상수 파생 치환 — 하드코딩으로 드리프트하면 사탕 설명이 실제 XP 와 어긋난다.

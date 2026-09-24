@@ -159,6 +159,24 @@ enum SaveTransfer {
         return envelope
     }
 
+    /// 저장된 아머 오버레이가 지금도 성립하는가 — 성립하지 않으면 nil(해제).
+    ///
+    /// 아머는 `(사다리 종, 디지멘탈) → 아머체` 조회의 **결과**라서, 사다리 종이 바뀌면(그사이 진화,
+    /// 손편집 세이브, 데이터 개정) 저장값이 근거를 잃는다. 근거 없는 값이 남으면 무효 아머가
+    /// 영구히 붙어 스프라이트만 다른 종을 그린다. 디지멘탈은 비소모라 잘못 지워도 재착용하면 되므로
+    /// 판정은 보수적으로 — 조회로 되살릴 수 없는 값은 전부 떨군다.
+    ///
+    /// 두 곳에서 부른다: 여기(디스크 로드 + 세이브 수입의 신뢰 경계)와
+    /// `CompanionStore.normalizedEvolutionState`(경로 절단으로 사다리 종이 **뒤로** 밀릴 수 있어,
+    /// 여기서 통과한 값이 그 뒤에 무효가 될 수 있다).
+    static func validArmorID(_ armorID: Int?, forLadderSpecies ladderID: Int) -> Int? {
+        guard let armorID else { return nil }
+        let reachable = Digimental.allCases.contains { digimental in
+            DigimonData.armorResult(childID: ladderID, digimental: digimental) == armorID
+        }
+        return reachable ? armorID : nil
+    }
+
     /// 신뢰경계 값 정규화 — 세이브는 **앱 밖에서** 온다(손편집·전송 중 손상·다른 빌드).
     ///
     /// `CompanionState` 의 디코딩은 의도적으로 관대해서(한 필드가 깨져도 도감을 안 날리려고) 말이 안 되는
@@ -193,6 +211,9 @@ enum SaveTransfer {
             // totalForms 는 `kk * (kk + 1)` 형태로 쓰여(DigimonBalance.phaseThreshold) 큰 값이 그 자체로 트랩이다.
             active.totalForms = min(max(1, active.totalForms), 12)
             active.stageIndex = min(max(0, active.stageIndex), max(0, active.pathIDs.count - 1))
+            // stageIndex 를 조인 **뒤에** 판정한다 — currentID 가 조인 결과를 읽으므로 순서가 뒤바뀌면
+            // 손상된 인덱스가 가리키는 엉뚱한 종을 기준으로 아머 유효성을 보게 된다.
+            active.armorID = validArmorID(active.armorID, forLadderSpecies: active.currentID)
             active.profile?.sanitize()
             s.active = active
         }

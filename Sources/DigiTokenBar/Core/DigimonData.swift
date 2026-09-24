@@ -183,6 +183,36 @@ enum DigimonData {
         try loadResult.get()
     }
 
+    /// 진화 다이어그램(라인별 12장, archify workflow) 정적 HTML 위치 — 파일명은
+    /// `digivolution.<라인 키>.html`(라인 키는 `Resources/digimon.json` 의 `lines[].key`).
+    /// `speciesID` 가 속한 라인을 `DigimonLineChapter.lineKey(for:dataset:)` 로 구해 해당 장만 연다
+    /// (52종 전체를 보여주던 단일 페이지 대신 — "피요몬 진화트리를 누르면 피요몬만 보인다").
+    /// `loadResult` 와 같은 이유로 `Bundle.main` 을 먼저 찾고, DEBUG 빌드에서만 `#filePath` 로
+    /// 저장소 루트를 보조 탐색한다. 필수 데이터가 아니라 optional 기능이라 throw 하지 않고
+    /// nil 로 "버튼 비활성화"를 표현한다(라인 키를 못 구해도 동일하게 nil).
+    static func evolutionDiagramURL(speciesID: Int) -> URL? {
+        guard let dataset = try? loadResult.get(),
+              let lineKey = DigimonLineChapter.lineKey(for: speciesID, dataset: dataset)
+        else { return nil }
+        let filename = "digivolution.\(lineKey)"
+        if let url = Bundle.main.url(forResource: filename, withExtension: "html") {
+            return url
+        }
+        #if DEBUG
+        let thisFile = URL(fileURLWithPath: #filePath)
+        let repoRoot = thisFile
+            .deletingLastPathComponent()  // Core/
+            .deletingLastPathComponent()  // DigiTokenBar/
+            .deletingLastPathComponent()  // Sources/
+            .deletingLastPathComponent()  // 저장소 루트
+        let devURL = repoRoot.appendingPathComponent("Resources/\(filename).html")
+        if FileManager.default.fileExists(atPath: devURL.path) {
+            return devURL
+        }
+        #endif
+        return nil
+    }
+
     /// 아래 정적 프로퍼티들의 내부 캐시. 로드는 항상 성공해야 정상 상태다(리소스 누락·스키마
     /// 오류는 개발/빌드 단계에서 잡아야 할 문제) — 실패 시 `try!` 로 즉시 트랩하되, 트랩 메시지에
     /// `DigimonDataError.description` 이 실려 원인을 바로 알 수 있다(무조건 `fatalError` 인

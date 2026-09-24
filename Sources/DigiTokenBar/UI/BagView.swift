@@ -95,29 +95,32 @@ private struct ItemCard: View {
         }
     }
 
-    /// 이 아이템을 지금 쓸 수 있나 — 사탕은 라인 로딩 필요. 디지멘탈은 아머 진화(추후 구현) 전용이라
-    /// 아직 사용 동작이 없다.
+    /// 이 아이템을 지금 쓸 수 있나 — 사탕은 라인 로딩 필요, 디지멘탈은 현재 종에 아머 매핑이 있어야 한다.
     private var canUse: Bool {
-        kind == .rareCandy && store.canUseRareCandy
+        kind == .rareCandy ? store.canUseRareCandy : store.canArmorEvolve(kind)
     }
-    /// 사용 불가 사유 — 아이템별 실제 원인. 디지멘탈은 알/활성 여부와 무관하게 항상
-    /// "아머 진화 미구현"이 사유이므로 사탕 전용 사유(알/활성 없음)보다 우선한다.
+    /// 사용 불가 사유 — 아이템별 실제 원인. 디지멘탈은 알(부화 전)/활성 없음이 먼저고, 활성이
+    /// 있는데도 못 쓰면 이 종에 그 디지멘탈 매핑이 없는 것이다(성숙기 이상 포함 — 레벨이 아니라
+    /// 매핑 부재가 유일한 판정이다).
     private func unavailableReason(_ l: L) -> String {
-        switch kind {
-        case .rareCandy:
-            return store.isEgg ? l.useAfterHatch : l.useNeedsDigimon
-        case .digimentalCourage, .digimentalSincerity, .digimentalMiracles, .digimentalLove,
-             .digimentalPurity, .digimentalKnowledge, .digimentalHope, .digimentalLight,
-             .digimentalFriendship:
-            return l.useArmorEvolutionComingSoon
-        }
+        if store.isEgg { return l.useAfterHatch }
+        guard store.hasActive else { return l.useNeedsDigimon }
+        return kind == .rareCandy ? l.useNeedsDigimon : l.useArmorNoMatch
     }
-    /// 사용 컨트롤 효과 힌트 ("+XP").
+    /// 사용 컨트롤 효과 힌트 — 사탕은 "+XP", 디지멘탈은 진화할 아머체 이름.
     private func effectHint(_ l: L) -> String {
-        "+\(TokenFormatter.compact(selectedCandyCount * RareCandy.xp)) XP"
+        if kind == .rareCandy {
+            return "+\(TokenFormatter.compact(selectedCandyCount * RareCandy.xp)) XP"
+        }
+        guard let armorID = store.armorResult(for: kind) else { return "" }
+        return l.armorEvolveHint(DigimonData.name(for: armorID)?.apiName ?? "#\(armorID)")
     }
     private func performUse() {
-        if kind == .rareCandy { _ = store.useRareCandy(count: selectedCandyCount) }
+        if kind == .rareCandy {
+            _ = store.useRareCandy(count: selectedCandyCount)
+        } else {
+            _ = store.useDigimental(kind)
+        }
     }
 
     @ViewBuilder
@@ -143,8 +146,8 @@ private struct ItemCard: View {
                 }
             }
         } else {
-            // 비활성 사유 — 종류별로 실제 원인이 다르다(디지멘탈은 알/활성 여부와 무관하게 아머 진화
-            // 미구현이 원인이라 그 사유가 우선한다. 사탕은 알(부화 전)/활성 없음/라인 미로딩이 사유).
+            // 비활성 사유 — 알(부화 전)/활성 없음이 먼저, 그다음이 아이템별 원인
+            // (사탕은 라인 미로딩, 디지멘탈은 이 종에 매핑 없음).
             Text(unavailableReason(l))
                 .font(.caption2).foregroundStyle(.tertiary)
         }
