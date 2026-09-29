@@ -1473,6 +1473,114 @@ final class CompanionStore {
             UNNotificationRequest(identifier: "companion-event-\(notifSeq)", content: content, trigger: nil))
     }
 
+    // MARK: 배치할 디지몬 직접 선택 (알 상태에서 유아기 종 지정)
+
+    /// 선택 화면 한 줄 — **도감에 등록된 유아기(base) 종** 하나.
+    /// 보증 등급·이름 해석까지 store 가 끝낸 값만 담는다. 뷰가 판정을 하면 XCTest 가 SwiftUI `body`
+    /// 안을 볼 수 없어 게이트가 테스트 밖으로 새어나간다(`jogressCandidates` 주석과 같은 이유).
+    struct BabyPick: Sendable, Identifiable, Equatable {
+        /// 라인의 `stages[0].id` — 곧 `DigiLine.baseID` 다. 종 번호 리터럴은 어디에도 없다.
+        let baseID: Int
+        /// 이 라인이 부화했을 때의 등급(`DigiLine.rarity`). 보증 알 필터가 이 값으로 걸린다.
+        let rarity: Rarity
+        /// 현재 언어 이름 — 데이터셋에 없는 id 면 `#id`(🥚 로 떨어지는 조합을 화면에서 드러낸다).
+        let name: String
+
+        var id: Int { baseID }
+    }
+
+    /// 지금 직접 골라 부화시킬 수 있는 유아기 종 전부 — 없으면 빈 배열(UI 는 진입점을 아예 숨긴다).
+    ///
+    /// 유도 규칙:
+    ///  ① 후보 집합은 **데이터에서** 온다 — `DigimonData.lines` 의 `baseID`(= `stages[0].id`).
+    ///     하드코딩 배열을 두면 52종 데이터와 어긋나도 에러 없이 알 이모지로 떨어진다.
+    ///  ② **도감에 등록된 종만**(`state.ownsSpecies`). 알 상태에서는 활성 개체가 없으므로 이 판정은
+    ///     졸업·방생·죠그레스 기록의 `chainOrder` 로 환원된다 — "한 번 키워 본 유아기" 가 조건이다.
+    ///  ③ **보증 등급(`state.eggTier`) 미달 라인은 후보에서 뺀다.** `hatchCore` 의 마지막 관문과
+    ///     **같은 비교**(`rarity.sortRank >= tier.sortRank`)라, 선택된 종이 그 관문에 걸려 버려지는
+    ///     일이 구조적으로 불가능하다 — 보증이 무시되지도, 토큰이 낭비되지도 않는다(제약 6).
+    ///
+    /// 정렬은 도감 번호 오름차순 — `DigimonData.lines` 는 JSON 순서라 화면 순서를 여기서 고정한다.
+    var babyPicks: [BabyPick] {
+        guard state.active == nil else { return [] }   // 알 상태에서만 의미가 있다(제약 7)
+        let tier = state.eggTier
+        return DigimonData.lines.compactMap { line -> BabyPick? in
+            let baseID = line.baseID
+            guard state.ownsSpecies(baseID) else { return nil }
+            if let tier, line.rarity.sortRank < tier.sortRank { return nil }
+            return BabyPick(baseID: baseID, rarity: line.rarity,
+                            name: Self.dataName(baseID, state.language))
+        }
+        .sorted { $0.baseID < $1.baseID }
+    }
+
+    /// 직접 선택 진입점을 그릴 조건 — 알 상태 + 고를 수 있는 종이 하나라도 있을 때.
+    /// 후보가 없는 신규 플레이어에게 빈 화면으로 가는 버튼을 보이지 않는다.
+    var canPickHatchSpecies: Bool { !babyPicks.isEmpty }
+
+    /// 지금 알이 품고 있는(= 다음에 깨어날) 종 — 프리패치 롤이든 사용자 선택이든 같은 필드다.
+    /// 활성 개체가 있으면 알이 없으므로 nil(`eggGuarantee` 와 같은 태도).
+    var pendingHatchSpeciesID: Int? { state.active == nil ? state.pendingHatchID : nil }
+
+    /// 사용자가 **직접 고른 것으로 보이는** 종 — 화면에 예고해도 되는 유일한 `pendingHatchID` 다.
+    ///
+    /// 후보(`babyPicks`)에 있는 종으로 좁힌다. 프리패치가 미리 롤해 둔 종까지 노출하면 알이 스스로
+    /// 정답을 알려주는 셈이 되어 랜덤 부화의 기대감이 사라진다(기존 동작 변경). 선택과 프리패치가
+    /// 같은 필드를 쓰는 대가이며, 이 좁힘이 그 대가를 UI 경계에서 흡수한다. 정확히 말해 "도감에
+    /// 이미 있는 유아기" 가 우연히 롤되면 예고가 뜰 수 있는데, 그 종은 어차피 사용자가 고를 수도
+    /// 있었던 후보라 노출되는 정보가 선택 화면과 동일하다.
+    var pickedHatchBaseID: Int? {
+        guard let id = pendingHatchSpeciesID,
+              babyPicks.contains(where: { $0.baseID == id }) else { return nil }
+        return id
+    }
+
+    /// 위 선택의 현재 언어 이름 — 알 카드의 "무엇이 깨어날지" 한 줄.
+    var pickedHatchName: String? {
+        pickedHatchBaseID.map { Self.dataName($0, state.language) }
+    }
+
+    /// 부화할 유아기 종을 직접 지정한다 — **랜덤 롤 대신 이 종으로 부화**한다.
+    ///
+    /// 별도 부화 경로를 만들지 않는다: 미리 롤해 둔 종을 담는 기존 필드(`pendingHatchID`)에 선택을
+    /// 적고, 실제 부화는 그것을 읽는 `hatchIfNeeded()` → `hatchCore` 가 한다. 그래서
+    ///  - `isHatching` 락과 `activeGeneration` 세대 가드를 그대로 통과하고(제약 3),
+    ///  - 5M 인큐베이션 임계도 유지된다 — 알이 아직 안 찼으면 선택만 기억되고 임계 도달 시 그 종으로
+    ///    깨어난다(`hatchIfNeeded` 의 자체 가드),
+    ///  - 세이브 스키마가 그대로다(`pendingHatchID` 는 이미 영속 필드다).
+    ///
+    /// **방생이 아니다** — `releasedDexEntry`/`isReleased`/`isArmored` 는 어디에도 쓰지 않는다(제약 5).
+    /// 활성 개체를 놓아주는 일도 없다: 활성 개체가 있으면 아래 가드가 거절한다.
+    ///
+    /// 후보 여부는 **여기서 다시 판정한다** — 넘어온 id 를 믿으면 참칭 호출자가 도감에 없는 종이나
+    /// 보증 미달 라인을 통과시킨다(`performJogress` 와 같은 태도: 판정 권한은 store 에 있다).
+    /// - Returns: 선택이 반영됐으면 true. 활성 개체가 있거나 부화가 진행 중이거나 후보가 아니면 false.
+    @discardableResult
+    func pickHatchSpecies(baseID: Int) -> Bool {
+        // 활성 개체가 있으면 선택할 알이 없다. 여기서 `state.active` 를 비우면 그게 곧 방생이다.
+        guard state.active == nil else { return false }
+        // 진행 중인 부화는 `baseID` 를 **인자로** 들고 이미 await 에 들어가 있어 `pendingHatchID` 를
+        // 고쳐도 되돌려지지 않는다 — 조용히 무시되는 대신 거절해서 UI 가 사실을 말할 수 있게 한다.
+        guard !isHatching else { return false }
+        guard babyPicks.contains(where: { $0.baseID == baseID }) else { return false }
+        // 같은 종을 다시 고르면 상태는 그대로 두되 **부화·예열 재시도는 반드시 건다.** 직전 시도가
+        // 실패했을 수 있고(`isHatchRetryDelayed`, `pendingHatchID` 는 남아 있다), 그 경우 여기서
+        // 그냥 true 만 돌려주면 버튼이 성공을 보고하고 화면을 닫은 뒤 아무 일도 일어나지 않는다
+        // (다음 update 틱까지). 상태 변경이 없는 것과 아무것도 안 하는 것은 다르다.
+        let isRepeat = state.pendingHatchID == baseID
+        if !isRepeat {
+            state.pendingHatchID = baseID
+            prefetchedLineID = nil    // 예열해 둔 라인은 이전 종 것이다 — 다음 프리패치가 새로 데운다
+            AppLog.write("egg pick: base=\(baseID) tier=\(state.eggTier?.rawValue ?? "none")")
+        }
+        isHatchRetryDelayed = false   // 이전 롤 실패 문구가 남아 선택이 먹히지 않은 것처럼 보이지 않게
+        save()
+        // 임계가 이미 찼으면 즉시 부화, 아니면 프리패치가 라인·스프라이트를 데운다. 두 경로 모두
+        // 자체 가드를 가지고 있어 여기서 조건을 다시 세우지 않는다.
+        Task { await self.hatchIfNeeded(); await self.ensureEggPrefetch() }
+        return true
+    }
+
     // MARK: 부화
 
     func hatchIfNeeded() async {
@@ -1554,12 +1662,32 @@ final class CompanionStore {
             // await 사이에 부화가 끝났거나(active != nil) 상태가 통째로 교체됐으면(세이브 불러오기)
             // 이 롤을 버린다 — 안 그러면 불러온 알의 pre-roll 을 남의 롤로 덮어쓴다.
             guard isCurrentEgg(generation: generation) else { return }
-            guard let id = selected else {
+            // 롤이 nil 로 끝났을 때(인덱스 비었거나 보증으로 후보가 다 걸림): 이 롤이 도는 동안
+            // 사용자가 종을 골랐으면 **실패가 아니다** — 선택은 `pendingHatchID` 에 정상적으로
+            // 남아 있다. 그때 지연 플래그를 세우면 `pickHatchSpecies` 가 방금 내린 것을 되세워
+            // UI 에 "부화 지연" 문구가 뜨고, 사용자에겐 선택이 안 먹힌 것으로 보인다. 게다가
+            // 여기서 return 하면 선택 종의 라인·스프라이트 예열까지 건너뛴다.
+            // 그래서 선택이 들어와 있으면 플래그를 세우지 않고 아래 예열로 흘려보낸다.
+            if selected == nil, state.pendingHatchID == nil {
                 markHatchRetryDelayedIfReady(generation: generation)
                 return
             }
-            state.pendingHatchID = id
-            save()
+            // `isCurrentEgg` 로는 **선택 부화**를 못 잡는다 — `pickHatchSpecies` 는 알을 알로 두고
+            // `activeGeneration` 도 올리지 않으므로 세대·알 판정이 둘 다 그대로 통과한다. 이 롤이
+            // 도는 동안 사용자가 종을 골랐으면 그 선택이 여기서 조용히 랜덤 종으로 덮인다.
+            // 아래 await 들이 이미 쓰는 것과 같은 재확인 방식으로 막고, 예열은 계속 진행한다
+            // (선택된 종의 라인·스프라이트를 데우는 게 맞다).
+            //
+            // 이 재확인이 "이미 값이 있으면 다시 롤하지 않는다"로도 읽히지만 낡은 롤을 고정하지는
+            // 않는다: 보증을 **올리는** 유일한 경로(`buyEgg`)가 `eggTier` 를 적는 바로 다음 줄에서
+            // 이 필드를 nil 로 비우고(`testPurchaseStartsFromCleanRollState`), 애초에 활성 개체와
+            // pre-roll 은 공존하지 않는다(프리패치는 알 상태 전용, `hatchIfNeeded` 가 부화 직전 비움)
+            // — `canBuyEgg` 는 `hasActive` 를 요구하므로 구매는 항상 빈 롤에서 출발한다. 즉
+            // "미달 종이 미리 롤된 뒤 보증이 붙는" 순서가 없어서 보증이 헛도는 경우가 없다.
+            if let id = selected, state.pendingHatchID == nil {
+                state.pendingHatchID = id
+                save()
+            }
         }
         guard let id = state.pendingHatchID else { return }
         if prefetchedLineID == id {
@@ -1612,9 +1740,15 @@ final class CompanionStore {
             kickLineLoadIfNeeded()
             return
         }
-        // 산 보증을 지키는 마지막 관문 — 진짜 등급을 아는 건 여기뿐이다(후보 인덱스엔 capture_rate 만
-        // 있고 is_legendary 가 없다). 필터가 어긋났으면(인덱스 stale 등) 낮은 등급을 그냥 내주지 말고
-        // 알을 유지한 채 pre-roll 만 버려 다음 틱에 다시 뽑는다 — 사용자는 산 보증을 계속 들고 있는다.
+        // 산 보증을 지키는 마지막 관문 — `line.rarity` 를 직접 보는 건 여기뿐이다. 앞단의 두 경로는
+        // 등급을 **간접적으로** 판정한다: `chooseBase` 는 `captureRate`(등급에서 유도된 값)로 후보를
+        // 좁히고, `pickHatchSpecies` 는 `babyPicks` 가 이미 걸러낸 목록에 의존한다. 유도값 경계나
+        // 목록이 어긋나면 낮은 등급이 여기까지 올 수 있으므로, 그냥 내주지 말고 알을 유지한 채
+        // pre-roll 만 버려 다음 틱에 다시 뽑는다 — 사용자는 산 보증을 계속 들고 있는다.
+        // `babyPicks` ③ 은 같은 비교를 쓰지만 등급의 **출처**가 다르다 — 거기선 `DigimonData.lines`,
+        // 여기선 provider 가 돌려준 `line.rarity` 다. 기본 provider(`DigimonLineProvider`)가 둘을
+        // 그대로 이어주므로(같은 파일 :37) 현재는 선택 부화가 여기 걸릴 수 없지만, 등급을 다르게
+        // 돌려주는 provider 를 주입하면 이 관문이 선택 부화도 걸러낸다 — 그게 의도된 동작이다.
         if let tier = state.eggTier, line.rarity.sortRank < tier.sortRank {
             AppLog.write("hatch: rolled \(line.rarity) below guaranteed \(tier) — discarded, re-roll next tick")
             state.pendingHatchID = nil

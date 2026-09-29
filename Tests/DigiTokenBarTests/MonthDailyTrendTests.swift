@@ -263,6 +263,9 @@ final class MonthDailyTrendTests: XCTestCase {
         noSeries.periodsOK = true
         noSeries.monthDaily = nil                          // 시리즈를 못 주는 프로바이더
 
+        let suite = "MonthDailyTrendTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
         let store = UsageStore(
             providers: [
                 TrendProvider(id: "priced", daily: daily(20), enrichment: withSeries),
@@ -272,7 +275,7 @@ final class MonthDailyTrendTests: XCTestCase {
             claudeLimitsProvider: NoClaudeLimits(), codexLimitsProvider: NoCodexLimits(),
             antigravityLimitsProvider: NoAntigravityLimits(), statusProvider: NoStatus(),
             autoRefresh: false,
-            defaults: UserDefaults(suiteName: "MonthDailyTrendTests.\(UUID().uuidString)")!)
+            defaults: defaults)
         await store.refresh(scheduleEmptyRetry: false)
 
         let totals = store.monthDailyTotals

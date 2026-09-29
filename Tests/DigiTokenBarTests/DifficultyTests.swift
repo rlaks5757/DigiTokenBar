@@ -20,7 +20,11 @@ final class DifficultyTests: XCTestCase {
         let json = "{\"saveVersion\":\(CompanionState.currentSaveVersion),\"installBaselineSet\":true,\"usedSinceInstall\":\(used),\"spentTokens\":0,"
             + "\"lastDate\":\"d\",\"dex\":[],\"collectedFinals\":[]}"
         try? json.data(using: .utf8)!.write(to: url)
-        let suite = UserDefaults(suiteName: "ptb-diff-\(UUID().uuidString)")!
+        // 정리는 `defer` 가 아니라 `addTeardownBlock` 이다 — 반환하는 store 가 이 defaults 를
+        // 계속 쓰므로, 헬퍼 스코프에서 도메인을 지우면 아직 살아 있는 store 밑을 빼는 셈이 된다.
+        let suiteName = "ptb-diff-\(UUID().uuidString)"
+        let suite = UserDefaults(suiteName: suiteName)!
+        addTeardownBlock { UserDefaults.standard.removePersistentDomain(forName: suiteName) }
         suite.set(growth, forKey: "growthDifficulty")
         suite.set(shop, forKey: "shopDifficulty")
         return CompanionStore(provider: StubDiffProvider(value: line()),

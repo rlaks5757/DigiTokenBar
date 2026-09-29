@@ -248,10 +248,14 @@ final class DigimonLorePanelTests: XCTestCase {
             .appendingPathComponent("lore-panel-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         addTeardownBlock { try? FileManager.default.removeItem(at: dir) }
+        // suite 정리도 `defer` 가 아니라 teardown 이다 — 반환하는 store 가 이 defaults 를 계속 쓴다.
+        let suite = dir.lastPathComponent
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        addTeardownBlock { UserDefaults.standard.removePersistentDomain(forName: suite) }
         return CompanionStore(provider: LoreTestLineProvider(),
                               loreSource: lore,
                               fileURL: dir.appendingPathComponent("companion-state.json"),
-                              defaults: UserDefaults(suiteName: dir.lastPathComponent)!)
+                              defaults: defaults)
     }
 }
 
