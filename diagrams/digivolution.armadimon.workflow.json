@@ -52,7 +52,7 @@
       "lane": "armadimon",
       "col": 0,
       "type": "frontend",
-      "label": "Armadimon",
+      "label": "아르마몬",
       "width": 138,
       "height": 92,
       "brand": {
@@ -65,7 +65,7 @@
       "lane": "armadimon",
       "col": 1,
       "type": "backend",
-      "label": "Ankylomon",
+      "label": "안킬로몬",
       "width": 138,
       "height": 92,
       "brand": {
@@ -92,7 +92,7 @@
       "lane": "armor_armadimon",
       "col": 2,
       "type": "messagebus",
-      "label": "Digmon",
+      "label": "디그몬",
       "width": 138,
       "height": 92,
       "brand": {
@@ -119,7 +119,7 @@
       "lane": "armor_armadimon",
       "col": 4,
       "type": "messagebus",
-      "label": "Submarimon",
+      "label": "잠수몬",
       "width": 138,
       "height": 92,
       "brand": {
@@ -132,7 +132,7 @@
       "lane": "jogress_shakkoumon",
       "col": 2,
       "type": "backend",
-      "label": "Angemon",
+      "label": "엔젤몬",
       "width": 138,
       "height": 92,
       "tag": "파트너 종",

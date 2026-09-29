@@ -95,6 +95,120 @@ final class DigimonEvolutionDiagramTests: XCTestCase {
             "다이어그램에 그려진 디지멘탈 집합이 Digimental.allCases(9종)와 다름")
     }
 
+    // MARK: - (d) 죠그레스 엣지 ↔ digimon.json jogress 배열
+
+    /// 가트몬 라인 차트가 실피드몬(390) 의 죠그레스 파트너를 호크몬(399)으로 그린 채로
+    /// 노드 커버리지 테스트를 통과한 전례가 있다(정답은 가트몬(83)+아큐라몬(267)) — 호크몬이
+    /// hawkmon 챕터에 정당하게 존재해서 노드 집합 합집합이 안 깨졌기 때문이다. 이 테스트는
+    /// 노드가 아니라 **엣지 끝점**을 데이터셋과 대조해 같은 함정을 잡는다.
+    func testJogressEdgesMatchDataset() throws {
+        let ds = try DigimonData.loaded()
+        // Set 비교라 a/b 순서는 안 본다(JogressKey 와 동일한 정규화).
+        let datasetTriples = Set(ds.jogressResults.map { key, result in
+            Set(key.speciesIDs + [result])
+        })
+
+        var totalEdges = 0
+        // (라인 키, 결과 노드 id) 별로 부모 노드 id 를 모은다.
+        var groups: [String: [String: [String]]] = [:]
+        for key in ds.linesByKey.keys {
+            let spec = try loadDiagramSpec(key)
+            for edge in spec.jogressEdges {
+                totalEdges += 1
+                groups[key, default: [:]][edge.to, default: []].append(edge.from)
+            }
+        }
+
+        for (lineKey, resultGroups) in groups {
+            for (resultNodeID, parentNodeIDs) in resultGroups {
+                guard let resultSpeciesID = Self.nodeToSpeciesID[resultNodeID] else {
+                    XCTFail("'\(lineKey)': 죠그레스 결과 노드 '\(resultNodeID)' 가 nodeToSpeciesID 에 없음")
+                    continue
+                }
+                XCTAssertEqual(parentNodeIDs.count, 2,
+                    "'\(lineKey)': 죠그레스 결과 '\(resultNodeID)'(species \(resultSpeciesID))의 부모가 "
+                    + "2개가 아니라 \(parentNodeIDs.count)개(\(parentNodeIDs)) — 부모 한쪽이 누락됐을 수 있음")
+
+                let parentSpeciesIDs = parentNodeIDs.compactMap { Self.nodeToSpeciesID[$0] }
+                XCTAssertEqual(parentSpeciesIDs.count, parentNodeIDs.count,
+                    "'\(lineKey)': 죠그레스 결과 '\(resultNodeID)' 의 부모 노드 중 nodeToSpeciesID 에 없는 것이 있음: \(parentNodeIDs)")
+
+                let triple = Set(parentSpeciesIDs + [resultSpeciesID])
+                XCTAssertTrue(datasetTriples.contains(triple),
+                    "'\(lineKey)': 차트가 그린 죠그레스 (부모 \(parentNodeIDs)=\(parentSpeciesIDs), 결과 \(resultNodeID)=\(resultSpeciesID)) "
+                    + "가 digimon.json 의 jogress 배열에 없음 — 기대 삼중항 \(triple)")
+            }
+        }
+
+        // 12장 전체를 순회했는지 자체를 확인한다 — 파싱이나 라벨 필터가 조용히 비면
+        // 위 루프가 공허하게 통과한다.
+        XCTAssertEqual(totalEdges, 18, "12장의 '죠그레스' 라벨 엣지 총수가 달라짐 — 다이어그램 구성이 변경됨")
+        let totalGroups = groups.values.reduce(0) { $0 + $1.count }
+        XCTAssertEqual(totalGroups, 9, "12장의 죠그레스 결과 노드(라인별) 총수가 달라짐 — 다이어그램 구성이 변경됨")
+    }
+
+    // MARK: - (e) 노드 라벨 ↔ 데이터셋 이름
+
+    /// 노드 라벨이 실제로 그 종의 이름을 가리키는지 대조한다. 한글 라벨은 `names.ko`, 라틴
+    /// 라벨은 `apiName` 과 비교한다(다른 에이전트가 라틴→한글 치환을 병행 중이라 어느 쪽이든
+    /// 허용한다). 라틴 쪽은 공백/하이픈 표기가 다를 수 있어 정규화 후 비교한다.
+    ///
+    /// 데이터셋 이름에 변형 표시(`:` 또는 `(...)`)가 붙는 종은 차트가 그 부분을 별도
+    /// sublabel 행에 두므로, 대조는 **변형 표시를 떼어낸 기본 이름**(`baseName`)과 완전
+    /// 일치로 한다(예: "황제드라몬: 파이터 모드" → "황제드라몬", "Atlur Kabuterimon (Blue)"
+    /// → "Atlur Kabuterimon"). 접두 일치를 직접 허용하면 라벨이 잘려도(예: "가트몬"→"가트",
+    /// "Atlur Kabuterimon"→"Atlur") 통과해버려서 회귀 가드가 무의미해진다 — `baseName` 으로
+    /// 자른 뒤 완전 일치만 요구해 이 구멍을 막는다. 변형 표시가 없는 종은 애초에
+    /// `baseName(x) == x` 라 규칙이 하나로 통일된다.
+    func testNodeLabelsMatchDatasetNames() throws {
+        let ds = try DigimonData.loaded()
+        var totalLabeled = 0
+        for key in ds.linesByKey.keys {
+            let spec = try loadDiagramSpec(key)
+            for node in spec.labeledNodes {
+                totalLabeled += 1
+                assertLabelMatchesDatasetName(node.label, speciesID: node.speciesID, dataset: ds,
+                    context: "'\(key)': 노드 '\(node.id)'(species \(node.speciesID))")
+            }
+        }
+        XCTAssertEqual(totalLabeled, 67, "12장의 라벨 붙은 species 노드 총수가 달라짐 — 다이어그램 구성이 변경됨")
+    }
+
+    /// 변형 표시(`:` 또는 `(`) 앞부분만 남기고 양끝 공백을 뗀다.
+    private func baseName(_ s: String) -> String {
+        String(s.prefix { $0 != ":" && $0 != "(" }).trimmingCharacters(in: .whitespaces)
+    }
+    private func normalizeLatin(_ s: String) -> String {
+        s.filter { !$0.isWhitespace && $0 != "-" }.lowercased()
+    }
+    private func isHangul(_ s: String) -> Bool {
+        s.unicodeScalars.contains { (0xAC00...0xD7A3).contains($0.value) }
+    }
+
+    /// `testNodeLabelsMatchDatasetNames` 와 `testCombinedDiagramNodeLabelsMatchDatasetNames` 가
+    /// 공유하는 판정 본체. 한글 라벨은 `names.ko`, 라틴 라벨은 `apiName` 과 비교한다. `baseName`
+    /// 은 **데이터셋 쪽에만** 적용한다 — 라벨에도 적용하면 "아트라캅테리몬(적)" 같은 오답 변형이
+    /// "아트라캅테리몬" 으로 잘려 기본형과 맞아버린다.
+    private func assertLabelMatchesDatasetName(_ label: String, speciesID: Int, dataset ds: DigimonDataset, context: String) {
+        guard let name = ds.names[speciesID] else {
+            XCTFail("\(context) species \(speciesID) 가 데이터셋에 없음")
+            return
+        }
+        if isHangul(label) {
+            guard let ko = name.localeNames["ko"] else {
+                XCTFail("\(context) 라벨 '\(label)' 이 한글인데 데이터셋에 names.ko 가 없음")
+                return
+            }
+            XCTAssertTrue(label == ko || label == baseName(ko),
+                "\(context) 한글 라벨 '\(label)' 이 names.ko '\(ko)'(전체형/기본형 어느 쪽과도) 안 맞음")
+        } else {
+            let api = name.apiName
+            let normLabel = normalizeLatin(label)
+            XCTAssertTrue(normLabel == normalizeLatin(api) || normLabel == normalizeLatin(baseName(api)),
+                "\(context) 라틴 라벨 '\(label)' 이 apiName '\(api)'(전체형/기본형 어느 쪽과도, 정규화 후) 안 맞음")
+        }
+    }
+
     // MARK: - 스펙 파일 파싱 헬퍼 (archify workflow schema 의 최소 부분집합만 읽는다)
 
     private struct DiagramSpec {
@@ -102,8 +216,21 @@ final class DigimonEvolutionDiagramTests: XCTestCase {
             let id: String
             let brandURL: String
         }
+        /// label == "죠그레스" 인 엣지 하나. `to` 가 결과 종의 노드 id, `from` 이 부모 한쪽.
+        struct JogressEdge {
+            let from: String
+            let to: String
+        }
+        /// 라벨 대조용 — digimental_* 을 제외한 모든 species 노드.
+        struct LabeledNode {
+            let id: String
+            let speciesID: Int
+            let label: String
+        }
         let speciesNodeIDs: Set<Int>
         let digimentalItemNodes: [Node]
+        let jogressEdges: [JogressEdge]
+        let labeledNodes: [LabeledNode]
     }
 
     /// node-id(디이그램 내부 슬러그) → digi-api species id. 생성 스크립트(gen_full.py)의
@@ -305,18 +432,336 @@ final class DigimonEvolutionDiagramTests: XCTestCase {
         }
     }
 
+    // MARK: - (f) 렌더된 HTML ↔ 스펙 JSON 드리프트(라벨 화면 표시 + 죠그레스 엣지)
+
+    // JSON 스펙이 맞아도 HTML 은 손으로 편집될 수 있어("차트는 후처리 산출물" 이지만 그 후
+    // 산출물 자체가 수정 대상이 됨) 둘이 갈라질 수 있다 — 실제로 샌 결함이 JSON 과 HTML
+    // 양쪽에 있었다. `parseDiagramGeometry` 와 마찬가지로 중첩 `<g>` 때문에 비탐욕 정규식으로
+    // 노드 블록을 자르면 안쪽 `semantic-sigil` `<g>` 의 `</g>` 에서 멈춰 `t-primary` 텍스트를
+    // 놓친다 — 태그 깊이를 세는 균형 파서를 쓴다.
+
+    private struct HTMLDiagramSpec {
+        struct LabeledNode {
+            let id: String
+            /// 여는 `<g id="node-X">` 태그의 `data-node-label` 속성값.
+            let attrLabel: String
+            /// 블록 안 `class="t-primary"` `<text>` 의 화면 표시 텍스트(trim 됨).
+            let visibleLabel: String
+        }
+        struct JogressEdge {
+            let from: String
+            let to: String
+        }
+        let speciesNodeIDs: Set<String>
+        let labeledNodes: [LabeledNode]
+        let jogressEdges: [JogressEdge]
+    }
+
+    /// 렌더된 HTML 에서 노드 라벨(속성 + 화면 텍스트)과 죠그레스 엣지 끝점을 뽑는다.
+    ///
+    /// - 노드 블록 경계: `<g id="node-…">` 여는 태그부터, `<g>`/`</g>` 태그 깊이가 그 시작
+    ///   깊이로 되돌아오는 지점까지(균형 파싱). 비탐욕 정규식 `<g …>[^]*?</g>` 을 쓰면
+    ///   노드 안의 `semantic-sigil` 중첩 `<g>` 의 `</g>` 에서 멈춰 `t-primary` 텍스트가
+    ///   블록 밖으로 밀려난다.
+    /// - `data-node-label` 은 파일 전체에 노드당 **두 번** 나온다(여는 `<g>` 태그와, 그 안의
+    ///   `<text>` — `<text>` 쪽은 항상 빈 문자열이다). 여는 `<g>` 태그에서만 뽑는다.
+    /// - 엣지 속성(`data-edge-from`/`to`/`label`/`id`)도 파일에 **두 번**(`<path>` 와
+    ///   `<g data-detail="context">`) 나온다. 여는 태그 하나 단위로 매칭해 같은 id 의
+    ///   두 occurrence 가 서로 일치하는지 확인한 뒤 하나로 합친다 — 반쪽만 고친 수동 편집을
+    ///   여기서 잡는다.
+    private func parseHTMLDiagramSpec(_ html: String) throws -> HTMLDiagramSpec {
+        func attributes(_ tag: String) -> [String: String] {
+            var out: [String: String] = [:]
+            let pattern = try! NSRegularExpression(pattern: "([\\w-]+)=\"([^\"]*)\"")
+            let ns = tag as NSString
+            for m in pattern.matches(in: tag, range: NSRange(location: 0, length: ns.length)) {
+                out[ns.substring(with: m.range(at: 1))] = ns.substring(with: m.range(at: 2))
+            }
+            return out
+        }
+
+        let ns = html as NSString
+        let fullRange = NSRange(location: 0, length: ns.length)
+
+        // 1) 노드 블록: <g id="node-…"> 여는 태그부터 균형 잡힌 </g> 까지.
+        let gTagRE = try NSRegularExpression(pattern: "<g\\b[^>]*>|</g>")
+        let gTokens = gTagRE.matches(in: html, range: fullRange).map { m in
+            (text: ns.substring(with: m.range), range: m.range)
+        }
+
+        var nodeBlocks: [(id: String, attrLabel: String, body: String)] = []
+        var depth = 0
+        var openNodeStack: [(id: String, attrLabel: String, startDepth: Int, bodyStart: Int)] = []
+        for token in gTokens {
+            if token.text == "</g>" {
+                depth -= 1
+                if let top = openNodeStack.last, top.startDepth == depth {
+                    openNodeStack.removeLast()
+                    let body = ns.substring(with: NSRange(
+                        location: top.bodyStart, length: token.range.location - top.bodyStart))
+                    nodeBlocks.append((id: top.id, attrLabel: top.attrLabel, body: body))
+                }
+            } else {
+                let attrs = attributes(token.text)
+                if let gid = attrs["id"], gid.hasPrefix("node-"), let nodeID = attrs["data-node-id"] {
+                    openNodeStack.append((id: nodeID, attrLabel: attrs["data-node-label"] ?? "",
+                        startDepth: depth, bodyStart: token.range.location + token.range.length))
+                }
+                depth += 1
+            }
+        }
+        XCTAssertTrue(openNodeStack.isEmpty, "균형 파서가 닫히지 않은 <g id=\"node-…\"> 블록을 남김 — 파싱 버그")
+
+        // 긍정 대조: 여는 <g id="node-…"> 태그 수와 뽑아낸 블록 수가 같아야 한다(균형 파서가
+        // 깨지면 일부만 닫혀 조용히 줄어들 수 있다).
+        let rawNodeOpenCount = try NSRegularExpression(pattern: "<g id=\"node-")
+            .numberOfMatches(in: html, range: fullRange)
+        XCTAssertEqual(nodeBlocks.count, rawNodeOpenCount,
+            "노드 블록 파싱 개수(\(nodeBlocks.count))가 원시 <g id=\"node-…\"> 개수(\(rawNodeOpenCount))와 다름")
+
+        var speciesIDs = Set<String>()
+        var labeledNodes: [HTMLDiagramSpec.LabeledNode] = []
+        let primaryTextRE = try NSRegularExpression(pattern: "<text\\b[^>]*class=\"t-primary\"[^>]*>([^<]*)</text>")
+        for block in nodeBlocks {
+            if block.id.hasPrefix("digimental") { continue }
+            speciesIDs.insert(block.id)
+            let bodyNS = block.body as NSString
+            let matches = primaryTextRE.matches(in: block.body, range: NSRange(location: 0, length: bodyNS.length))
+            XCTAssertEqual(matches.count, 1,
+                "노드 '\(block.id)' 블록에 t-primary 텍스트가 정확히 1개가 아니라 \(matches.count)개")
+            guard let m = matches.first else { continue }
+            let visible = bodyNS.substring(with: m.range(at: 1)).trimmingCharacters(in: .whitespacesAndNewlines)
+            labeledNodes.append(HTMLDiagramSpec.LabeledNode(id: block.id, attrLabel: block.attrLabel, visibleLabel: visible))
+        }
+
+        // 2) 죠그레스 엣지: 여는 태그 하나 단위로 매칭(전방 N자 윈도우 금지 — 다음 엣지 속성과
+        // 섞인다). id 별로 동일 occurrence 대조 후 하나로 합친다.
+        let edgeTagRE = try NSRegularExpression(pattern: "<(?:path|g)\\b[^>]*data-edge-id=\"[^\"]*\"[^>]*>")
+        var edgesByID: [String: (from: String, to: String, label: String)] = [:]
+        for m in edgeTagRE.matches(in: html, range: fullRange) {
+            let attrs = attributes(ns.substring(with: m.range))
+            guard let id = attrs["data-edge-id"], let from = attrs["data-edge-from"],
+                  let to = attrs["data-edge-to"], let label = attrs["data-edge-label"]
+            else { continue }
+            if let existing = edgesByID[id] {
+                let matches = existing.from == from && existing.to == to && existing.label == label
+                XCTAssertTrue(matches,
+                    "엣지 '\(id)' 의 반복 occurrence 끼리 속성이 다름(반쪽만 손으로 고친 경우 의심): "
+                    + "\(existing) vs (\(from), \(to), \(label))")
+            } else {
+                edgesByID[id] = (from, to, label)
+            }
+        }
+        let jogressEdges = edgesByID.values.filter { $0.label == "죠그레스" }.map {
+            HTMLDiagramSpec.JogressEdge(from: $0.from, to: $0.to)
+        }
+
+        return HTMLDiagramSpec(speciesNodeIDs: speciesIDs, labeledNodes: labeledNodes, jogressEdges: jogressEdges)
+    }
+
+    /// 라인별 12장 전부의 (라인 키, HTML 스펙, 짝 JSON 스펙)을 반환한다.
+    ///
+    /// **통합 1장의 HTML(`Resources/digivolution.html`)은 의도적으로 뺀다.** `.gitignore:37`
+    /// 이 이 파일을 명시적으로 제외한다 — "브라우저 열람 전용 산출물, 앱은 이 파일을 쓰지
+    /// 않는다"(주석 인용), `scratchpad/gen_full.py` 로 재생성. 커밋된 트리에 없으므로
+    /// CI·클린 체크아웃에서 항상 파일 없음으로 죽는다.
+    ///
+    /// 통합 1장의 **JSON 쪽**(`diagrams/digivolution.workflow.json`)은 이 제외 근거가 적용되지
+    /// 않는다 — git 추적 파일이라 CI/클린 체크아웃에도 항상 존재한다. HTML 과 추적 상태가
+    /// 다르므로 분리해서 다룬다: JSON 쪽은
+    /// `testCombinedDiagramNodeLabelsMatchDatasetNames`/`testCombinedDiagramJogressEdgesMatchDataset`/
+    /// `testCombinedDiagramLabelsMatchLineDiagrams` 가 별도로 커버한다.
+    private func allHTMLAndJSONSpecPairs() throws -> [(fileKey: String, html: HTMLDiagramSpec, json: DiagramSpec)] {
+        let ds = try DigimonData.loaded()
+        XCTAssertEqual(ds.linesByKey.count, 12, "라인 수가 12가 아님 — 이 테스트의 전제가 깨짐")
+        return try ds.linesByKey.keys.sorted().map { key in
+            let html = try String(contentsOf: lineDiagramHTMLURL(key), encoding: .utf8)
+            return (key, try parseHTMLDiagramSpec(html), try loadDiagramSpec(key))
+        }
+    }
+
+    /// 노드 라벨(속성 + 화면 텍스트)이 JSON 스펙과 일치하는지, species 노드 집합이 같은지
+    /// 대조한다. 언어(한글/라틴) 분기를 두지 않는다 — HTML 과 JSON 은 같은 생성 파이프라인의
+    /// 산출물이라 항상 같은 언어여야 하고, JSON↔데이터셋 일치는 `testNodeLabelsMatchDatasetNames`
+    /// 가 이미 보장하므로 여기선 HTML↔JSON 만 보면 HTML↔데이터셋도 추이적으로 성립한다.
+    func testHTMLNodeLabelsMatchDiagramSpecJSON() throws {
+        var totalCompared = 0
+        for (fileKey, html, json) in try allHTMLAndJSONSpecPairs() {
+            // uniqueKeysWithValues 는 중복 노드 id 가 있으면 런타임 트랩을 낸다(메시지 없이 크래시,
+            // 같은 실행의 다른 테스트 결과까지 잃는다) — uniquingKeysWith 로 감지해 XCTFail 로 바꾼다.
+            var jsonLabelsByID: [String: String] = [:]
+            for node in json.labeledNodes {
+                if let existing = jsonLabelsByID[node.id], existing != node.label {
+                    XCTFail("'\(fileKey)': JSON 노드 id '\(node.id)' 가 서로 다른 라벨로 중복됨: '\(existing)' vs '\(node.label)'")
+                }
+                jsonLabelsByID[node.id] = node.label
+            }
+
+            XCTAssertEqual(html.speciesNodeIDs, Set(jsonLabelsByID.keys),
+                "'\(fileKey)': HTML species 노드 집합과 JSON species 노드 집합이 다름 — "
+                + "HTML 에만: \(html.speciesNodeIDs.subtracting(jsonLabelsByID.keys)), "
+                + "JSON 에만: \(Set(jsonLabelsByID.keys).subtracting(html.speciesNodeIDs))")
+
+            for node in html.labeledNodes {
+                totalCompared += 1
+                guard let jsonLabel = jsonLabelsByID[node.id] else {
+                    XCTFail("'\(fileKey)': HTML 노드 '\(node.id)' 가 JSON 스펙에 없음")
+                    continue
+                }
+                XCTAssertEqual(node.attrLabel, jsonLabel,
+                    "'\(fileKey)': 노드 '\(node.id)' 의 data-node-label 속성('\(node.attrLabel)')이 "
+                    + "JSON label('\(jsonLabel)')과 다름")
+                XCTAssertEqual(node.visibleLabel, jsonLabel,
+                    "'\(fileKey)': 노드 '\(node.id)' 의 화면 표시 텍스트(t-primary, '\(node.visibleLabel)')가 "
+                    + "JSON label('\(jsonLabel)')과 다름 — 속성은 맞는데 화면이 틀린 경우")
+            }
+        }
+        XCTAssertEqual(totalCompared, 67,
+            "HTML 라벨 노드 총수가 달라짐(12장 인스턴스 합 67 기대) — 파일 구성이 변경됨")
+    }
+
+    /// 죠그레스 엣지 끝점을 HTML 에서 뽑아 데이터셋과 직접 대조한다(JSON 쪽
+    /// `testJogressEdgesMatchDataset` 과 동일한 기준). JSON 이 맞아도 HTML 을 손으로
+    /// 잘못 고치면(이번에 실제로 발생) JSON 쪽 테스트만으론 못 잡는다.
+    func testHTMLJogressEdgesMatchDataset() throws {
+        let ds = try DigimonData.loaded()
+        let datasetTriples = Set(ds.jogressResults.map { key, result in Set(key.speciesIDs + [result]) })
+
+        var totalEdges = 0
+        for (fileKey, html, _) in try allHTMLAndJSONSpecPairs() {
+            var groups: [String: [String]] = [:]
+            for edge in html.jogressEdges {
+                totalEdges += 1
+                groups[edge.to, default: []].append(edge.from)
+            }
+            for (resultNodeID, parentNodeIDs) in groups {
+                guard let resultSpeciesID = Self.nodeToSpeciesID[resultNodeID] else {
+                    XCTFail("'\(fileKey)': HTML 죠그레스 결과 노드 '\(resultNodeID)' 가 nodeToSpeciesID 에 없음")
+                    continue
+                }
+                let parentSpeciesIDs = parentNodeIDs.compactMap { Self.nodeToSpeciesID[$0] }
+                XCTAssertEqual(parentSpeciesIDs.count, parentNodeIDs.count,
+                    "'\(fileKey)': HTML 죠그레스 결과 '\(resultNodeID)' 의 부모 중 nodeToSpeciesID 에 없는 것: \(parentNodeIDs)")
+                let triple = Set(parentSpeciesIDs + [resultSpeciesID])
+                XCTAssertTrue(datasetTriples.contains(triple),
+                    "'\(fileKey)': HTML 이 그린 죠그레스 (부모 \(parentNodeIDs)=\(parentSpeciesIDs), "
+                    + "결과 \(resultNodeID)=\(resultSpeciesID)) 가 digimon.json 의 jogress 배열에 없음 — "
+                    + "기대 삼중항 \(triple)")
+            }
+        }
+        // 12장 합 18. (edge-id 반복 occurrence 는 이미 하나로 합쳐진 값.) JSON 쪽
+        // testJogressEdgesMatchDataset 의 18 과 같아야 함 — 서로 다른 파일에서 뽑은 두
+        // 독립된 카운트가 일치하는 것도 교차검증이다.
+        XCTAssertEqual(totalEdges, 18, "HTML 의 '죠그레스' 라벨 엣지 총수가 달라짐 — 파일 구성이 변경됨")
+    }
+
+    // MARK: - (g) 통합 스펙 JSON(`diagrams/digivolution.workflow.json`) 가드
+
+    // 이 파일은 git 추적 파일인데(위 (f) 섹션 주석 참고) 어떤 테스트도 읽지 않아서 가드
+    // 커버리지가 0 이었다 — 노드 label 을 전혀 다른 종 이름으로 바꿔도 기존 11개 테스트가
+    // 전부 green 이었다(직접 확인). HTML 쪽(`Resources/digivolution.html`)은 gitignore 로
+    // 빠져 있어 계속 제외하되, JSON 쪽은 커밋된 트리에 항상 있으므로 별도로 가드한다.
+
+    private func combinedDiagramSpecURL() -> URL {
+        repoRootURL().appendingPathComponent("diagrams/digivolution.workflow.json")
+    }
+
+    private func combinedDiagramSpec() throws -> DiagramSpec {
+        let data = try Data(contentsOf: combinedDiagramSpecURL())
+        return try loadDiagramSpec(fromData: data, describedAs: "통합(digivolution.workflow.json)")
+    }
+
+    /// 통합 차트의 노드 라벨이 데이터셋 이름과 일치하는지 대조한다. `testNodeLabelsMatchDatasetNames`
+    /// 와 같은 판정 본체(`assertLabelMatchesDatasetName`)를 쓴다 — `baseName` 은 데이터셋 쪽에만
+    /// 적용해 "아트라캅테리몬(적)" 같은 변형이 기본형으로 잘려 통과하는 걸 막는다.
+    func testCombinedDiagramNodeLabelsMatchDatasetNames() throws {
+        let ds = try DigimonData.loaded()
+        let spec = try combinedDiagramSpec()
+        for node in spec.labeledNodes {
+            assertLabelMatchesDatasetName(node.label, speciesID: node.speciesID, dataset: ds,
+                context: "통합 차트: 노드 '\(node.id)'(species \(node.speciesID))")
+        }
+        XCTAssertEqual(spec.labeledNodes.count, 52, "통합 차트의 라벨 붙은 species 노드 총수가 달라짐")
+    }
+
+    /// 통합 차트의 죠그레스 엣지를 `digimon.json` 의 `jogress` 배열과 대조한다.
+    /// `testJogressEdgesMatchDataset` 과 동일한 기준(부모 2개, 삼중항이 데이터셋에 존재).
+    func testCombinedDiagramJogressEdgesMatchDataset() throws {
+        let ds = try DigimonData.loaded()
+        let datasetTriples = Set(ds.jogressResults.map { key, result in Set(key.speciesIDs + [result]) })
+        let spec = try combinedDiagramSpec()
+
+        var groups: [String: [String]] = [:]
+        for edge in spec.jogressEdges {
+            groups[edge.to, default: []].append(edge.from)
+        }
+        for (resultNodeID, parentNodeIDs) in groups {
+            guard let resultSpeciesID = Self.nodeToSpeciesID[resultNodeID] else {
+                XCTFail("통합 차트: 죠그레스 결과 노드 '\(resultNodeID)' 가 nodeToSpeciesID 에 없음")
+                continue
+            }
+            XCTAssertEqual(parentNodeIDs.count, 2,
+                "통합 차트: 죠그레스 결과 '\(resultNodeID)'(species \(resultSpeciesID))의 부모가 "
+                + "2개가 아니라 \(parentNodeIDs.count)개(\(parentNodeIDs))")
+            let parentSpeciesIDs = parentNodeIDs.compactMap { Self.nodeToSpeciesID[$0] }
+            XCTAssertEqual(parentSpeciesIDs.count, parentNodeIDs.count,
+                "통합 차트: 죠그레스 결과 '\(resultNodeID)' 의 부모 노드 중 nodeToSpeciesID 에 없는 것: \(parentNodeIDs)")
+            let triple = Set(parentSpeciesIDs + [resultSpeciesID])
+            XCTAssertTrue(datasetTriples.contains(triple),
+                "통합 차트: (부모 \(parentNodeIDs)=\(parentSpeciesIDs), 결과 \(resultNodeID)=\(resultSpeciesID)) "
+                + "가 digimon.json 의 jogress 배열에 없음 — 기대 삼중항 \(triple)")
+        }
+        XCTAssertEqual(spec.jogressEdges.count, 10, "통합 차트의 '죠그레스' 라벨 엣지 총수가 달라짐")
+        XCTAssertEqual(groups.count, 5, "통합 차트의 죠그레스 결과 노드 총수가 달라짐")
+    }
+
+    /// 통합 차트와 12장 라인 차트 사이의 라벨 드리프트를 잡는다. 같은 노드 id 가 통합 차트와
+    /// 어느 라인 차트에서 서로 다른 라벨이면 실패한다 — 각 파일 자체는 데이터셋과 맞아도
+    /// (`testNodeLabelsMatchDatasetNames`/`testCombinedDiagramNodeLabelsMatchDatasetNames` 가
+    /// 개별로 보장) 둘이 서로 다른 표기(전체형 vs 기본형 등)로 갈라질 수 있어 별도로 본다.
+    func testCombinedDiagramLabelsMatchLineDiagrams() throws {
+        let ds = try DigimonData.loaded()
+        let combined = try combinedDiagramSpec()
+        let combinedLabelsByID = Dictionary(uniqueKeysWithValues: combined.labeledNodes.map { ($0.id, $0.label) })
+
+        var comparedIDs = Set<String>()
+        for key in ds.linesByKey.keys {
+            let lineSpec = try loadDiagramSpec(key)
+            for node in lineSpec.labeledNodes {
+                comparedIDs.insert(node.id)
+                guard let combinedLabel = combinedLabelsByID[node.id] else {
+                    XCTFail("통합 차트에 노드 '\(node.id)'(라인 '\(key)') 가 없음")
+                    continue
+                }
+                XCTAssertEqual(combinedLabel, node.label,
+                    "노드 '\(node.id)': 통합 차트 라벨 '\(combinedLabel)' 이 라인 '\(key)' 라벨 '\(node.label)' 과 다름")
+            }
+        }
+        XCTAssertEqual(comparedIDs, Set(combinedLabelsByID.keys),
+            "통합 차트와 12장 라인 차트의 species 노드 집합이 다름 — "
+            + "통합에만: \(Set(combinedLabelsByID.keys).subtracting(comparedIDs)), "
+            + "라인에만: \(comparedIDs.subtracting(combinedLabelsByID.keys))")
+    }
+
     private func loadDiagramSpec(_ lineKey: String) throws -> DiagramSpec {
-        let url = diagramSpecURL(lineKey)
-        let data = try Data(contentsOf: url)
+        let data = try Data(contentsOf: diagramSpecURL(lineKey))
+        return try loadDiagramSpec(fromData: data, describedAs: lineKey)
+    }
+
+    /// `loadDiagramSpec(_:)` 의 파싱 본체. 통합 스펙(`diagrams/digivolution.workflow.json`)처럼
+    /// 라인 키로 경로를 못 만드는 파일도 이 함수로 직접 파싱한다 —
+    /// `combinedDiagramSpec()`(아래 (g) 섹션)가 사용한다.
+    private func loadDiagramSpec(fromData data: Data, describedAs label: String) throws -> DiagramSpec {
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let nodes = json["nodes"] as? [[String: Any]]
         else {
-            XCTFail("스펙 '\(lineKey)' 파싱 실패")
-            return DiagramSpec(speciesNodeIDs: [], digimentalItemNodes: [])
+            XCTFail("스펙 '\(label)' 파싱 실패")
+            return DiagramSpec(speciesNodeIDs: [], digimentalItemNodes: [], jogressEdges: [], labeledNodes: [])
         }
 
         var speciesIDs = Set<Int>()
         var itemNodes: [DiagramSpec.Node] = []
+        var labeledNodes: [DiagramSpec.LabeledNode] = []
         for node in nodes {
             guard let nodeID = node["id"] as? String else { continue }
             if nodeID.hasPrefix("digimental") {
@@ -325,8 +770,28 @@ final class DigimonEvolutionDiagramTests: XCTestCase {
                 }
             } else if let speciesID = Self.nodeToSpeciesID[nodeID] {
                 speciesIDs.insert(speciesID)
+                if let label = node["label"] as? String {
+                    labeledNodes.append(DiagramSpec.LabeledNode(id: nodeID, speciesID: speciesID, label: label))
+                }
+            } else {
+                // nodeToSpeciesID 가 모르는 노드. 조용히 넘기면 새로 추가된 노드가 라벨 대조를
+                // 전부 건너뛴다 — species 커버리지 테스트도 이 노드를 못 잡으므로 여기서 잡는다.
+                XCTFail("다이어그램 '\(label)' 의 노드 '\(nodeID)' 가 nodeToSpeciesID 테이블에 없음")
             }
         }
-        return DiagramSpec(speciesNodeIDs: speciesIDs, digimentalItemNodes: itemNodes)
+
+        var jogressEdges: [DiagramSpec.JogressEdge] = []
+        if let edges = json["edges"] as? [[String: Any]] {
+            for edge in edges {
+                guard edge["label"] as? String == "죠그레스",
+                      let from = edge["from"] as? String,
+                      let to = edge["to"] as? String
+                else { continue }
+                jogressEdges.append(DiagramSpec.JogressEdge(from: from, to: to))
+            }
+        }
+
+        return DiagramSpec(speciesNodeIDs: speciesIDs, digimentalItemNodes: itemNodes,
+            jogressEdges: jogressEdges, labeledNodes: labeledNodes)
     }
 }

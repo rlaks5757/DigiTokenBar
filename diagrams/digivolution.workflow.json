@@ -153,7 +153,7 @@
       "lane": "agumon",
       "col": 1,
       "type": "backend",
-      "label": "Greymon",
+      "label": "그레이몬",
       "width": 138,
       "height": 120,
       "brand": {
@@ -180,7 +180,7 @@
       "lane": "agumon",
       "col": 3,
       "type": "security",
-      "label": "War Greymon",
+      "label": "워그레이몬",
       "width": 138,
       "height": 120,
       "brand": {
@@ -193,7 +193,7 @@
       "lane": "jogress01",
       "col": 4,
       "type": "messagebus",
-      "label": "Omegamon",
+      "label": "오메가몬",
       "width": 138,
       "height": 120,
       "tag": "죠그레스",
@@ -207,7 +207,7 @@
       "lane": "gabumon",
       "col": 0,
       "type": "frontend",
-      "label": "Gabumon",
+      "label": "파피몬",
       "width": 138,
       "height": 120,
       "brand": {
@@ -276,7 +276,7 @@
       "lane": "piyomon",
       "col": 1,
       "type": "backend",
-      "label": "Birdramon",
+      "label": "버드라몬",
       "width": 138,
       "height": 120,
       "brand": {
@@ -289,7 +289,7 @@
       "lane": "piyomon",
       "col": 2,
       "type": "cloud",
-      "label": "Garudamon",
+      "label": "가루다몬",
       "width": 138,
       "height": 120,
       "brand": {
@@ -316,7 +316,7 @@
       "lane": "tentomon",
       "col": 1,
       "type": "backend",
-      "label": "Kabuterimon",
+      "label": "캅테리몬",
       "width": 138,
       "height": 120,
       "brand": {
@@ -329,10 +329,10 @@
       "lane": "tentomon",
       "col": 2,
       "type": "cloud",
-      "label": "Atlur Kabuterimon",
+      "label": "아트라캅테리몬",
       "width": 150,
       "height": 120,
-      "sublabel": "Blue",
+      "sublabel": "Atlur Kabuterimon (Blue)",
       "brand": {
         "url": "https://wikimon.net/images/f/f5/AtlurKabuterimon_vpet_xloader.png",
         "sha256": "1e339cea602cb20832d2e76418c092f9a186a7e71a5b29a7295d2c25a48f9800"
@@ -357,7 +357,7 @@
       "lane": "palmon",
       "col": 1,
       "type": "backend",
-      "label": "Togemon",
+      "label": "니드몬",
       "width": 138,
       "height": 120,
       "brand": {
@@ -370,7 +370,7 @@
       "lane": "palmon",
       "col": 2,
       "type": "cloud",
-      "label": "Lilimon",
+      "label": "릴리몬",
       "width": 138,
       "height": 120,
       "brand": {
@@ -397,7 +397,7 @@
       "lane": "gomamon",
       "col": 1,
       "type": "backend",
-      "label": "Ikkakumon",
+      "label": "원뿔몬",
       "width": 138,
       "height": 120,
       "brand": {
@@ -410,7 +410,7 @@
       "lane": "gomamon",
       "col": 2,
       "type": "cloud",
-      "label": "Zudomon",
+      "label": "쥬드몬",
       "width": 138,
       "height": 120,
       "brand": {
@@ -433,10 +433,10 @@
       "lane": "armor_patamon",
       "col": 2,
       "type": "messagebus",
-      "label": "Pegasmon",
+      "label": "페가수스몬",
       "width": 138,
       "height": 120,
-      "sublabel": "희망의 디지멘탈",
+      "sublabel": "Pegasmon · 희망의 디지멘탈",
       "brand": {
         "url": "https://wikimon.net/images/9/9c/Pegasmon_vpet_vb.png",
         "sha256": "ec7a23334aab50bf3035fbb99cb5081fbcda3f68927a892f81e26374682e88be"
@@ -461,7 +461,7 @@
       "lane": "patamon",
       "col": 1,
       "type": "backend",
-      "label": "Angemon",
+      "label": "엔젤몬",
       "width": 138,
       "height": 120,
       "brand": {
@@ -474,7 +474,7 @@
       "lane": "patamon",
       "col": 2,
       "type": "cloud",
-      "label": "Holy Angemon",
+      "label": "홀리엔젤몬",
       "width": 138,
       "height": 120,
       "brand": {
@@ -487,7 +487,7 @@
       "lane": "patamon",
       "col": 3,
       "type": "security",
-      "label": "Seraphimon",
+      "label": "세라피몬",
       "width": 138,
       "height": 120,
       "brand": {
@@ -515,7 +515,7 @@
       "lane": "armadimon",
       "col": 0,
       "type": "frontend",
-      "label": "Armadimon",
+      "label": "아르마몬",
       "width": 138,
       "height": 120,
       "brand": {
@@ -528,7 +528,7 @@
       "lane": "armadimon",
       "col": 1,
       "type": "backend",
-      "label": "Ankylomon",
+      "label": "안킬로몬",
       "width": 138,
       "height": 120,
       "brand": {
@@ -551,10 +551,10 @@
       "lane": "armor_armadimon",
       "col": 2,
       "type": "messagebus",
-      "label": "Digmon",
+      "label": "디그몬",
       "width": 138,
       "height": 120,
-      "sublabel": "지식의 디지멘탈",
+      "sublabel": "Digmon · 지식의 디지멘탈",
       "brand": {
         "url": "https://wikimon.net/images/a/ae/Digmon_vpet_vb.png",
         "sha256": "817536efd1a588194b6432ff7b27e95ef55227dc40fd267c363c20b16817583d"
@@ -565,10 +565,10 @@
       "lane": "armor_armadimon",
       "col": 3,
       "type": "messagebus",
-      "label": "Submarimon",
+      "label": "잠수몬",
       "width": 138,
       "height": 120,
-      "sublabel": "성실의 디지멘탈",
+      "sublabel": "Submarimon · 성실의 디지멘탈",
       "brand": {
         "url": "https://wikimon.net/images/7/7a/Submarimon_vpet_vb.png",
         "sha256": "9c5a8030f31caa6f53764e7d4251b455e847c72a21fc1c7408f786b98405d14b"
@@ -617,7 +617,7 @@
       "lane": "tailmon",
       "col": 2,
       "type": "cloud",
-      "label": "Angewomon",
+      "label": "엔젤우몬",
       "width": 138,
       "height": 120,
       "brand": {
@@ -644,7 +644,7 @@
       "lane": "jogress_silphymon",
       "col": 2,
       "type": "messagebus",
-      "label": "Silphymon",
+      "label": "실피드몬",
       "width": 138,
       "height": 120,
       "tag": "죠그레스",
@@ -658,7 +658,7 @@
       "lane": "hawkmon",
       "col": 0,
       "type": "frontend",
-      "label": "Hawkmon",
+      "label": "호크몬",
       "width": 138,
       "height": 120,
       "brand": {
@@ -671,7 +671,7 @@
       "lane": "hawkmon",
       "col": 1,
       "type": "backend",
-      "label": "Aquilamon",
+      "label": "아큐라몬",
       "width": 138,
       "height": 120,
       "brand": {
@@ -708,10 +708,10 @@
       "lane": "armor_hawkmon",
       "col": 3,
       "type": "messagebus",
-      "label": "Shurimon",
+      "label": "수리몬",
       "width": 138,
       "height": 120,
-      "sublabel": "순수의 디지멘탈",
+      "sublabel": "Shurimon · 순수의 디지멘탈",
       "brand": {
         "url": "https://wikimon.net/images/1/15/Shurimon_vpet_vb.png",
         "sha256": "96f4e7ce32d79053e2ec0877ff83caf80150afee341a02a7e4e202c5ad599b5c"
@@ -746,10 +746,10 @@
       "lane": "armor_vmon",
       "col": 3,
       "type": "messagebus",
-      "label": "Depthmon",
+      "label": "마린몬",
       "width": 138,
       "height": 120,
-      "sublabel": "성실의 디지멘탈",
+      "sublabel": "Depthmon · 성실의 디지멘탈",
       "brand": {
         "url": "https://wikimon.net/images/2/2a/Depthmon_vpet_dark_color.png",
         "sha256": "a83450fc08af94960e0d002590ef6971696232ed016a6ae00b5ef17c6b7702b3"
@@ -774,10 +774,10 @@
       "lane": "armor_vmon",
       "col": 5,
       "type": "messagebus",
-      "label": "Lighdramon",
+      "label": "라이드라몬",
       "width": 138,
       "height": 120,
-      "sublabel": "우정의 디지멘탈",
+      "sublabel": "Lighdramon · 우정의 디지멘탈",
       "brand": {
         "url": "https://wikimon.net/images/2/2a/Lighdramon_vpet_vb.png",
         "sha256": "a52b4398c350fa8e689b6c15e3df9357bee7640d07ffc96ba3feda15abb8c21b"
@@ -802,7 +802,7 @@
       "lane": "vmon",
       "col": 1,
       "type": "backend",
-      "label": "XV-mon",
+      "label": "엑스브이몬",
       "width": 138,
       "height": 120,
       "brand": {
@@ -844,7 +844,7 @@
       "lane": "wormmon",
       "col": 1,
       "type": "backend",
-      "label": "Stingmon",
+      "label": "스팅몬",
       "width": 138,
       "height": 120,
       "brand": {

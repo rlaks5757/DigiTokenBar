@@ -61,7 +61,7 @@
       "lane": "agumon",
       "col": 1,
       "type": "backend",
-      "label": "Greymon",
+      "label": "그레이몬",
       "width": 138,
       "height": 92,
       "brand": {
@@ -88,7 +88,7 @@
       "lane": "agumon",
       "col": 3,
       "type": "security",
-      "label": "War Greymon",
+      "label": "워그레이몬",
       "width": 138,
       "height": 92,
       "brand": {
@@ -116,7 +116,7 @@
       "lane": "jogress01",
       "col": 4,
       "type": "messagebus",
-      "label": "Omegamon",
+      "label": "오메가몬",
       "width": 138,
       "height": 92,
       "tag": "죠그레스",
