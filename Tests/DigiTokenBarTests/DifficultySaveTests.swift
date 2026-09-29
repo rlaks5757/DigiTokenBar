@@ -23,7 +23,11 @@ final class DifficultySaveTests: XCTestCase {
         }
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("difficulty-save-\(UUID()).json")
         try JSONEncoder().encode(state).write(to: url)
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: "difficulty-save-\(UUID())"))
+        // `defer` 가 아니라 `addTeardownBlock` 이다 — 이 defaults 는 호출부로 반환돼 계속 읽히고
+        // 두 번째 store 까지 만든다. 등록을 store 생성보다 **먼저** 해서 도중에 throw 해도 남지 않게 한다.
+        let suite = "difficulty-save-\(UUID())"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        addTeardownBlock { UserDefaults.standard.removePersistentDomain(forName: suite) }
         defaults.set(difficulty, forKey: "growthDifficulty")
         defaults.set(20.0, forKey: "shopDifficulty")
         let store = CompanionStore(provider: DifficultySaveProvider(), fileURL: url,

@@ -397,6 +397,9 @@ struct EvoLineView: View {
 @MainActor
 struct CompanionHeader: View {
     let store: CompanionStore
+    /// 부화할 유아기 종 직접 선택 화면으로 보내는 진입점. nil = 진입점을 그리지 않는다
+    /// (플로팅 펫처럼 팝오버 내비게이션이 없는 호출부용). `onBack`/`onClose` 와 같은 클로저 패턴.
+    var onPickSpecies: (() -> Void)?
     // 연출 상태 — 부화/진화 순간 흰 플래시 + 스프링 스케일(본가 진화 신 오마주)
     @State private var flashOpacity: Double = 0
     @State private var celebScale: CGFloat = 1
@@ -443,6 +446,29 @@ struct CompanionHeader: View {
         }
         .onChange(of: store.isArmored) { _, armored in
             if !armored { confirmingUnarmor = false }   // 자동 해제(정규 진화)가 확인 상태를 남기지 않게
+        }
+    }
+
+    /// 부화할 유아기 종 직접 선택 진입점 — **알 상태에서만** 그린다(이 프로퍼티는 알 분기 안에서
+    /// 호출되고, `canPickHatchSpecies` 가 활성 개체까지 다시 본다). 활성 개체가 있을 때 노출하지
+    /// 않는 이유: 고를 대상인 알이 없고, 여기서 활성 개체를 치우면 그게 방생이 된다(상점 알 카드의
+    /// 역할이고, 그쪽은 도감 기록을 남긴다).
+    ///
+    /// 후보가 0개면(도감에 유아기 기록이 없는 신규 플레이어, 또는 보증 알이 후보를 다 걸러낸 경우)
+    /// 진입점 자체를 숨긴다 — 죠그레스 컨트롤이 조합 없는 종에 죽은 버튼을 두지 않는 것과 같은 태도.
+    @ViewBuilder
+    private var speciesPickControl: some View {
+        if let onPickSpecies, store.canPickHatchSpecies {
+            HStack(spacing: 6) {
+                if let picked = store.pickedHatchName {
+                    Text(store.l.eggPickChosen(picked))
+                        .font(.caption2).foregroundStyle(Color.accentColor)
+                        .lineLimit(1).minimumScaleFactor(0.8)
+                }
+                Spacer(minLength: 4)
+                Button(store.l.eggPickEntry, action: onPickSpecies)
+                    .buttonStyle(.bordered).controlSize(.small)
+            }
         }
     }
 
@@ -595,6 +621,7 @@ struct CompanionHeader: View {
                                 .font(.caption2).foregroundStyle(.tertiary)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
+                        speciesPickControl
                     }
                     Text(statusLine).font(.caption2).foregroundStyle(.secondary)
                 }

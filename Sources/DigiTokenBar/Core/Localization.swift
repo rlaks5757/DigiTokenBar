@@ -771,6 +771,60 @@ struct L {
           "⏳ A eclosão está atrasada — nova tentativa na próxima atualização",
           "⏳ Das Schlüpfen verzögert sich — neuer Versuch bei der nächsten Aktualisierung")
     }
+    // MARK: 배치할 디지몬 직접 선택 (알 상태 — 도감에 등록된 유아기 종 지정)
+
+    /// 알 카드 밑 진입점. 랜덤을 기다리는 대신 고를 수 있다는 것만 짧게 말한다.
+    var eggPickEntry: String {
+        t("직접 고르기", "Choose one", "自分で選ぶ", "Elegir uno", "En choisir un", "Escolher um", "Selbst wählen")
+    }
+    /// 선택 화면 제목.
+    var eggPickTitle: String {
+        t("부화할 디지몬 고르기", "Choose what hatches", "孵化するデジモンを選ぶ",
+          "Elige qué eclosiona", "Choisis ce qui éclôt", "Escolha o que vai chocar",
+          "Wähle, was schlüpft")
+    }
+    /// 선택 화면 안내 — 무엇이 후보인지(도감에 등록된 유아기) + 임계는 그대로라는 것.
+    var eggPickHint: String {
+        t("도감에 등록된 유아기 디지몬 중에서 고를 수 있어요. 부화까지 필요한 토큰은 그대로예요.",
+          "Pick from the Baby Digimon in your Digidex. The tokens needed to hatch don't change.",
+          "図鑑に登録された幼年期デジモンから選べます。孵化に必要なトークンは変わりません。",
+          "Elige entre los Digimon bebé de tu Digidex. Los tokens necesarios para eclosionar no cambian.",
+          "Choisis parmi les Digimon Bébé de ton Digidex. Les tokens nécessaires à l'éclosion ne changent pas.",
+          "Escolha entre os Digimon bebê da sua Digidex. Os tokens necessários para chocar não mudam.",
+          "Wähle aus den Baby-Digimon in deinem Digidex. Die zum Schlüpfen nötigen Tokens bleiben gleich.")
+    }
+    /// 보증 알에서 선택할 때 — 후보가 보증 등급으로 좁혀져 있다는 설명(비어 보이는 이유 포함).
+    func eggPickGuaranteeNote(_ tier: String) -> String {
+        t("\(tier) 이상 확정 알이라 그 등급 이상인 라인만 보여요.",
+          "This egg guarantees \(tier) or better, so only those lines are listed.",
+          "\(tier) 以上確定のタマゴなので、その等級以上のラインだけ表示されます。",
+          "Este huevo garantiza \(tier) o superior, así que solo se muestran esas líneas.",
+          "Cet œuf garantit \(tier) ou mieux : seules ces lignées sont affichées.",
+          "Este ovo garante \(tier) ou melhor, então só essas linhas aparecem.",
+          "Dieses Ei garantiert \(tier) oder besser – nur diese Linien werden gezeigt.")
+    }
+    /// 선택 확정 후 알 카드에 붙는 한 줄 — 무엇이 깨어날지 예고.
+    func eggPickChosen(_ name: String) -> String {
+        t("\(name)이(가) 깨어날 예정이에요.", "\(name) will hatch.", "\(name) が生まれる予定です。",
+          "Va a eclosionar \(name).", "\(name) va éclore.", "\(name) vai chocar.",
+          "\(name) wird schlüpfen.")
+    }
+    /// 선택 화면의 행 버튼 — 이 종으로 확정.
+    var eggPickConfirm: String {
+        t("이 디지몬으로", "Hatch this one", "このデジモンにする", "Que eclosione este",
+          "Faire éclore celui-ci", "Chocar este", "Dieses schlüpfen lassen")
+    }
+    /// 후보가 비어 있을 때(진입점을 숨기므로 도달은 드물다 — 보증 필터로 비는 경우의 안전망).
+    var eggPickEmpty: String {
+        t("아직 고를 수 있는 유아기 디지몬이 없어요. 한 마리를 끝까지 키우면 열려요.",
+          "No Baby Digimon to choose yet. Raise one to graduation to unlock this.",
+          "まだ選べる幼年期デジモンがいません。1体を卒業まで育てると解放されます。",
+          "Aún no hay Digimon bebé para elegir. Cría uno hasta graduarse para desbloquearlo.",
+          "Aucun Digimon Bébé disponible. Élève-en un jusqu'au diplôme pour débloquer cette option.",
+          "Ainda não há Digimon bebê para escolher. Crie um até a formatura para liberar.",
+          "Noch keine Baby-Digimon zur Wahl. Zieh eines bis zum Abschied groß, um das freizuschalten.")
+    }
+
     func toNextEvolution(_ amount: String) -> String { t("다음 진화까지 \(amount)", "\(amount) to next evolution", "次の進化まで \(amount)", "\(amount) para la siguiente evolución", "\(amount) avant la prochaine évolution", "\(amount) para a próxima evolução", "\(amount) bis zur nächsten Entwicklung") }
     func toGraduation(_ amount: String) -> String { t("졸업까지 \(amount)", "\(amount) to graduation", "卒業まで \(amount)", "\(amount) para graduarse", "\(amount) avant le diplôme", "\(amount) para se formar", "\(amount) bis zum Abschied") }
     func growthBoost(_ multiplier: Int) -> String { t("\(multiplier)× 성장", "\(multiplier)× growth", "成長 \(multiplier)倍", "Crecimiento ×\(multiplier)", "Croissance ×\(multiplier)", "Crescimento ×\(multiplier)", "\(multiplier)× Wachstum") }

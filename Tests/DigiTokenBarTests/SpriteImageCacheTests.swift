@@ -2,6 +2,41 @@ import AppKit
 import XCTest
 @testable import DigiTokenBar
 
+/// 이 파일의 `SpriteStore` 는 전부 이 recorder 를 주입받는다 — `fetchWikimon` 을 주입하지 않으면
+/// 기본값이 실제 `URLSession.shared` 라, 캐시 퇴출이나 파일명 변경으로 조회가 미스되는 순간 조용히
+/// 실제 Wikimon 요청이 나간다(디스크에 파일을 미리 써서 "우연히" 오프라인인 상태였다).
+/// 단순 `nil` 스텁으로는 그 구멍이 그대로 남으므로, **도달 자체를 결함으로 기록**한다.
+///
+/// `fetchWikimon` 이 `@Sendable` 이라 단순 `var` 캡처는 Swift 6 strict concurrency 에서 컴파일
+/// 에러다 — 도달 사실을 actor 뒤에 모은다(`WikimonSpriteRequestTests.FetchRecorder` 와 같은 패턴이되,
+/// 그쪽은 file-private 이라 재사용할 수 없고 의도도 다르다: 저쪽은 호출을 관찰하고, 이쪽은 금지한다).
+private actor NetworkReachRecorder {
+    private(set) var reachedFilenames: [String] = []
+
+    func record(_ filename: String) { reachedFilenames.append(filename) }
+}
+
+/// 네트워크에 도달하면 즉시 실패로 기록하고 `nil` 을 반환하는 fetcher.
+/// `nil` 을 돌려주는 이유: 바이트를 돌려주면 `data(filename:)` 이 temp 디렉토리에 파일을 써서
+/// 도달이 오히려 조용한 통과로 위장된다. 도달 **시점**에 실패를 심는 게 이 클로저의 몫이다 —
+/// 이어지는 `XCTUnwrap` 이 테스트를 중단시켜도 이미 기록이 남는다(그 경우 말미의
+/// `assertNoNetworkReach` 는 실행되지 않으므로, 귀속은 이쪽 `XCTFail` 이 담당한다).
+private func failOnNetworkReach(_ recorder: NetworkReachRecorder) -> @Sendable (URLRequest) async -> Data? {
+    { request in
+        let filename = request.url?.lastPathComponent ?? request.url?.absoluteString ?? "<no url>"
+        await recorder.record(filename)
+        XCTFail("이 테스트는 오프라인이어야 한다 — 실제 Wikimon 요청이 나갔다: \(filename)")
+        return nil
+    }
+}
+
+/// 도달 0건 단정 — 테스트가 끝까지 갔을 때 총량을 고정한다(중단된 경우는 위 `XCTFail` 이 덮는다).
+private func assertNoNetworkReach(_ recorder: NetworkReachRecorder,
+                                  file: StaticString = #filePath, line: UInt = #line) async {
+    let reached = await recorder.reachedFilenames
+    XCTAssertEqual(reached, [], "네트워크 도달 0건이어야 한다", file: file, line: line)
+}
+
 /// Exercise the production loaders with generated pixels and an isolated disk cache.
 /// Reusing raw Data alone does not prevent View.init from reopening files and creating NSImages.
 @MainActor
@@ -90,7 +125,8 @@ final class SpriteImageCacheTests: XCTestCase {
 
     func testAsyncLoadsPopulateTheSynchronousCacheAndReuseEachOther() async throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("sprite-async-\(UUID().uuidString)")
-        let store = SpriteStore(directory: dir)
+        let recorder = NetworkReachRecorder()
+        let store = SpriteStore(directory: dir, fetchWikimon: failOnNetworkReach(recorder))
         defer { try? FileManager.default.removeItem(at: dir) }
         let bitmap = try XCTUnwrap(NSBitmapImageRep(
             bitmapDataPlanes: nil, pixelsWide: 4, pixelsHigh: 6, bitsPerSample: 8,
@@ -120,11 +156,13 @@ final class SpriteImageCacheTests: XCTestCase {
             let again = await SpriteLoader.image(filenames: [filename], store: store)
             XCTAssertTrue(again === first, "the async path must also reuse the image, not just the byte cache")
         }
+        await assertNoNetworkReach(recorder)
     }
 
     func testItemLoadsShareTheImageCacheInBothDirections() async throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("item-cache-\(UUID().uuidString)")
-        let store = SpriteStore(directory: dir)
+        let recorder = NetworkReachRecorder()
+        let store = SpriteStore(directory: dir, fetchWikimon: failOnNetworkReach(recorder))
         defer { try? FileManager.default.removeItem(at: dir) }
         let bitmap = try XCTUnwrap(NSBitmapImageRep(
             bitmapDataPlanes: nil, pixelsWide: 2, pixelsHigh: 2, bitsPerSample: 8,
@@ -163,11 +201,13 @@ final class SpriteImageCacheTests: XCTestCase {
             let again = await SpriteLoader.itemImage(name: name, store: store)
             XCTAssertTrue(again === first)
         }
+        await assertNoNetworkReach(recorder)
     }
 
     func testCorruptCacheFilesDecodeToNilWithoutNetwork() async throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("sprite-fallback-\(UUID().uuidString)")
-        let store = SpriteStore(directory: dir)
+        let recorder = NetworkReachRecorder()
+        let store = SpriteStore(directory: dir, fetchWikimon: failOnNetworkReach(recorder))
         defer { try? FileManager.default.removeItem(at: dir) }
         let bitmap = try XCTUnwrap(NSBitmapImageRep(
             bitmapDataPlanes: nil, pixelsWide: 4, pixelsHigh: 6, bitsPerSample: 8,
@@ -185,5 +225,6 @@ final class SpriteImageCacheTests: XCTestCase {
         // 디코딩 실패는 네트워크를 타지 않고 nil — 뷰가 이모지로 폴백한다.
         let item = await SpriteLoader.itemImage(name: "Digimental_courage.jpg", store: store)
         XCTAssertNil(item)
+        await assertNoNetworkReach(recorder)
     }
 }

@@ -27,10 +27,15 @@ final class PopoverNavigation {
     /// 설정을 열 때 고급 섹션을 펼친 채로 시작할지. 세션 키 행이 접힌 disclosure 안에 살아서,
     /// 그냥 설정만 열면 "만료됐다"를 보고 들어온 사용자가 고칠 입력란을 못 찾는다.
     var expandAdvancedOnOpen = false
+    /// 부화할 유아기 종 직접 선택 화면. 설정과 같은 층(탭 피커 위)에 둔다 — 탭 안의
+    /// `DigimonDetailView` 처럼 로컬 @State 로 밀어 넣으면 세그먼트 피커 아래에 그려진다.
+    /// `reset()` 대상이다: 팝오버를 닫았다 열면 항상 Home 으로 돌아가야 한다.
+    var showEggPicker = false
 
     func reset() {
         showSettings = false
         expandAdvancedOnOpen = false
+        showEggPicker = false
         tab = .home
     }
 
@@ -76,6 +81,9 @@ struct PopoverView: View {
                     .environment(store)
                     .environment(companion)
                     .environment(updater)
+            } else if nav.showEggPicker {
+                // 설정과 같은 층 — 시트가 아니라 팝오버 내부 화면 전환이다(위 NOTE 참고).
+                EggPickerView(store: companion) { nav.showEggPicker = false }
             } else {
                 mainContent
             }
@@ -130,7 +138,7 @@ struct PopoverView: View {
             } else if nav.tab == .shop {
                 ShopView(store: companion, nav: nav)
             } else {
-                CompanionHeader(store: companion)
+                CompanionHeader(store: companion, onPickSpecies: { nav.showEggPicker = true })
                 Divider()
                 header
                 Divider()
