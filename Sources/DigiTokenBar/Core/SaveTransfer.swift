@@ -13,7 +13,13 @@ struct SaveEnvelope: Codable, Sendable {
     /// v3: 본문 CompanionState 의 종 식별자 세대(saveVersion)가 바뀌었다 — 구버전 앱이 새 세대로
     /// 내보낸 파일을 받았을 때 이 스키마 번호만으로도 먼저 걸러내기 위해 올린다. 로컬 로드 게이트
     /// (CompanionState.currentSaveVersion)와 별개로, "구버전 앱이 새 세대를 수입"하는 경로를 막는다.
-    static let schemaVersion = 3
+    /// v4: `CompanionState.stored`(보관함) 추가 — `CompanionState.currentSaveVersion` 은 그대로
+    /// 2 다(순수 추가 필드라 종 식별자 세대는 안 바뀐다). 하지만 여기(`schemaVersion`)는 올린다:
+    /// 구버전 앱이 이 필드를 가진 파일을 받으면 `decode(_:)` 는 통과시키고(관대 디코딩이 모르는 키를
+    /// 흡수) 이후 `save()` 가 `stored` 없이 재인코딩해 보관 개체를 **조용히 영구 유실**시킨다.
+    /// 스키마를 올리면 `header.schema <= schemaVersion` 가드가 구버전에서 즉시 `newerSchema` 로
+    /// 거부해 "앱을 업데이트하라"는 정확한 안내로 바뀐다. 새 빌드는 `<=` 라 v3 파일도 그대로 받는다.
+    static let schemaVersion = 4
 
     var format: String
     var schema: Int
@@ -191,6 +197,21 @@ enum SaveTransfer {
     /// 아머체 10종)은 12개 라인의 stages 어디에도 없으므로 "유령 종을 떨군다" 규칙을 넣으면 그 기록이
     /// 전부 사라진다. 그 기록이 `hasJogressPartnerRecord` 의 유일한 근거라, 게이트는 green 으로
     /// 통과하면서 팔라딘 모드(481)만 조용히 영구 도달 불가가 된다(EVOLUTION.md §3).
+    /// `MonState` 산술 필드 정규화 — `active` 와 `stored` 각 칸에 동일하게 적용한다(둘 다 손으로
+    /// 편집되거나 구버전에서 넘어올 수 있는 "지금 키우는 개체" 형태라 같은 트랩에 노출된다).
+    private static func normalizedMon(_ mon: MonState, clampToken: (Int) -> Int) -> MonState {
+        var mon = mon
+        mon.usedAtStage = clampToken(mon.usedAtStage)
+        // totalForms 는 `kk * (kk + 1)` 형태로 쓰여(DigimonBalance.phaseThreshold) 큰 값이 그 자체로 트랩이다.
+        mon.totalForms = min(max(1, mon.totalForms), 12)
+        mon.stageIndex = min(max(0, mon.stageIndex), max(0, mon.pathIDs.count - 1))
+        // stageIndex 를 조인 **뒤에** 판정한다 — currentID 가 조인 결과를 읽으므로 순서가 뒤바뀌면
+        // 손상된 인덱스가 가리키는 엉뚱한 종을 기준으로 아머 유효성을 보게 된다.
+        mon.armorID = validArmorID(mon.armorID, forLadderSpecies: mon.currentID)
+        mon.profile?.sanitize()
+        return mon
+    }
+
     static func sanitized(_ state: CompanionState) -> CompanionState {
         func clampToken(_ v: Int) -> Int { min(max(0, v), maxTokenValue) }
         var s = state
@@ -211,18 +232,15 @@ enum SaveTransfer {
         // load() 의 .corrupt 복구도 안 걸려 파일을 손으로 지우기 전엔 앱을 못 쓴다.
         // 관대 디코딩은 모르는 rawValue 만 걸러낼 뿐 **아는데 만족 불가능한 값**은 그대로 통과시킨다.
         if s.eggTier?.captureRateCeiling == nil { s.eggTier = nil }
-        if var active = s.active {
-            active.usedAtStage = clampToken(active.usedAtStage)
-            // totalForms 는 `kk * (kk + 1)` 형태로 쓰여(DigimonBalance.phaseThreshold) 큰 값이 그 자체로 트랩이다.
-            active.totalForms = min(max(1, active.totalForms), 12)
-            active.stageIndex = min(max(0, active.stageIndex), max(0, active.pathIDs.count - 1))
-            // stageIndex 를 조인 **뒤에** 판정한다 — currentID 가 조인 결과를 읽으므로 순서가 뒤바뀌면
-            // 손상된 인덱스가 가리키는 엉뚱한 종을 기준으로 아머 유효성을 보게 된다.
-            active.armorID = validArmorID(active.armorID, forLadderSpecies: active.currentID)
-            active.profile?.sanitize()
-            s.active = active
+        if let active = s.active {
+            s.active = normalizedMon(active, clampToken: clampToken)
         }
         for index in s.dex.indices { s.dex[index].profile?.sanitize() }
+        // 보관함도 활성 개체와 같은 트랩에 노출된다 — 손편집 세이브가 보관 칸의 totalForms/stageIndex 를
+        // 극단값으로 채우면 꺼내는 순간(`retrieveStored` 가 `state.active` 로 대입) 그대로 산술 트랩이 된다.
+        for index in s.stored.indices {
+            s.stored[index].mon = normalizedMon(s.stored[index].mon, clampToken: clampToken)
+        }
         s.reconcileRepresentativeSelection()
         return s
     }

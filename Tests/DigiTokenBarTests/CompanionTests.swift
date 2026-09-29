@@ -766,10 +766,14 @@ final class CompanionStoreTests: XCTestCase {
         XCTAssertEqual(s.dexSpecies.map(\.id), [1, 2], "육성 중 도달분")
         XCTAssertTrue(s.buyFreshEgg())
 
-        XCTAssertEqual(s.dexSpecies.map(\.id), [1, 2], "놓아준 뒤에도 같은 두 종")
-        let released = try XCTUnwrap(s.state.dex.last)
-        XCTAssertEqual(released.chainOrder, [1, 2])
-        XCTAssertEqual(released.finalID, 2, "도달한 마지막 형태")
+        XCTAssertEqual(s.dexSpecies.map(\.id), [1, 2], "보관한 뒤에도 같은 두 종")
+        // 알 구입은 이제 방생이 아니라 보관이다 — 도감 기록이 생기지 않고 stored 칸으로 옮겨간다.
+        // 도달분 판정(prefix(stageIndex+1))은 active 와 stored 가 같은 규칙을 쓴다.
+        XCTAssertTrue(s.state.dex.isEmpty, "보관은 도감에 기록을 만들지 않는다")
+        let stored = try XCTUnwrap(s.state.stored.last)
+        XCTAssertEqual(stored.mon.pathIDs, [1, 2], "실현 경로 = 도달분")
+        XCTAssertEqual(stored.mon.plannedPathIDs, [1, 2, 3], "계획 경로도 보존 — 이어서 키울 수 있어야 한다")
+        XCTAssertEqual(stored.mon.stageIndex, 1, "도달 단계도 그대로")
         XCTAssertFalse(s.dexSpecies.contains { $0.id == 3 }, "미도달 진화형은 보유가 아니다")
     }
 

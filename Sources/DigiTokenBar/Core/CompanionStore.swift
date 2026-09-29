@@ -309,6 +309,11 @@ final class CompanionStore {
     /// 도감에는 영구 보존된 졸업 개체와 현재 키우는 디지몬을 함께 표시한다.
     /// 현재 개체는 영속 dex 에 중복 저장하지 않고 화면용 항목으로 합성한다. 졸업 시 active 가 사라지고
     /// 같은 개체의 영구 DexEntry 가 추가되므로 목록 개수는 그대로 유지된다.
+    ///
+    /// **의도적으로 `state.stored` 는 합성하지 않는다.** 이 목록은 종 로그가 아니라 "지금 키우는
+    /// 개체 + 이미 졸업한 개체" 의 **개체 단위 동행 기록**이다(종 단위 보유 여부는 `dexSpecies` 의
+    /// 몫이라 보관 개체를 포함한다 — 서로 다른 축). 보관은 "지금 키우는 중" 이 아니므로 여기 안
+    /// 뜨는 게 맞다 — 뜨면 활성/보관 두 상태가 로그에서 구분이 안 된다.
     private var activeDexEntry: DexEntry? {
         guard let active = state.active else { return nil }
         return DexEntry(
@@ -324,33 +329,6 @@ final class CompanionStore {
                     active.pathIDs.compactMap { id in line.names[id].map { (id, $0) } })
             }
         )
-    }
-
-    /// 놓아준 개체의 영구 기록 — 알을 새로 사서 육성을 포기하는 순간 만든다.
-    ///
-    /// **도달한 형태만 담는다**(`pathIDs.prefix(stageIndex + 1)`). 도감이 육성 중 보여주던 범위와
-    /// 같아야 놓아준 뒤에도 칸 구성이 그대로 유지된다 — `plannedPathIDs` 나 `pathIDs` 전체를 쓰면
-    /// 도달한 적 없는 진화형까지 보유로 잡힌다(`dexSpecies` 가 같은 prefix 규칙을 쓴다).
-    ///
-    /// `caughtAt` 은 놓아준 시각이다: 동행 기록이 그 값으로 정렬하므로 기록이 남은 시점과 일치해야 한다.
-    private func releasedDexEntry(from a: MonState) -> DexEntry {
-        // stageIndex 가 음수·범위 밖이어도 최소 한 형태는 남긴다(손상 상태 파일 방어 — MonState.currentID 와 같은 태도).
-        let reached = Array(a.pathIDs.prefix(max(1, a.stageIndex + 1)))
-        let chain = reached.isEmpty ? [a.baseID] : reached
-        let now = clock()
-        return DexEntry(
-            id: a.profile?.instanceID ?? UUID().uuidString,
-            baseID: a.baseID,
-            finalID: chain.last ?? a.baseID,
-            chainOrder: chain,
-            rarity: a.rarity,
-            caughtAt: now,
-            profile: a.profile,
-            names: currentLine.map { line in
-                Dictionary(uniqueKeysWithValues:
-                    chain.compactMap { id in line.names[id].map { (id, $0) } })
-            },
-            releasedAt: now)
     }
 
     var dexEntries: [DexEntry] {
@@ -404,9 +382,9 @@ final class CompanionStore {
 
     /// 도감 목록 — 보유 종만, 도감 번호 오름차순.
     ///
-    /// 포함 종 = 졸업분 `chainOrder` ∪ 현재 개체의 **도달분** `pathIDs[0...stageIndex]`.
-    /// `plannedPathIDs`(사전 선택된 전체 경로)는 미도달 단계를 포함하므로 절대 쓰지 않는다 — 쓰면
-    /// 아직 진화하지 않은 종이 보유로 잡힌다.
+    /// 포함 종 = 졸업분 `chainOrder` ∪ 현재 개체의 **도달분** `pathIDs[0...stageIndex]`
+    /// ∪ 보관 개체 각각의 **도달분**. `plannedPathIDs`(사전 선택된 전체 경로)는 미도달 단계를
+    /// 포함하므로 절대 쓰지 않는다 — 쓰면 아직 진화하지 않은 종이 보유로 잡힌다.
     var dexSpecies: [DexSpecies] {
         // 종별 누적을 한 번에 훑는다(뷰가 body 에서 1회 소비 — 메모이즈 없이 충분).
         var acc: [Int: DexAccumulator] = [:]
@@ -423,6 +401,14 @@ final class CompanionStore {
             for id in active.pathIDs.prefix(active.stageIndex + 1) {
                 var a = acc[id] ?? DexAccumulator(rarity: active.rarity)
                 if let n = currentLine?.names[id] { a.names = n }
+                acc[id] = a
+            }
+        }
+        // 보관 개체 — active 와 같은 도달분 규칙. 이름 캐시가 없으므로 dexDisplayName 이
+        // 번들 데이터(DigimonData.name(for:))로 우선 해석한다(stored:nil 이어도 실 종 id면 문제없음).
+        for entry in state.stored {
+            for id in entry.mon.pathIDs.prefix(entry.mon.stageIndex + 1) {
+                let a = acc[id] ?? DexAccumulator(rarity: entry.mon.rarity)
                 acc[id] = a
             }
         }
@@ -976,7 +962,7 @@ final class CompanionStore {
     ///
     /// 아머체는 `pathIDs` 에 없어서 `dexSpecies`/`ownsSpecies` 가 저절로 잡지 못하고,
     /// `MonState.armorID` 에서 유도하면 해제하는 순간 기록이 증발한다(도감의 "쌓이기만 한다" 위반).
-    /// `releasedDexEntry` 와 같은 형태의 `DexEntry` 를 쓰면 희귀도·항목별 격리 디코딩·정렬·
+    /// 졸업 기록과 같은 형태의 `DexEntry` 를 쓰면 희귀도·항목별 격리 디코딩·정렬·
     /// `ownsSpecies` 커버리지가 전부 기존 배선 그대로 딸려온다.
     /// - Returns: 새 항목을 추가했으면 true(= 이 아머체를 처음 얻음), 이미 있었으면 false.
     @discardableResult
@@ -1374,11 +1360,16 @@ final class CompanionStore {
         return hasActive && availableTokens >= price(of: .egg(tier))
     }
 
-    /// 알 구매 — 현재 디지몬을 놓아주고 처음부터 인큐베이션하는 새 알로. 지갑에서 가격 차감.
-    /// graduate() 의 알-리셋을 미러링하되, 놓아준 개체는 **도감에 남긴다**(`releasedDexEntry`).
-    /// 도감은 "쌓이기만 한다"는 약속을 주는데, 여기가 종이 사라질 수 있던 유일한 경로였다.
-    /// `collectedFinals`(최종체 완성·분기 가중)는 여전히 손대지 않는다 — 끝까지 키운 게 아니다.
-    /// 성장(usedAtStage)은 소멸(추가 비용).
+    /// 알 구매 — 현재 디지몬을 **방생하지 않고 보관함에 넣은 채** 처음부터 인큐베이션하는 새 알로.
+    /// 지갑에서 가격 차감. graduate() 의 알-리셋을 미러링하되, 보관된 개체는 육성 상태
+    /// (`pathIDs`/`stageIndex`/`usedAtStage`/`profile`/`armorID` 전부) 그대로 `state.stored` 로
+    /// 옮겨진다 — 나중에 꺼내면 중단한 형태부터 이어서 키울 수 있다.
+    ///
+    /// **방생이 아니다.** (과거엔 `active` 를 `releasedDexEntry` 로 도감에 눕혔지만 이제 이 경로가
+    /// 없다.) 방생은 `isReleased` 가 서서 그 종이 죠그레스 파트너
+    /// 자격(`hasJogressPartnerRecord`)을 잃지만, 보관은 도감을 전혀 건드리지 않으므로 기존 졸업·
+    /// 죠그레스 기록이 있던 종이면 그 자격이 그대로 유지된다. `collectedFinals`(최종체 완성·분기
+    /// 가중)도 손대지 않는다 — 끝까지 키운 것도, 포기한 것도 아니다.
     ///
     /// 여기서 종을 롤하지 않는다 — 롤에는 네트워크가 필요해서 오프라인이면 토큰만 사라진다. 보증만
     /// 상태(`eggTier`)에 적고, 실제 롤은 프리패치/부화 경로가 그 보증을 읽어 수행한다.
@@ -1387,11 +1378,11 @@ final class CompanionStore {
         guard canBuyEgg(tier) else { return false }
         state.spentTokens += price(of: .egg(tier))
         if let a = state.active {
-            state.dex.append(releasedDexEntry(from: a))   // 놓아줌 기록 — 도감에서 종이 사라지지 않게
+            state.stored.append(StoredMon(mon: a, storedAt: clock()))   // 보관 — 육성 상태 그대로 유지
         }
-        state.active = nil            // 놓아줌 (졸업 아님 — collectedFinals 는 미변경)
-        // 놓아준 종도 이제 dex 에 있으므로 대표 선택은 유지된다. 손상 상태 파일 등으로 정말 보유가
-        // 끊긴 경우만 자동 추적으로 복귀한다.
+        state.active = nil            // 보관함으로 옮김(방생도 졸업도 아님 — collectedFinals 는 미변경)
+        // 보관한 종의 도달분은 ownsSpecies 로 계속 소유 취급되므로 대표 선택은 유지된다. 손상 상태
+        // 파일 등으로 정말 보유가 끊긴 경우만 자동 추적으로 복귀한다.
         state.reconcileRepresentativeSelection()
         activeGeneration += 1
         currentLine = nil
@@ -1401,7 +1392,7 @@ final class CompanionStore {
         state.pendingHatchID = nil    // 새 보증으로 처음부터 롤(활성 디지몬이 있는 동안엔 원래 비어 있다)
         prefetchedLineID = nil
         justGraduated = nil; justEvolvedTo = nil; eventUntil = nil
-        AppLog.write("egg purchased: discarded active, tier=\(tier?.rawValue ?? "none")")
+        AppLog.write("egg purchased: stored active, tier=\(tier?.rawValue ?? "none")")
         Task { await self.ensureEggPrefetch() }   // 다음 부화 예열
         save()
         return true
@@ -1411,6 +1402,51 @@ final class CompanionStore {
     var canBuyFreshEgg: Bool { canBuyEgg(nil) }
     @discardableResult
     func buyFreshEgg() -> Bool { buyEgg(nil) }
+
+    // MARK: 보관함 (알 구매로 보관한 개체를 꺼내 이어서 키운다)
+
+    /// 보관함 목록 — 화면은 없지만(UI 는 다음 단계) store API 는 최신 보관순으로 노출한다.
+    var storedMons: [StoredMon] { state.stored.sorted { $0.storedAt > $1.storedAt } }
+
+    /// 지금 보관 개체를 꺼내 활성으로 되돌릴 수 있는가.
+    ///
+    /// 활성 개체가 있으면 자리가 없고(교체가 아니라 거절 — `pickHatchSpecies` 와 같은 태도),
+    /// 부화가 진행 중이면 `isHatching` 락 창에서 활성을 바꾸는 경합이 생긴다(함정 4).
+    /// **알 보증(`eggTier`)이 걸려 있으면 거절한다** — 보증은 "지금 품고 있는 알" 에만 붙는 값이라
+    /// 활성 디지몬과 공존할 수 없다(`SaveTransfer.sanitized`). 꺼내기가 그 상태로 활성을 세우면
+    /// 다음 디스크 로드에서 sanitize 가 보증을 지운다 — **산 보증이 조용히 증발**한다. 보증을 지키는
+    /// 유일한 방법은 알을 먼저 부화/소비시키는 것이므로, 지금은 거절만 하고 제품 결정을 미룬다.
+    func canRetrieveStored(_ id: String) -> Bool {
+        guard state.active == nil, !isHatching, state.eggTier == nil else { return false }
+        return state.stored.contains { $0.id == id }
+    }
+
+    /// 보관 개체를 꺼내 활성으로 되돌린다 — **중단한 형태부터** 이어서 키운다(사다리 필드 전부 보존).
+    ///
+    /// 후보 여부는 여기서 다시 판정한다(`canRetrieveStored`) — 참칭 호출자가 존재하지 않는 id 나
+    /// 부적절한 시점에 꺼내기를 통과시키지 못하게 한다(`performJogress`/`pickHatchSpecies` 와 같은 태도).
+    /// - Returns: 꺼냈으면 true. 활성 개체가 있거나 부화 중이거나 보증이 걸려 있거나 id 가 없으면 false.
+    @discardableResult
+    func retrieveStored(id: String) -> Bool {
+        guard canRetrieveStored(id) else { return false }
+        guard let index = state.stored.firstIndex(where: { $0.id == id }) else { return false }
+        var mon = state.stored.remove(at: index).mon
+        mon.pickedByUser = true   // 사용자가 직접 꺼낸 개체 — 프리패치 롤과 구분(다음 단계에서 소비).
+        state.active = mon
+        activeGeneration += 1
+        currentLine = nil
+        prefetchedLineID = nil
+        state.pendingHatchID = nil   // 알이 사라졌으니 그 알의 pre-roll 은 더 이상 의미가 없다.
+        state.eggUsage = 0   // 알을 포기했으니 그 알의 인큐베이션 진행분도 버린다(값은 buyEgg/graduate 와 같지만 이유는 반대 — 그쪽은 새 알을 주며 여는 0, 여기는 알을 버리며 잃는 0)
+        isHatchRetryDelayed = false
+        justGraduated = nil; justEvolvedTo = nil; eventUntil = nil   // 이전 개체 기준 1회성 배너 — 꺼낸 개체 위에 뜨면 안 된다(buyEgg 와 동일)
+        displayState = .idle
+        AppLog.write("stored mon retrieved: base=\(mon.baseID) stage=\(mon.stageIndex)")
+        save()
+        Task { await self.loadCurrentLine() }
+        if detailProvider != nil { Task { await self.loadDigimonDetails(speciesID: mon.currentID) } }
+        return true
+    }
 
     /// 지급 판정(순수·엣지 트리거) — 한도 창이 100% 를 새로 넘어선 순간에만 지급.
     /// - 100% 미만 → 맵에서 제거(재무장). resets_at 등 휘발 필드는 key 에 없다(안정 식별자만).

@@ -422,6 +422,10 @@ struct MonState: Codable, Sendable {
     /// 착용·해제·교체 어느 쪽에서도 변하지 않는다. 그래서 왕복해도 XP·임계값 이득이 0 이고
     /// (무한 왕복 파밍 차단), 되돌리기가 이 필드를 nil 로 두는 한 줄로 끝난다.
     var armorID: Int?
+    /// 이 개체를 사용자가 **직접** 골랐는가(부화 직접 선택으로 시작했거나 보관함에서 꺼냈을 때).
+    /// 프리패치가 우연히 롤한 개체는 false — `pickedHatchBaseID` 류가 "예고해도 되는 선택"과
+    /// "그냥 뽑힌 것"을 가르는 데 쓴다(현재는 필드만 존재, 판정 로직은 다음 단계).
+    var pickedByUser = false
     // pathIDs 가 비면(손상된 상태 파일) baseID 로 폴백 — 렌더마다 읽히므로 out-of-bounds 크래시 방지.
     var currentID: Int { pathIDs.isEmpty ? baseID : pathIDs[min(stageIndex, pathIDs.count - 1)] }
     /// 화면에 그릴 종 — 아머 착용 중이면 아머체, 아니면 사다리 종.
@@ -439,7 +443,8 @@ struct MonState: Codable, Sendable {
 
     init(baseID: Int, pathIDs: [Int], plannedPathIDs: [Int]? = nil, stageIndex: Int, usedAtStage: Int,
          rarity: Rarity, totalForms: Int,
-         profile: DigimonProfile? = nil, hasGrowthBoost: Bool = false, armorID: Int? = nil) {
+         profile: DigimonProfile? = nil, hasGrowthBoost: Bool = false, armorID: Int? = nil,
+         pickedByUser: Bool = false) {
         self.baseID = baseID
         self.pathIDs = pathIDs
         if let plannedPathIDs, !plannedPathIDs.isEmpty {
@@ -454,6 +459,7 @@ struct MonState: Codable, Sendable {
         self.profile = profile
         self.hasGrowthBoost = hasGrowthBoost
         self.armorID = armorID
+        self.pickedByUser = pickedByUser
     }
 
     // 하위호환 디코딩: 구버전 저장에 없는 부화 속성은 기본값.
@@ -482,6 +488,8 @@ struct MonState: Codable, Sendable {
         // 디코딩이 통째로 실패하고, CompanionState 의 `active` 는 lenientOptional 이라 nil 로 흡수돼
         // **기존 사용자의 디지몬이 전부 알로 되돌아간다**. 값 유효성은 로드 시 sanitize 가 본다.
         armorID = try c.decodeIfPresent(Int.self, forKey: .armorID)
+        // 반드시 decodeIfPresent — armorID 와 같은 이유(이 필드 이전 세이브엔 키가 없다).
+        pickedByUser = try c.decodeIfPresent(Bool.self, forKey: .pickedByUser) ?? false
     }
 }
 
@@ -564,6 +572,25 @@ struct DexEntry: Codable, Sendable, Identifiable {
     }
 }
 
+/// 보관함 한 칸 — 알을 새로 사면서 방생하지 않고 육성 상태 그대로 보관한 개체.
+/// `MonState` 를 그대로 감싸 저장한다: 꺼내면 `state.active` 에 되돌려 **중단한 형태부터 이어서**
+/// 키울 수 있어야 하므로 `releasedDexEntry` 처럼 도달분만 접는 요약이 아니라 필드 전체가 필요하다.
+/// `id` 는 저장 시점에 새로 발급한다(`profile?.instanceID` 를 빌리지 않는다) — 프로필이 nil 인
+/// 개체도 이 배열에 들어올 수 있고, `migrateDigimonProfilesIfNeeded` 는 `active`/`dex` 만 훑어서
+/// 이 배열의 nil 프로필은 마이그레이션되지 않기 때문이다.
+struct StoredMon: Codable, Sendable, Identifiable {
+    var id: String
+    var mon: MonState
+    /// 보관한 시각 — 보관함 목록 정렬(최신순)에 쓴다.
+    var storedAt: Date
+
+    init(id: String = UUID().uuidString, mon: MonState, storedAt: Date) {
+        self.id = id
+        self.mon = mon
+        self.storedAt = storedAt
+    }
+}
+
 /// 배열 항목별 격리 디코딩 래퍼 — 손상된 한 항목이 배열 전체(및 상위 상태) 디코드를 실패시키지 않게.
 /// 각 항목을 `try?` 로 감싸므로 실패 항목은 `value == nil` 이 되고 배열 디코드 자체는 성공한다.
 private struct Lossy<T: Decodable>: Decodable {
@@ -629,6 +656,9 @@ struct CompanionState: Codable, Sendable {
     var representativeSpeciesID: Int? = nil
     // 도감
     var dex: [DexEntry] = []
+    // 보관함 — 알을 새로 사면서 방생하지 않고 보관한 개체(육성 상태 유지). 순수 추가 필드라
+    // saveVersion 을 올리지 않는다(기존 필드의 의미를 바꾸지 않으므로 §종 식별자 체계 전환에 해당 안 함).
+    var stored: [StoredMon] = []
     // 소유한 (base,final) 쌍 — 분기 다양성용
     var collectedFinals: Set<String> = []
     var language: AppLanguage = .systemDefault   // 신규 설치 = 시스템 로케일
@@ -670,6 +700,8 @@ struct CompanionState: Codable, Sendable {
         representativeSpeciesID = c.lenientOptional(Int.self, forKey: .representativeSpeciesID)
         // 도감은 항목별 격리 — 손상 항목 하나가 도감 전체를 날리지 않게.
         dex                = c.lenient([Lossy<DexEntry>].self, forKey: .dex, default: []).compactMap(\.value)
+        // 보관함도 같은 이유로 항목별 격리 — 손상된 한 칸이 나머지 보관 개체를 날리지 않게.
+        stored             = c.lenient([Lossy<StoredMon>].self, forKey: .stored, default: []).compactMap(\.value)
         collectedFinals    = c.lenient(Set<String>.self, forKey: .collectedFinals, default: [])
         language           = c.lenient(AppLanguage.self, forKey: .language, default: .systemDefault)
         inventory          = c.lenient([String: Int].self, forKey: .inventory, default: [:])
@@ -677,10 +709,17 @@ struct CompanionState: Codable, Sendable {
         candyFeatureSeeded = c.lenient(Bool.self, forKey: .candyFeatureSeeded, default: false)
     }
 
-    /// 졸업 기록 또는 현재 개체가 실제로 도달한 단계에 이 종이 포함되는가.
+    /// 졸업 기록, 현재 개체, 또는 보관 개체가 실제로 도달한 단계에 이 종이 포함되는가.
     /// 도감 전체 표시 모델을 만들지 않고 대표 종 하나만 확인하는 경량 경로다.
+    ///
+    /// 보관 개체는 소유로 본다 — 육성을 포기한 게 아니라 잠시 넣어 둔 것뿐이라 도감·대표 종·
+    /// 직접 선택 후보(`babyPicks`) 어디에서도 "가지고 있지 않은 종"으로 취급되면 안 된다.
+    /// (예: 도감 1건 + 보관 1건뿐인 세이브에서 보관한 종을 다시 고를 수 없게 되는 회귀를 막는다.)
     func ownsSpecies(_ speciesID: Int) -> Bool {
         if dex.contains(where: { $0.chainOrder.contains(speciesID) }) { return true }
+        if stored.contains(where: { $0.mon.pathIDs.prefix($0.mon.stageIndex + 1).contains(speciesID) }) {
+            return true
+        }
         guard let active else { return false }
         return active.pathIDs.prefix(active.stageIndex + 1).contains(speciesID)
     }

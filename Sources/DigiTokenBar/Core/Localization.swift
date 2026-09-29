@@ -1283,14 +1283,16 @@ struct L {
         let r = rarityLabel(tier)
         return t("\(r) 이상 확정", "\(r) or better", "\(r) 以上確定", "\(r) o superior garantizado", "\(r) ou mieux garanti", "\(r) ou melhor garantido", "Garantiert \(r) oder besser")
     }
+    /// 알 구입 확인 — **보관이지 방생이 아니다.** 육성 상태를 유지한 채 보관함에 넣고 나중에 다시
+    /// 꺼내 이어서 키울 수 있으므로, "놓아준다"는 문구를 쓰면 일어나지 않는 손실을 경고하게 된다.
     func eggConfirm(_ monName: String, _ eggName: String) -> String {
-        t("\(monName)을(를) 놓아주고 \(eggName)(으)로 바꿀까요?",
-          "Send off \(monName) for the \(eggName)?",
-          "\(monName) を手放して \(eggName) にしますか？",
-          "¿Soltar a \(monName) y cambiarlo por \(eggName)?",
-          "Laisser partir \(monName) pour le \(eggName) ?",
-          "Soltar \(monName) e trocar pelo \(eggName)?",
-          "\(monName) verabschieden und gegen \(eggName) tauschen?")
+        t("\(monName)을(를) 보관하고 \(eggName)(으)로 바꿀까요? 나중에 다시 꺼낼 수 있어요.",
+          "Store \(monName) and switch to the \(eggName)? You can bring it back later.",
+          "\(monName) を預けて \(eggName) にしますか？あとで戻せます。",
+          "¿Guardar a \(monName) y cambiar por \(eggName)? Podrás recuperarlo después.",
+          "Mettre \(monName) en réserve pour le \(eggName) ? Vous pourrez le reprendre plus tard.",
+          "Guardar \(monName) e trocar pelo \(eggName)? Você pode recuperá-lo depois.",
+          "\(monName) einlagern und gegen \(eggName) tauschen? Du kannst ihn später zurückholen.")
     }
     // MARK: 디지코어 획득 알림 ("왜 받는지" = 토큰 한도를 다 채운 수고에 대한 보상)
     func notifCandyTitle(item: String, count: Int) -> String {

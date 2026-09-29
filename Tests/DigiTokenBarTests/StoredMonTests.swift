@@ -1,0 +1,489 @@
+import XCTest
+@testable import DigiTokenBar
+
+/// 보관함(#1a) — 알을 새로 사면서 방생하지 않고 육성 상태를 유지한 채 보관, 나중에 꺼내 이어서
+/// 키운다. `CompanionState.stored: [StoredMon]` 스키마 + 헤드리스 store 메서드만 다룬다(UI 없음).
+///
+/// 함정 1~4(요청 문서)를 각각 전담 테스트로 고정한다:
+///  ① 보관은 방생이 아니다 — `hasJogressPartnerRecord`/`isReleased` 축.
+///  ② `ownsSpecies` 가 보관 개체를 본다 — `babyPicks` 회귀.
+///  ③ `SaveTransfer` 가 보관함을 round-trip 한다(내보내기/불러오기 유실 방지).
+///  ④ 경합 보호 — 활성 개체가 있거나 부화 중이면 꺼내기를 거절한다.
+@MainActor
+final class StoredMonTests: XCTestCase {
+    private let now = Date(timeIntervalSince1970: 1_700_000_000)
+
+    private struct StubProvider: DigimonLineProviding {
+        let value: EvoLine
+        func line(baseSpeciesID: Int) async throws -> EvoLine { value }
+        func baseSpeciesIndex() async throws -> [BaseSpecies] { [BaseSpecies(id: value.baseID, captureRate: 255)] }
+    }
+
+    /// 아구몬 라인(1→31→202→…) — 실제 데이터의 id 를 써서 죠그레스 조회가 성립하게 한다
+    /// (`JogressEvolutionTests` 와 같은 이유).
+    private let agumonLine = EvoLine(baseID: 1, tree: EvoNode(speciesID: 1, children: [
+        EvoNode(speciesID: 31, children: [EvoNode(speciesID: 202, children: [])])
+    ]), rarity: .legendary, names: [1: ["ko": "아구몬"], 31: ["ko": "그레이몬"], 202: ["ko": "워그레이몬"]])
+
+    /// vmon 라인(349→358, uncommon) — 실제 데이터셋 id. `babyPicks`/`ownsSpecies` 는
+    /// `DigimonData.lines` 를 직접 순회하므로 합성 id(예: 10)는 애초에 후보에 뜰 수 없다
+    /// (`EggSpeciesPickTests` 와 같은 이유). baseID 1(Agumon, 죠그레스 파트너 테스트용)과는 별개 종.
+    private let vmonLine = EvoLine(baseID: 349, tree: EvoNode(speciesID: 349, children: [
+        EvoNode(speciesID: 358, children: [])
+    ]), rarity: .uncommon, names: [349: ["ko": "브이몬"], 358: ["ko": "엑스브이몬"]])
+
+    @discardableResult
+    private func store(_ line: EvoLine? = nil,
+                       json: String, at url: URL? = nil, seed: UInt64 = 7) -> CompanionStore {
+        let url = url ?? FileManager.default.temporaryDirectory.appendingPathComponent("stored-\(UUID().uuidString).json")
+        try? json.data(using: .utf8)!.write(to: url)
+        return CompanionStore(provider: StubProvider(value: line ?? vmonLine), clock: { self.now }, fileURL: url, rng: SeededRNG(seed: seed))
+    }
+
+    /// 활성 디지몬(baseID 349/브이몬, uncommon, stageIndex 0, 성장 200M) + 도감 항목(1:3, 파트너 자격
+    /// 있음) + 지갑. `DigimonData.lines` 의 실제 id 를 써야 `babyPicks` 회귀를 검증할 수 있다.
+    private func activeStoreJSON(used: Int = 5_000_000_000) -> String {
+        let mon = "{\"baseID\":349,\"pathIDs\":[349],\"stageIndex\":0,\"usedAtStage\":200000000,"
+            + "\"rarity\":\"uncommon\",\"totalForms\":2}"
+        let dex = "{\"baseID\":1,\"finalID\":3,\"chainOrder\":[1,2,3],\"rarity\":\"common\"}"
+        return "{\"saveVersion\":\(CompanionState.currentSaveVersion),\"installBaselineSet\":true,"
+            + "\"usedSinceInstall\":\(used),\"spentTokens\":0,\"lastDate\":\"d\","
+            + "\"active\":\(mon),\"dex\":[\(dex)],\"collectedFinals\":[]}"
+    }
+
+    // MARK: 스키마 round-trip (보관 필드 없는 v2 JSON도 정상 디코드)
+
+    /// [핵심] 보관 필드가 **없는** v2 JSON 이 `.legacy` 백업 없이 정상 디코드되고 round-trip 된다.
+    /// `CompanionTests.testMatchingSaveVersionLoadsNormallyAndPreservesBaseID` 와 같은 취지.
+    func testStoredFieldAbsentInV2JSONDecodesNormallyWithoutLegacyBackup() throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("stored-legacy-\(UUID().uuidString).json")
+        // saveVersion=2 이지만 "stored" 키 자체가 없다 — 이 기능 이전에 저장된 실제 세이브 형태.
+        let json = "{\"saveVersion\":\(CompanionState.currentSaveVersion),\"active\":{\"baseID\":271,"
+            + "\"pathIDs\":[271],\"stageIndex\":0,\"usedAtStage\":0,\"rarity\":\"common\",\"totalForms\":1},"
+            + "\"dex\":[{\"baseID\":101,\"finalID\":165,\"chainOrder\":[101,165],\"rarity\":\"common\"}],"
+            + "\"usedSinceInstall\":5000}"
+        try Data(json.utf8).write(to: url)
+
+        let s = CompanionStore(provider: StubProvider(value: agumonLine), clock: { self.now },
+                               fileURL: url, rng: SeededRNG(seed: 7))
+
+        XCTAssertEqual(s.state.saveVersion, CompanionState.currentSaveVersion)
+        XCTAssertEqual(s.state.active?.baseID, 271, "보관 필드가 없다고 기존 활성 개체가 날아가면 안 된다")
+        XCTAssertEqual(s.state.dex.count, 1)
+        XCTAssertTrue(s.state.stored.isEmpty, "없는 필드는 빈 배열 기본값으로 흡수")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: url.appendingPathExtension("legacy").path),
+                       "순수 추가 필드는 세대 불일치가 아니다 — .legacy 백업이 생기면 안 된다")
+    }
+
+    /// 위 상태를 실제로 저장(`save()`) 후 재시작해도 라운드트립되고 보관 배열도 유지된다.
+    func testSaveThenReloadRoundTripsStoredArray() {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("stored-rt-\(UUID().uuidString).json")
+        try? activeStoreJSON().data(using: .utf8)!.write(to: url)
+        let s = CompanionStore(provider: StubProvider(value: agumonLine), clock: { self.now },
+                               fileURL: url, rng: SeededRNG(seed: 7))
+        XCTAssertTrue(s.buyFreshEgg())
+        XCTAssertEqual(s.state.stored.count, 1)
+
+        let reloaded = CompanionStore(provider: StubProvider(value: agumonLine), clock: { self.now },
+                                      fileURL: url, rng: SeededRNG(seed: 7))
+        XCTAssertEqual(reloaded.state.stored.count, 1, "디스크 재로드에서 보관 개체가 사라졌다")
+        XCTAssertEqual(reloaded.state.stored.first?.mon.baseID, 349)
+        XCTAssertEqual(reloaded.state.stored.first?.mon.usedAtStage, 200_000_000)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: url.appendingPathExtension("legacy").path))
+    }
+
+    // MARK: 함정 1 — 보관은 방생이 아니다(죠그레스 파트너 자격, 양방향 고정)
+    //
+    // [팀 리드 정정] `hasJogressPartnerRecord` 는 `state.dex` 만 본다(의도적 — doc-comment
+    // :1088 근방 "ownsSpecies 를 쓰지 않는다: 육성 중인 개체 하나로 양쪽 부모를 동시에 만족시켜
+    // 버린다" 참고). 지켜야 할 불변조건은 두 방향이다:
+    //   (a) 보관이 **기존** 파트너 자격 기록을 훼손하지 않는다.
+    //   (b) 보관 **자체가 새 파트너 자격을 만들지 않는다** — 보관 개체의 종은 도감에 없으므로
+    //       `hasJogressPartnerRecord` 가 false 여야 한다. `ownsSpecies` 가 보관을 소유로 보는 것과
+    //       무관하게(그건 babyPicks 용, 별개 축) 여기선 항상 false — 육성 중(보관도 포함)인 개체
+    //       하나로 죠그레스 양쪽 부모를 동시에 만족시키는 이중 계수를 막기 위해서다.
+
+    /// (a) 죠그레스 부모가 되는 종(baseID 1, 도감 기록 있음)의 파트너 자격이 **다른 개체를 보관**한
+    /// 뒤에도 유지되는가. `releasedDexEntry` 를 재사용하는 나이브한 구현이면 보관 시점에 기존 도감
+    /// 기록까지 `isReleased` 로 오염시킬 위험이 있다(`releasedDexEntry`는 `caughtAt`/`id` 를 새로
+    /// 만들 뿐 기존 항목을 직접 건드리지 않지만, "방생 경로를 재사용한다"는 실수 자체가 dex append
+    /// 형태로 나타난다).
+    ///
+    /// 판별 축은 `hasJogressPartnerRecord`(도감 전용, monotone이라 이 축 단독으론 레드가 안 뜬다)가
+    /// 아니라 **도감 배열 자체가 늘지 않는다** — 그게 방생 경로 재사용 여부를 실제로 가르는 단언이다.
+    func testStoringActiveDoesNotAppendReleasedDexEntry() {
+        let s = store(json: activeStoreJSON())
+        XCTAssertTrue(s.hasJogressPartnerRecord(1), "사전 조건 — baseID 1 도감 기록이 이미 파트너 자격을 갖는다")
+        let dexIDsBefore = Set(s.state.dex.map(\.id))
+        XCTAssertTrue(s.buyFreshEgg())
+
+        XCTAssertEqual(Set(s.state.dex.map(\.id)), dexIDsBefore,
+                       "보관은 도감을 전혀 건드리지 않는다 — 방생 경로 재사용 시 실패")
+        XCTAssertTrue(s.state.dex.allSatisfy { !$0.isReleased && !$0.isArmored })
+        XCTAssertTrue(s.hasJogressPartnerRecord(1), "기존 파트너 자격이 보관 후에도 유지된다")
+    }
+
+    /// (b) 보관한 종(baseID 349) 자체는 도감 기록이 없으므로 `hasJogressPartnerRecord` 가 여전히
+    /// false 여야 한다 — 보관이 새 파트너 자격을 만들면 육성 중인 개체 하나로 죠그레스 양쪽 부모를
+    /// 동시에 만족시키는 이중 계수 버그가 된다(`ownsSpecies` 를 안 쓰는 이유와 같음). `ownsSpecies`
+    /// 가 보관을 소유로 보는 것(함정 2)과는 반대 방향 결정이며, 그게 의도다 — 두 함수는 서로 다른
+    /// 질문에 답한다.
+    func testStoredEntryItselfIsNotAddedAsGraduationRecord() {
+        let s = store(json: activeStoreJSON())
+        XCTAssertFalse(s.hasJogressPartnerRecord(349),
+                       "사전 조건 — 보관 전에도 349 는 도감 기록이 없어 파트너 자격이 없다")
+        XCTAssertTrue(s.buyFreshEgg())
+        XCTAssertFalse(s.state.dex.contains { $0.baseID == 349 },
+                       "보관은 졸업이 아니다 — baseID 349 의 도감 기록이 생기면 안 된다")
+        XCTAssertFalse(s.hasJogressPartnerRecord(349),
+                       "보관 자체가 새 파트너 자격을 만들면 안 된다 — 이중 계수 방지")
+    }
+
+    // MARK: 함정 2 — ownsSpecies / babyPicks 가 보관 개체를 본다
+
+    /// 도감 1건(baseID 1) + 활성 개체(baseID 349/브이몬)뿐인 세이브에서 349 를 보관하면, 보관 전엔
+    /// `ownsSpecies(349)` 가 active 경로로 true 였다가 보관 후에도 여전히 true 여야 한다(stored 경로).
+    /// 아니면 `babyPicks` 가 349 를 후보에서 빠뜨려 사용자가 방금 보관한 종을 다시 고를 수 없게 된다.
+    /// `DigimonData.lines` 에 실재하는 id 를 써야 `babyPicks`(실 데이터셋만 순회)가 실제로 검증된다.
+    func testOwnsSpeciesRecognizesStoredMonAfterActiveIsCleared() {
+        let s = store(json: activeStoreJSON())
+        XCTAssertTrue(s.state.ownsSpecies(349), "보관 전 — active 경로로 소유")
+        XCTAssertTrue(s.buyFreshEgg())
+        XCTAssertNil(s.state.active)
+        XCTAssertTrue(s.state.ownsSpecies(349), "보관 후 — stored 경로로도 소유가 유지돼야 한다")
+        XCTAssertTrue(s.babyPicks.contains { $0.baseID == 349 },
+                      "보관한 종을 직접 선택 후보에서 다시 고를 수 있어야 한다")
+    }
+
+    /// 도달하지 못한 미래 단계는 여전히 소유가 아니다 — 보관도 `pathIDs.prefix(stageIndex+1)` 규칙을
+    /// 따라야 한다(전체 `pathIDs`/`plannedPathIDs` 를 쓰면 안 됨).
+    func testOwnsSpeciesForStoredMonUsesReachedPrefixOnly() {
+        let mon = "{\"baseID\":1,\"pathIDs\":[1,31,202],\"stageIndex\":0,\"usedAtStage\":0,"
+            + "\"rarity\":\"legendary\",\"totalForms\":3}"
+        let json = "{\"saveVersion\":\(CompanionState.currentSaveVersion),\"installBaselineSet\":true,"
+            + "\"usedSinceInstall\":5000000000,\"active\":\(mon),\"dex\":[],\"collectedFinals\":[]}"
+        let s = store(agumonLine, json: json)
+        XCTAssertTrue(s.buyFreshEgg())
+        XCTAssertTrue(s.state.ownsSpecies(1), "도달한 형태(base)는 소유")
+        XCTAssertFalse(s.state.ownsSpecies(31), "도달 못한 다음 형태까지 소유로 잡히면 안 된다")
+        XCTAssertFalse(s.state.ownsSpecies(202), "도달 못한 최종형까지 소유로 잡히면 안 된다")
+    }
+
+    /// [결정 고정] `dexEntries`(개체 단위 동행 기록)는 `dexSpecies`(종 단위 로그)와 다른 축이다 —
+    /// "지금 키우는 개체 + 졸업한 개체" 만 담고, 보관 개체는 합성하지 않는다. 보관은 "지금 키우는
+    /// 중" 이 아니므로 포함시키면 활성/보관 상태가 로그에서 구분이 안 된다. 종 로그(`dexSpecies`)가
+    /// 보관을 보유로 치는 것과 반대 방향 결정이라, 나중에 실수로 같은 취급을 하지 않도록 고정한다.
+    func testDexEntriesDoesNotSynthesizeStoredMons() {
+        let s = store(json: activeStoreJSON())
+        XCTAssertEqual(s.dexEntries.count, 2, "사전 조건 — 도감 기록(1:3) + 현재 개체(349) 합성분")
+        XCTAssertTrue(s.buyFreshEgg())
+        XCTAssertNil(s.state.active)
+        XCTAssertEqual(s.state.stored.count, 1)
+        XCTAssertEqual(s.dexEntries.count, 1,
+                       "보관 개체가 동행 기록에 합성되면 안 된다 — 도감 기록(1:3) 하나만 남아야 한다")
+        XCTAssertFalse(s.dexEntries.contains { $0.baseID == 349 },
+                       "보관 개체(349)의 합성 항목이 동행 기록에 있으면 안 된다")
+    }
+
+    // MARK: 함정 3 — SaveTransfer round-trip
+
+    /// 내보내기(encode) → 불러오기(decode) 를 거쳐도 보관함이 유실되지 않는다.
+    func testSaveTransferRoundTripsStoredArray() throws {
+        let s = store(json: activeStoreJSON())
+        XCTAssertTrue(s.buyFreshEgg())
+        XCTAssertEqual(s.state.stored.count, 1)
+
+        let data = try s.exportedSaveData(appVersion: "1.0", deviceName: "MacTest")
+        let envelope = try SaveTransfer.decode(data)
+        XCTAssertEqual(envelope.state.stored.count, 1, "내보내기→불러오기에서 보관 개체가 유실됐다")
+        XCTAssertEqual(envelope.state.stored.first?.mon.baseID, 349)
+        XCTAssertEqual(envelope.state.stored.first?.mon.usedAtStage, 200_000_000)
+    }
+
+    /// `applySave()` 뒤의 `save()` 가 결과를 현재 세대로 재인코딩하므로, 여기서 유실되면 디스크에도
+    /// 영구 유실된다 — 그 전체 경로(적용 → 재로드, 같은 파일 URL 로 새 스토어를 만들어 확인)를 검증한다.
+    func testApplySaveThenReloadPreservesStoredArray() throws {
+        let s = store(json: activeStoreJSON())
+        XCTAssertTrue(s.buyFreshEgg())
+        let data = try s.exportedSaveData(appVersion: "1.0", deviceName: "MacTest")
+        let envelope = try SaveTransfer.decode(data)
+
+        let targetURL = FileManager.default.temporaryDirectory.appendingPathComponent("stored-apply-\(UUID().uuidString).json")
+        let target = store(json: "{\"saveVersion\":\(CompanionState.currentSaveVersion),\"active\":null,\"dex\":[]}",
+                           at: targetURL)
+        try target.applySave(envelope, todayTokensByProvider: [:], todayDate: "2026-09-29", hasUsageData: false)
+        XCTAssertEqual(target.state.stored.count, 1, "applySave 직후 보관함 유실")
+
+        let reloaded = CompanionStore(provider: StubProvider(value: agumonLine), clock: { self.now },
+                                      fileURL: targetURL, rng: SeededRNG(seed: 7))
+        XCTAssertEqual(reloaded.state.stored.count, 1,
+                       "applySave 뒤 save() 가 현재 세대로 재인코딩하며 보관함이 사라졌다")
+    }
+
+    /// [리뷰 W3] `SaveEnvelope.schemaVersion` 을 리터럴로 고정한다 — 아래
+    /// `testSchemaVersionRejectsOlderAppReceivingNewerFile` 은 기대값을 파일에서 읽어와
+    /// `currentSchema + 1` 로 유도하므로 값이 3 이든 4 든 99 든 항상 통과한다(동어반복). `stored`
+    /// 필드 도입으로 3→4 로 올린 것 자체를 지키는 단언은 이 테스트뿐이다 — 누군가 3 으로 되돌리면
+    /// 구버전 앱이 `stored` 를 조용히 드롭한다(SaveTransfer.swift:17-22 참고).
+    ///
+    /// 바로 아래 `currentSaveVersion` 단언과 **의도적으로 반대 방향**이다 — 두 상수는 인접해
+    /// 보이지만 다른 축을 지킨다. `schemaVersion` 은 "올려야" 조용한 유실을 막고(위),
+    /// `currentSaveVersion` 은 "올리면 안" 된다(아래, `stored` 는 가산 필드라 종 식별자 세대가
+    /// 안 바뀌었으므로). 하나만 고정하면 다음 사람이 "버전 상수는 다 올리면 안전하다"는 식으로
+    /// 패턴을 혼동하기 쉽다(팀 리드가 이 세션에서 실제로 이 혼동을 겪었다) — 나란히 적어 방향
+    /// 차이를 명시한다.
+    func testSchemaVersionIsBumpedForStoredField() {
+        XCTAssertEqual(SaveEnvelope.schemaVersion, 4,
+                       "stored 필드 도입으로 3→4 로 올렸다 — 내리면 구버전 앱이 보관 개체를 조용히 드롭한다")
+    }
+
+    /// [리뷰 W3 확장] `CompanionState.currentSaveVersion` 은 **2 로 유지돼야 한다** — 이 상수는
+    /// `CompanionModel.swift:626` 근방 doc 대로 종 식별자 체계(포켓몬→디지몬 등)가 바뀔 때만
+    /// 올린다. `stored` 는 순수 가산 필드라 이 세대를 바꾸지 않는다. `CompanionStore.load()`
+    /// 의 게이트(`s.saveVersion == currentSaveVersion`)는 하드 동등 비교 + 불일치 시 `.legacy`
+    /// 백업 후 fresh 시작이고 **마이그레이션 레이어가 없으므로**, 이 상수를 실수로 3으로 올리면
+    /// 살아있는 세이브가 전부 날아간다(schemaVersion 을 내렸을 때의 "조용한 필드 드롭"보다
+    /// 훨씬 복구가 어렵다 — 백업은 남지만 사용자가 수동으로 복구해야 한다).
+    ///
+    /// 스위트 전체의 `saveVersion` JSON 픽스처가 리터럴이 아니라 `\(CompanionState.currentSaveVersion)`
+    /// 보간이라(이 파일의 `activeStoreJSON()` 포함), 상수를 올려도 픽스처가 따라 올라가 v2-형태
+    /// 디코드 테스트들은 전부 green 으로 남는다 — 그 테스트들은 "stored 키 부재" 축은 검증하지만
+    /// **버전 번호 축에서는 동어반복**이다. 이 리터럴 고정만이 버전 번호 축을 지킨다.
+    ///
+    /// 영구 금지가 아니다 — 종 식별자 세대가 실제로 바뀌는 **정당한** 전환이라면 상수를 올리고
+    /// **이 테스트의 기대값도 함께 갱신한다**(`CompanionTests` 의 리터럴 `1` doc 이 "미래에 3, 4 로
+    /// 또 오르더라도"로 같은 전제를 둔다). 막으려는 건 가산 필드를 추가하면서 습관적으로 올리는 것.
+    func testCurrentSaveVersionStaysAtTwoForAdditiveFields() {
+        XCTAssertEqual(CompanionState.currentSaveVersion, 2,
+                       "stored 는 가산 필드라 세대를 올리면 안 된다 — 올리면 로드 게이트가 하드 동등 비교로 기존 세이브 전부를 .legacy 로 밀어내고 fresh 시작한다(마이그레이션 없음)")
+    }
+
+    /// `SaveEnvelope.schemaVersion` 이 이 기능으로 올랐는지 — 구버전 앱이 새 파일을 받으면
+    /// `newerSchema` 로 명시 거부돼야 한다(조용한 유실 대신).
+    func testSchemaVersionRejectsOlderAppReceivingNewerFile() throws {
+        let s = store(json: activeStoreJSON())
+        XCTAssertTrue(s.buyFreshEgg())
+        let data = try s.exportedSaveData(appVersion: "1.0", deviceName: "MacTest")
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let currentSchema = try XCTUnwrap(json["schema"] as? Int)
+        json["schema"] = currentSchema + 1
+        let bumped = try JSONSerialization.data(withJSONObject: json)
+        XCTAssertThrowsError(try SaveTransfer.decode(bumped)) { error in
+            XCTAssertEqual(error as? SaveTransferError,
+                           .newerSchema(found: currentSchema + 1, supported: currentSchema))
+        }
+    }
+
+    // MARK: 함정 4 — 경합 보호(활성 개체 존재 / isHatching 락)
+
+    /// 활성 개체가 있으면 보관함에서 꺼낼 자리가 없다 — 교체가 아니라 거절.
+    /// 보관 1건 + 활성 개체(다른 종, baseID 99)가 함께 있는 상태를 JSON 으로 직접 시드해
+    /// `pickHatchSpecies`/`hatchIfNeeded` 의 비동기 경합 없이 게이트만 동기적으로 검증한다.
+    func testRetrieveStoredRejectedWhileActiveExists() {
+        let storedMonJSON = "{\"id\":\"stored-1\",\"mon\":{\"baseID\":10,\"pathIDs\":[10],"
+            + "\"stageIndex\":0,\"usedAtStage\":200000000,\"rarity\":\"common\",\"totalForms\":3},"
+            + "\"storedAt\":\(now.timeIntervalSince1970)}"
+        let activeMonJSON = "{\"baseID\":99,\"pathIDs\":[99],\"stageIndex\":0,\"usedAtStage\":0,"
+            + "\"rarity\":\"common\",\"totalForms\":1}"
+        let json = "{\"saveVersion\":\(CompanionState.currentSaveVersion),\"active\":\(activeMonJSON),"
+            + "\"dex\":[],\"stored\":[\(storedMonJSON)]}"
+        let s = store(json: json)
+        XCTAssertEqual(s.state.stored.count, 1, "사전 조건 — 보관 1건이 시드돼야 한다")
+
+        XCTAssertFalse(s.canRetrieveStored("stored-1"), "활성 개체가 있는데 꺼내기가 허용됐다")
+        XCTAssertFalse(s.retrieveStored(id: "stored-1"))
+        XCTAssertEqual(s.state.stored.count, 1, "거절됐는데 보관함이 줄었다")
+        XCTAssertEqual(s.state.active?.baseID, 99, "거절됐는데 활성 개체가 바뀌었다")
+    }
+
+    /// 라인 fetch 를 붙잡아 `isHatching` 이 실제로 잠긴 창을 만드는 스텁 — `EggSpeciesPickTests`
+    /// 의 `GatedPickProvider` 와 같은 이유(동기 테스트는 이 축을 공허하게 통과한다).
+    /// 세마포어 금지 — `@MainActor` 테스트에서 블로킹하면 같은 actor 의 부화 Task 가 fetch 에
+    /// 진입도 못 해 영구 교착한다. 대기는 전부 `await`(Task.yield) 로만 한다.
+    @MainActor
+    private final class GatedLineProvider: DigimonLineProviding {
+        let value: EvoLine
+        private var released = false
+        private(set) var isFetching = false
+
+        init(value: EvoLine) { self.value = value }
+
+        nonisolated func line(baseSpeciesID: Int) async throws -> EvoLine {
+            await MainActor.run { self.isFetching = true }
+            while await MainActor.run(body: { !self.released }) {
+                await Task.yield()
+            }
+            return await MainActor.run { self.value }
+        }
+        nonisolated func baseSpeciesIndex() async throws -> [BaseSpecies] {
+            [BaseSpecies(id: await MainActor.run { self.value.baseID }, captureRate: 255)]
+        }
+
+        func waitUntilFetching() async {
+            var spins = 0
+            while !isFetching, spins < 10_000 {
+                spins += 1
+                await Task.yield()
+            }
+            XCTAssertTrue(isFetching, "부화가 라인 fetch 에 진입하지 않았다")
+        }
+        func release() { released = true }
+    }
+
+    /// 활성 개체도 없고(알 상태) 보증도 없지만, **부화가 라인 fetch 에서 대기 중**이면 여전히
+    /// 꺼내기를 거절해야 한다 — `canRetrieveStored` 의 세 조건(`active == nil`, `!isHatching`,
+    /// `eggTier == nil`) 중 `!isHatching` 단독으로 이 시나리오를 가른다. 이걸 빼놓고
+    /// `active`/`eggTier` 두 테스트만 돌리면 `!isHatching` 삭제가 초록으로 통과해 함정 4가
+    /// 실제로는 2/3 만 닫힌 채로 보고될 뻔했다(advisor 지적).
+    func testRetrieveStoredRejectedWhileHatchInFlight() async throws {
+        let storedMonJSON = "{\"id\":\"stored-1\",\"mon\":{\"baseID\":349,\"pathIDs\":[349],"
+            + "\"stageIndex\":0,\"usedAtStage\":200000000,\"rarity\":\"uncommon\",\"totalForms\":2},"
+            + "\"storedAt\":\(now.timeIntervalSince1970)}"
+        // 알 상태(활성 없음) + 보관 1건 + 부화 임계 이상 사용량 → hatch(baseID:) 로 직접 fetch 창을 연다.
+        let json = "{\"saveVersion\":\(CompanionState.currentSaveVersion),\"active\":null,"
+            + "\"dex\":[],\"stored\":[\(storedMonJSON)],\"eggUsage\":\(DigimonBalance.eggHatchThreshold)}"
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("stored-hatch-\(UUID().uuidString).json")
+        try json.data(using: .utf8)!.write(to: url)
+        let gated = GatedLineProvider(value: vmonLine)
+        let s = CompanionStore(provider: gated, clock: { self.now }, fileURL: url, rng: SeededRNG(seed: 7))
+
+        let hatching = Task { await s.hatch(baseID: 349) }
+        await gated.waitUntilFetching()
+        XCTAssertTrue(s.isHatching, "부화 락이 걸리지 않았다 — 아래 단언이 공허해진다")
+        XCTAssertNil(s.state.active, "사전 조건 — 아직 알 상태(active == nil)")
+        XCTAssertNil(s.state.eggTier, "사전 조건 — 보증 없음(다른 두 조건과 겹치지 않게)")
+
+        XCTAssertFalse(s.canRetrieveStored("stored-1"), "부화 중인데 꺼내기가 허용됐다")
+        XCTAssertFalse(s.retrieveStored(id: "stored-1"))
+        XCTAssertEqual(s.state.stored.count, 1, "거절됐는데 보관함이 줄었다")
+
+        gated.release()
+        await hatching.value
+    }
+
+    /// 알 보증(`eggTier`)이 걸려 있으면 꺼내기를 거절한다 — 그대로 허용하면 다음 디스크 로드에서
+    /// `SaveTransfer.sanitized` 가 `active != nil` 을 보고 보증을 지운다(산 보증 증발).
+    func testRetrieveStoredRejectedWhileEggTierGuaranteed() {
+        let s = store(json: activeStoreJSON())
+        XCTAssertTrue(s.buyEgg(.rare))
+        XCTAssertEqual(s.state.eggTier, .rare)
+        let id = try! XCTUnwrap(s.state.stored.first?.id)
+
+        XCTAssertFalse(s.canRetrieveStored(id), "보증이 걸린 채로 꺼내기가 허용됐다")
+        XCTAssertFalse(s.retrieveStored(id: id))
+        XCTAssertEqual(s.state.stored.count, 1)
+        XCTAssertNil(s.state.active)
+    }
+
+    /// 정상 경로 — 알 상태(활성 없음, 보증 없음)에서 꺼내면 중단한 형태(usedAtStage 포함)부터 복원된다.
+    func testRetrieveStoredRestoresMidGrowthState() {
+        let s = store(json: activeStoreJSON())
+        XCTAssertTrue(s.buyFreshEgg())
+        let id = try! XCTUnwrap(s.state.stored.first?.id)
+
+        XCTAssertTrue(s.canRetrieveStored(id))
+        XCTAssertTrue(s.retrieveStored(id: id))
+
+        XCTAssertNotNil(s.state.active)
+        XCTAssertEqual(s.state.active?.baseID, 349)
+        XCTAssertEqual(s.state.active?.stageIndex, 0)
+        XCTAssertEqual(s.state.active?.usedAtStage, 200_000_000, "육성 상태(성장분)가 그대로 복원돼야 한다")
+        XCTAssertTrue(s.state.active?.pickedByUser ?? false, "직접 꺼낸 개체는 pickedByUser 가 서야 한다")
+        XCTAssertTrue(s.state.stored.isEmpty, "꺼낸 뒤 보관함에서 제거된다")
+    }
+
+    /// 존재하지 않는 id 로 꺼내기를 시도하면 실패한다(참칭 호출자 방어).
+    func testRetrieveStoredRejectsUnknownID() {
+        let s = store(json: activeStoreJSON())
+        XCTAssertTrue(s.buyFreshEgg())
+        XCTAssertFalse(s.retrieveStored(id: "does-not-exist"))
+        XCTAssertEqual(s.state.stored.count, 1, "실패한 호출이 보관함을 바꾸면 안 된다")
+    }
+
+    // MARK: D — pickedByUser 필드 round-trip (필드 모양만, 동작은 다음 단계)
+
+    /// 새 필드가 없는 구버전 JSON 은 false 로 흡수되고, 있으면 그대로 round-trip 된다.
+    func testPickedByUserFieldDefaultsFalseAndRoundTrips() throws {
+        let legacyMonJSON = "{\"baseID\":10,\"pathIDs\":[10],\"stageIndex\":0,\"usedAtStage\":0,"
+            + "\"rarity\":\"common\",\"totalForms\":1}"
+        let legacyMon = try JSONDecoder().decode(MonState.self, from: Data(legacyMonJSON.utf8))
+        XCTAssertFalse(legacyMon.pickedByUser, "필드 없는 구버전 세이브는 false 로 흡수")
+
+        var picked = legacyMon
+        picked.pickedByUser = true
+        let data = try JSONEncoder().encode(picked)
+        let decoded = try JSONDecoder().decode(MonState.self, from: data)
+        XCTAssertTrue(decoded.pickedByUser, "true 값이 round-trip 에서 유실됐다")
+    }
+
+    // MARK: [리뷰 W1] retrieveStored 가 남의 개체 졸업 배너를 정리하는가
+
+    /// `graduate()` 직후 6초 창(`justGraduated`/`eventUntil` 이 살아있는 동안)엔 `canRetrieveStored`
+    /// 의 세 조건(`active == nil`, `!isHatching`, `eggTier == nil`)이 전부 동시에 열린다 — 특수
+    /// 조건 없이 정상 플레이 경로로 도달한다. `buyEgg`/`applySave` 는 이 1회성 배너 필드를
+    /// 정리하지만 `retrieveStored` 는 원래 정리하지 않았다 — 방치하면 방금 졸업시킨 개체의
+    /// 이름으로 "졸업했어요" 배너가 꺼낸 개체 위에 최대 6초간 뜬다(CompanionView.swift 의
+    /// `justGraduated`/`computeState` 소비 지점). 리뷰 지적으로 `buyEgg` 와 동일한 세 줄
+    /// (`justGraduated`/`justEvolvedTo`/`eventUntil` = nil)을 `retrieveStored` 에도 추가했다.
+    func testRetrieveStoredClearsGraduationBannerFromPreviousMon() async {
+        // 보관 1건(vmonLine, baseID 349) 선 시드 + 무진화 1단계 종(noEvoLine, baseID 20)을
+        // 부화시켜 곧장 졸업까지 밀어붙인다 — graduate() 가 남기는 배너가 실제로 뜬 상태를 만든다.
+        let noEvoLine = EvoLine(baseID: 20, tree: EvoNode(speciesID: 20, children: []),
+                                rarity: .common, names: [20: ["ko": "패트몬"]])
+        let storedMonJSON = "{\"id\":\"stored-1\",\"mon\":{\"baseID\":349,\"pathIDs\":[349],"
+            + "\"stageIndex\":0,\"usedAtStage\":200000000,\"rarity\":\"uncommon\",\"totalForms\":2},"
+            + "\"storedAt\":\(now.timeIntervalSince1970)}"
+        let json = "{\"saveVersion\":\(CompanionState.currentSaveVersion),\"active\":null,"
+            + "\"dex\":[],\"stored\":[\(storedMonJSON)],\"collectedFinals\":[]}"
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("stored-banner-\(UUID().uuidString).json")
+        try! json.data(using: .utf8)!.write(to: url)
+        let s = CompanionStore(provider: StubProvider(value: noEvoLine), clock: { self.now }, fileURL: url, rng: SeededRNG(seed: 7))
+
+        await s.hatch(baseID: 20)
+        s.applyUsage(DigimonBalance.graduationTotal(.common))   // 무진화 졸업 → graduate()
+        XCTAssertNil(s.state.active, "사전 조건 — 졸업으로 active 가 비었다")
+        XCTAssertNotNil(s.justGraduated, "사전 조건 — 배너가 실제로 떠 있어야 아래 단언이 의미 있다")
+        XCTAssertEqual(s.displayState, .levelUp, "사전 조건 — 6초 창이 열려 있어야 한다(eventUntil 은 private, computeState 경유로 관찰)")
+
+        XCTAssertTrue(s.canRetrieveStored("stored-1"), "졸업 직후 6초 창에서도 꺼내기 세 조건은 전부 열린다")
+        XCTAssertTrue(s.retrieveStored(id: "stored-1"))
+
+        XCTAssertNil(s.justGraduated, "남의 개체(패트몬) 졸업 배너가 꺼낸 개체(브이몬) 위에 남아있다")
+        XCTAssertNil(s.justEvolvedTo, "남의 개체 기준의 진화 배너가 남아있다")
+
+        // [재리뷰 S1 — 미해결, 의도적 보류] `eventUntil` **단독** 축은 여기서 단언하지 않는다.
+        // 리뷰가 "`eventUntil = nil` 만 지우는 뮤테이션은 green 일 것"이라 예측했고, 뮤테이션으로
+        // 실제 확인한 결과 **예측이 맞았다**. 다만 닫으려고 시도한 방법(`update()` 를 태워
+        // `displayState != .levelUp` 단언)도 **똑같이 green 이라 판별력이 없다** — 뮤테이션 트리에서
+        // 측정값이 `.levelUp` 이 아니라 `.idle` 이었다. 원인은 `graduate()`/`retrieveStored` 가
+        // 둘 다 `Task { }` 로 비동기 작업을 띄우고(`ensureEggPrefetch`/`loadCurrentLine`), async
+        // 테스트에서 그 틈에 끼어든 틱이 창을 정리하기 때문이다. 즉 이 축은 `displayState` 경유로
+        // **안정적으로 관측되지 않는다.**
+        //
+        // 판별력 없는 단언을 넣으면 "이 축이 닫혀 있다"는 거짓 신호만 남으므로 넣지 않는다.
+        // 제대로 닫으려면 `eventUntil` 을 테스트에서 읽을 수 있게 하거나(private 해제 대신
+        // `internal` + 주석), 비동기 틱이 끼지 않는 동기 경로로 재구성해야 한다 — 별도 작업.
+        // 프로덕션 세 줄 자체는 위 두 단언이 묶음으로 고정한다(세 줄 제거 뮤테이션 → 레드 확인).
+    }
+
+    // MARK: [리뷰 S3] storedMons 정렬 방향
+
+    /// `storedMons` 는 최신 보관순(내림차순)이어야 한다 — 다음 단계 보관함 UI 가 소비할 유일한
+    /// 정렬 표면인데 방향을 고정하는 단언이 없었다(리뷰 지적). JSON 시드 순서를 오래된→최신으로
+    /// 넣어, `state.stored` 원본 순서를 그대로 반환하면 이 단언이 레드가 되도록 구성했다.
+    func testStoredMonsSortsNewestFirst() {
+        let older = "{\"id\":\"stored-old\",\"mon\":{\"baseID\":349,\"pathIDs\":[349],"
+            + "\"stageIndex\":0,\"usedAtStage\":0,\"rarity\":\"uncommon\",\"totalForms\":2},"
+            + "\"storedAt\":\(now.timeIntervalSince1970)}"
+        let newer = "{\"id\":\"stored-new\",\"mon\":{\"baseID\":349,\"pathIDs\":[349],"
+            + "\"stageIndex\":0,\"usedAtStage\":0,\"rarity\":\"uncommon\",\"totalForms\":2},"
+            + "\"storedAt\":\(now.addingTimeInterval(60).timeIntervalSince1970)}"
+        // 시드 순서는 일부러 오래된 것 먼저 — state.stored 원본 순서를 그대로 반환하면 통과하지
+        // 않도록(정렬이 실제로 일어나는지 검증).
+        let json = "{\"saveVersion\":\(CompanionState.currentSaveVersion),\"active\":null,"
+            + "\"dex\":[],\"stored\":[\(older),\(newer)],\"collectedFinals\":[]}"
+        let s = store(json: json)
+        XCTAssertEqual(s.storedMons.map(\.id), ["stored-new", "stored-old"],
+                       "storedMons 는 최신 보관순이어야 한다")
+    }
+}
