@@ -32,17 +32,31 @@ private final class GatedPickProvider: DigimonLineProviding {
     private var released = false
     private(set) var isFetching = false
 
-    init(value: EvoLine, indexIDs: [Int]? = nil) {
+    /// `lines` 는 `line()` 이 인자로 조회할 사전이다. 기본은 `value` 한 종이고, 경합 테스트처럼
+    /// 롤 후보가 여럿이면 그 종들의 라인도 함께 넣어야 fetch 가 throw 하지 않는다.
+    private let lines: [Int: EvoLine]
+
+    init(value: EvoLine, indexIDs: [Int]? = nil, lines extra: [EvoLine] = []) {
         self.value = value
         self.indexIDs = indexIDs ?? [value.baseID]
+        var table = [value.baseID: value]
+        for l in extra { table[l.baseID] = l }
+        self.lines = table
     }
 
+    /// **인자를 키로 조회한다.** 무엇을 요청하든 `value` 를 돌려주면 부화 종 단언이 동어반복이 된다
+    /// — `hatchCore` 는 `MonState` 를 인자가 아니라 **fetch 해 온 `line.baseID`** 로 만들기 때문에
+    /// (`CompanionStore.hatchCore`), 스텁이 인자를 무시하면 어떤 종을 부화시켜도
+    /// `active?.baseID == value.baseID` 가 되어 경합 회귀를 놓친다(실측: 가드를 지워도 그 단언만 통과).
+    /// 모르는 종은 throw 해서 "엉뚱한 종을 요청했다"가 조용히 성공으로 넘어가지 않게 한다.
     nonisolated func line(baseSpeciesID: Int) async throws -> EvoLine {
         await MainActor.run { self.isFetching = true }
-        while await !MainActor.run(body: { self.released }) {
+        while await MainActor.run(body: { !self.released }) {
             await Task.yield()
         }
-        return await MainActor.run { self.value }
+        let known = await MainActor.run { self.lines }
+        guard let line = known[baseSpeciesID] else { throw NSError(domain: "GatedPickProvider", code: 404) }
+        return line
     }
     /// 종 롤(`baseSpeciesIndex`)은 **별도 게이트**를 쓴다 — `chooseBase()` 의 await 창(종 롤 중)과
     /// `line()` 의 await 창(부화가 라인 받는 중)은 서로 다른 경합이다. 두 게이트가 같은 플래그를

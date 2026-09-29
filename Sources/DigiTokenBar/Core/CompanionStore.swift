@@ -1577,6 +1577,12 @@ final class CompanionStore {
         save()
         // 임계가 이미 찼으면 즉시 부화, 아니면 프리패치가 라인·스프라이트를 데운다. 두 경로 모두
         // 자체 가드를 가지고 있어 여기서 조건을 다시 세우지 않는다.
+        //
+        // **예열이 한 틱 비는 창이 있다**(정합성 결함은 아님): 구 롤의 `provider.line()` 이 아직
+        // in-flight 면 이 Task 의 `ensureEggPrefetch` 는 `guard !prefetchInFlight` 에서 즉시 반환하고,
+        // 복귀한 구 프리패치는 `pendingHatchID` 재확인에 걸려 반환한다 — 아무도 새 선택 종을 데우지
+        // 않는다. 다음 `update` 틱에 채워진다. 부화 자체는 `hatchCore` 가 직접 fetch 하므로 안전하고,
+        // 비용은 "부화 순간 네트워크 0" 목표를 그 창에서만 놓치는 것뿐이다.
         Task { await self.hatchIfNeeded(); await self.ensureEggPrefetch() }
         return true
     }
