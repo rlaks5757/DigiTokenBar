@@ -264,6 +264,15 @@ enum DigimonData {
     /// 정규 진화 라인 12개 전체.
     static var lines: [DigiLine] { ds.lines }
 
+    /// 12개 라인의 stages 어딘가에 이 종이 있나 — **사다리 종인가**.
+    ///
+    /// 죠그레스·아머·체인으로만 도달하는 종(331/900/405/183/390/387/481)은 여기서 false 다.
+    /// 이 종들은 `line.tree.node(withID:)` 가 nil 을 주므로 사다리에 얹으면 성장이 멈춘다 —
+    /// 그래서 "사다리에 올릴 수 있는 종인가" 를 묻는 곳이 id 목록을 직접 박지 않도록 데이터에서 판정한다.
+    static func isLadderSpecies(_ speciesID: Int) -> Bool {
+        ds.lines.contains { $0.stages.contains { $0.id == speciesID } }
+    }
+
     // MARK: - 죠그레스 (EVOLUTION.md §3)
 
     /// `(A, B) → 결과 ID`. 키는 `JogressKey` 로 정규화되어 순서 무관 조회가 보장된다.
@@ -274,6 +283,28 @@ enum DigimonData {
 
     static func jogressResult(_ a: Int, _ b: Int) -> Int? {
         ds.jogressResults[JogressKey(a, b)]
+    }
+
+    // MARK: - 체인 (EVOLUTION.md §3 — 토큰 지불 단일 부모 전이)
+
+    /// 단일 부모 전이 간선 — 331→900, 900→405.
+    ///
+    /// **`forwardEdges` 에서 파생한다**(중복 진실 원천 금지 — JSON 의 chain 테이블을 두 번 읽지
+    /// 않는다). 판별식은 "출발 종이 사다리 밖인 `.normal` 간선": 정규 진화의 출발 종은 정의상 전부
+    /// 12개 라인의 stages 에 있으므로, 사다리 밖에서 나가는 `.normal` 은 chain 배치뿐이다.
+    /// 그래서 `EvolutionEdge` 에 새 case 를 추가하지 않고도 두 간선을 정확히 집어낼 수 있다.
+    ///
+    /// 정렬해 반환한다 — `forwardEdges` 는 Dictionary 라 순회 순서가 실행마다 다르다.
+    static var chainEdges: [(from: Int, to: Int)] {
+        ds.forwardEdges
+            .filter { !isLadderSpecies($0.key) }
+            .flatMap { from, edges in
+                edges.compactMap { edge -> (from: Int, to: Int)? in
+                    guard case .normal(let to) = edge else { return nil }
+                    return (from: from, to: to)
+                }
+            }
+            .sorted { ($0.to, $0.from) < ($1.to, $1.from) }
     }
 
     // MARK: - 아머 진화 (EVOLUTION.md §4)

@@ -1061,6 +1061,58 @@ struct L {
     /// 도감 동행 기록 뱃지 — 아머 진화 기록(`isReleased` 뱃지와 같은 자리).
     var armorDexBadge: String { t("아머", "Armor", "アーマー", "Armadura", "Armure", "Armadura", "Rüstung") }
 
+    // MARK: 죠그레스 (GAME-DESIGN.md §3)
+
+    /// Home 의 죠그레스 컨트롤 제목.
+    var jogress: String { t("죠그레스", "Jogress", "ジョグレス", "Jogress", "Jogress", "Jogress", "Jogress") }
+    /// 죠그레스 실행 버튼 — 결과 종 이름.
+    func jogressInto(_ name: String) -> String {
+        t("\(name)(으)로 죠그레스", "Jogress into \(name)", "\(name) にジョグレス", "Jogress a \(name)", "Jogress en \(name)", "Jogress para \(name)", "Jogress zu \(name)")
+    }
+    /// 파트너 기록이 없을 때의 안내 — 파트너는 **소모되지 않는** 도감 졸업 기록이라
+    /// "가져와라" 가 아니라 "졸업시켜라" 가 맞는 요구다.
+    ///
+    /// ko 조사는 `을(를)` 로 헤지한다(`freshEggConfirm`·`notifHatchBody` 와 같은 방식). 대부분의
+    /// 파트너는 `몬` 으로 끝나 받침이 있지만 황제드라몬: 파이터 모드(405)처럼 `모드` 로 끝나는
+    /// 이름이 있어 `을` 고정은 틀린다 — 405 는 팔라딘 모드 조합이 붙는 순간 실제로 파트너가 된다.
+    func jogressNeedsPartner(_ name: String) -> String {
+        t("\(name)을(를) 먼저 졸업시켜야 합니다",
+          "Graduate \(name) first",
+          "先に \(name) を卒業させてください",
+          "Primero debes graduar a \(name)",
+          "Fais d'abord diplômer \(name)",
+          "Gradue \(name) primeiro",
+          "Bringe \(name) zuerst zum Abschluss")
+    }
+
+    // MARK: 체인 승급 (EVOLUTION.md §3 — Imperialdramon 체인)
+
+    /// Home 의 체인 승급 컨트롤 제목.
+    var chainPromotion: String { t("승급", "Promote", "昇格", "Promoción", "Promotion", "Promoção", "Aufstieg") }
+    /// 승급 실행 버튼 — 결과 종 이름 + 가격.
+    ///
+    /// ko 조사는 `(으)로` 로 헤지한다(`armorEvolveHint` 와 같은 방식). 결과 종 900·405 는 둘 다
+    /// `모드` 로 끝나 받침이 없지만, `으로` 고정은 받침 있는 이름이 체인에 추가되는 순간 틀린다.
+    func chainPromoteInto(_ name: String, _ price: String) -> String {
+        t("\(name)(으)로 승급 (\(price))",
+          "Promote to \(name) (\(price))",
+          "\(name) に昇格 (\(price))",
+          "Promocionar a \(name) (\(price))",
+          "Promouvoir en \(name) (\(price))",
+          "Promover para \(name) (\(price))",
+          "Aufstieg zu \(name) (\(price))")
+    }
+    /// 잔액 부족 안내 — 필요한 금액.
+    func chainNeedsTokens(_ price: String) -> String {
+        t("토큰 \(price)이(가) 필요해요",
+          "Needs \(price) tokens",
+          "トークンが \(price) 必要です",
+          "Necesitas \(price) tokens",
+          "Il faut \(price) jetons",
+          "Precisa de \(price) tokens",
+          "Benötigt \(price) Tokens")
+    }
+
     /// Rare Candy batch preview, including carryover and graduation waste.
     var candyGraduates: String {
         t("이 디지몬은 졸업할 것으로 예상돼요.", "Expected to graduate.", "卒業する見込みです。",

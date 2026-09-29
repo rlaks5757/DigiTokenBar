@@ -446,6 +446,76 @@ struct CompanionHeader: View {
         }
     }
 
+    /// 죠그레스 — 사다리 종에 조합이 있을 때만 나타난다. 조합이 아예 없는 종(대부분)에는 그리지 않는다:
+    /// 항상 비활성 버튼을 두면 모든 디지몬 밑에 죽은 컨트롤이 하나씩 붙는다. 조합은 있는데 파트너
+    /// 졸업 기록이 없으면 **비활성 버튼 + 안내 문구** 다(요구사항 §3).
+    ///
+    /// 판정·문구는 전부 store 에 있다 — XCTest 가 SwiftUI body 안을 볼 수 없어서, 여기 로직을 두면
+    /// 게이트가 테스트 밖으로 새어나간다. 이 뷰는 위임만 한다.
+    @ViewBuilder
+    private var jogressControl: some View {
+        let l = store.l
+        let candidates = store.jogressCandidates
+        if !candidates.isEmpty {
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(candidates) { candidate in
+                    HStack(spacing: 8) {
+                        Text(l.jogress)
+                            .font(.system(size: 8, weight: .bold))
+                            .padding(.horizontal, 5).padding(.vertical, 1)
+                            .background(.purple.opacity(0.15)).foregroundStyle(.purple)
+                            .clipShape(Capsule())
+                        if !candidate.hasPartner {
+                            Text(store.jogressPartnerHint(candidate))
+                                .font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                        }
+                        Spacer(minLength: 4)
+                        Button(l.jogressInto(store.jogressResultName(candidate))) {
+                            store.performJogress(candidate)
+                        }
+                        .buttonStyle(.bordered).controlSize(.small)
+                        .disabled(!candidate.hasPartner)
+                    }
+                }
+            }
+        }
+    }
+
+    /// 체인 승급 컨트롤(EVOLUTION.md §3) — 토큰을 지불해 331→900→405 를 한 단계 진행한다.
+    /// 잔액이 부족하면 **비활성 버튼 + 필요 금액 안내** 로, 죠그레스의 파트너 미충족 표시와 같은 모양이다.
+    ///
+    /// 판정·문구·가격은 전부 store 에 있다 — `jogressControl` 과 같은 이유로 여기 로직을 두면
+    /// XCTest 가 볼 수 없는 곳으로 게이트가 새어나간다. 이 뷰는 위임만 한다.
+    @ViewBuilder
+    private var chainPromotionControl: some View {
+        let l = store.l
+        let candidates = store.chainCandidates
+        if !candidates.isEmpty {
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(candidates) { candidate in
+                    HStack(spacing: 8) {
+                        Text(l.chainPromotion)
+                            .font(.system(size: 8, weight: .bold))
+                            .padding(.horizontal, 5).padding(.vertical, 1)
+                            .background(.orange.opacity(0.15)).foregroundStyle(.orange)
+                            .clipShape(Capsule())
+                        if !candidate.affordable {
+                            Text(store.chainPriceHint(candidate))
+                                .font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                        }
+                        Spacer(minLength: 4)
+                        Button(l.chainPromoteInto(store.chainResultName(candidate),
+                                                  TokenFormatter.compact(candidate.price))) {
+                            store.performChainPromotion(candidate)
+                        }
+                        .buttonStyle(.bordered).controlSize(.small)
+                        .disabled(!candidate.affordable)
+                    }
+                }
+            }
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .center, spacing: 12) {
@@ -533,6 +603,8 @@ struct CompanionHeader: View {
             // 아머 해제는 **Home** 에 둔다 — 가방은 ownedItems(개수>0)만 그리므로, 디지멘탈을 하나도
             // 안 가진 상태(다른 기기 세이브·손편집)에선 카드 자체가 없어 되돌릴 수단이 사라진다.
             if store.isArmored { armorControl }
+            jogressControl
+            chainPromotionControl
             if store.hasActive, !store.lineNodes.isEmpty {
                 // 폭을 안 주면 분기 라인(이브이)이 넘쳐 팝오버 콘텐츠 전체가 좌우로 잘린다.
                 EvoLineView(nodes: store.lineNodes, mysteryLabel: store.l.unknownNextEvolution,

@@ -1012,6 +1012,299 @@ final class CompanionStore {
         return true
     }
 
+    // MARK: 죠그레스 (GAME-DESIGN.md §3)
+
+    /// 죠그레스 후보 — `(현재 사다리 종 + 파트너) → 결과`. 파트너 기록이 없어도(=불가) 후보로 나온다:
+    /// 뷰가 "무엇을 졸업시켜야 하는가" 를 안내하려면 미충족 조합도 보여야 한다.
+    struct JogressCandidate: Sendable, Identifiable {
+        let partnerID: Int
+        let resultID: Int
+        /// 파트너 졸업 기록이 도감에 있나 — 뷰의 `.disabled` 가 읽는 **표시값**이다.
+        /// 실행 게이트는 이걸 믿지 않고 `performJogress` 에서 도감을 다시 본다(참칭 방지).
+        let hasPartner: Bool
+        /// 아래 정렬 키와 **같은 조합**이다. `resultID` 만으로는 부족하다 — 정렬이 partner 를 2차 키로
+        /// 두는 이유(한 종이 여러 조합의 부모가 될 수 있다)가 그대로 id 에도 적용되기 때문이다.
+        /// 데이터에 그런 조합이 추가되면 `resultID` 단독 id 는 SwiftUI 에서 중복이 되어 행이 사라진다.
+        var id: String { "\(resultID)-\(partnerID)" }
+    }
+
+    /// 지금 육성 중인 개체로 성립할 수 있는 죠그레스 조합 전부.
+    ///
+    /// **데이터 조회가 곧 게이트다** — 아머(`armorResult`)와 같은 태도로, `DigiLevel` 로 판정하지 않는다.
+    /// Tailmon(83)은 데이터상 Child 지만 죠그레스 부모라, 레벨 축으로 거르면 실피드몬 경로가 사라진다.
+    ///
+    /// 기준은 항상 **사다리 종**(`currentID`)이다. 아머체(`displayID`)로 조회하면 항상 빈 배열이 된다.
+    /// 조합 테이블은 전부 `DigimonData.jogressResults` 에서 오므로, 데이터에 조합이 추가되면
+    /// 여기 손대지 않아도 그대로 동작한다(팔라딘 모드 481 은 405 도달 규칙만 정해지면 저절로 붙는다).
+    ///
+    /// 정렬: `jogressResults` 는 Dictionary 라 순회 순서가 실행마다 다르다. 뷰와 테스트가 보는 순서가
+    /// 흔들리지 않게 결과 id 로 전순서를 만든다(한 종이 여러 조합의 부모인 경우에 대비해 partner 도 함께).
+    var jogressCandidates: [JogressCandidate] {
+        guard let a = state.active else { return [] }
+        let me = a.currentID
+        return DigimonData.jogressResults.compactMap { key, resultID -> JogressCandidate? in
+            let ids = key.speciesIDs
+            // 이미 얻은 결과는 후보에서 뺀다 — `chainCandidates` 의 `chain-` 필터와 같은 이유다.
+            // 파트너는 비소모라 `hasPartner` 가 계속 true 이므로, 빼지 않으면 성공 후에도 그 행이
+            // **영구 활성 버튼**으로 남고 누르면 `recordJogressDexEntry` 가 false 를 주고 끝난다.
+            // 두 경로(사다리/도감 전용) 공통이라 분기 앞에 둔다.
+            guard !state.dex.contains(where: { $0.id == "jogress-\(resultID)" }) else { return nil }
+            // 사다리 종이 부모인 조합은 **육성 중인 개체가 그 종이어야** 한다(§3 "2마리가 필요하다").
+            // 그 축을 만족하지 못하면 아래 도감 전용 경로로 떨어진다.
+            if let partnerID = ids.first(where: { $0 != me }), ids.contains(me) {
+                // 같은 종끼리의 조합은 데이터에 없다. 있더라도 `first(where:)` 가 자기 자신을 파트너로
+                // 골라 "스스로를 졸업시켜라" 는 안내가 되므로, 그 경우는 후보에서 빠지는 게 맞다.
+                return JogressCandidate(partnerID: partnerID, resultID: resultID,
+                                        hasPartner: hasJogressPartnerRecord(partnerID))
+            }
+            // **도감 전용 조합** — 양쪽 부모가 모두 사다리 밖 종일 때만. 팔라딘 모드(481)가 유일한
+            // 사례다: 부모 405·183 은 둘 다 죠그레스/체인 결과물이라 12개 라인 stages 어디에도 없고,
+            // 따라서 `currentID` 가 그 종이 되는 일이 **영원히 없다**. 위 축만 두면 481 은 데이터에
+            // 조합이 있어도 후보로 나올 수 없어 영구 도달 불가다(§3 이 경고하는 바로 그 상태).
+            //
+            // 완화는 `isLadderSpecies` 로 **데이터에서** 좁힌다 — id 를 박지 않으므로 라인 구성이
+            // 바뀌면 판정도 따라 움직인다. 사다리 부모가 하나라도 있는 조합(예: 202+168→183)은
+            // 여기 걸리지 않아 "육성 중인 개체가 부모여야 한다" 는 전제를 그대로 유지한다.
+            guard ids.allSatisfy({ !DigimonData.isLadderSpecies($0) }) else { return nil }
+            // **한쪽이라도 기록이 있을 때만** 후보로 낸다. 이 조합은 육성 개체와 무관하게 성립하므로
+            // 조건 없이 내보내면 갓 부화한 플레이어에게도 "오메가몬을 먼저 졸업시켜야 합니다" 라는
+            // 영구 비활성 행이 상시 떠 있는다(죠그레스 컨트롤은 후보가 있으면 무조건 그려진다).
+            // 진행이 시작된 뒤에만 보여서 "다음 목표" 로 읽히게 한다.
+            guard ids.contains(where: hasJogressPartnerRecord) else { return nil }
+            // 부모가 둘 다 도감 기록이라 어느 쪽을 "파트너" 로 부를지는 임의다 — 아직 없는 쪽을
+            // 파트너로 지목해야 안내가 "무엇을 더 구해야 하는가" 를 가리킨다.
+            guard let partnerID = ids.first(where: { !hasJogressPartnerRecord($0) }) ?? ids.min()
+            else { return nil }
+            return JogressCandidate(partnerID: partnerID, resultID: resultID,
+                                    hasPartner: ids.allSatisfy(hasJogressPartnerRecord))
+        }
+        .sorted { ($0.resultID, $0.partnerID) < ($1.resultID, $1.partnerID) }
+    }
+
+    /// 지금 바로 실행할 수 있는 죠그레스(파트너 기록 충족).
+    var availableJogress: JogressCandidate? { jogressCandidates.first { $0.hasPartner } }
+
+    /// 이 종이 죠그레스 **파트너 자격**을 갖는 도감 기록을 갖고 있나.
+    ///
+    /// `state.ownsSpecies` 를 쓰지 않는다 — 그건 도감 기록 외에 **현재 개체가 도달한 단계**까지
+    /// true 를 주므로, 육성 중인 개체 하나로 양쪽 부모를 동시에 만족시켜 버린다("2마리가 필요하다"는
+    /// §3 의 전제가 무너진다). 인정 여부는 도감 항목의 종류로 갈린다:
+    ///
+    ///  - ✅ **졸업 기록** — §3 이 파트너로 인정하는 바로 그 기록.
+    ///  - ✅ **죠그레스 결과 기록** — 아래 `recordJogressDexEntry` 가 만드는 항목도 졸업분과 같은
+    ///        형태(`releasedAt`/`armoredAt` 둘 다 nil)라 자동으로 자격을 갖는다. 팔라딘 모드(481)의
+    ///        부모가 둘 다 죠그레스 결과물이므로, 이게 아니면 그 경로가 영구 도달 불가다(§3).
+    ///  - ❌ **놓아준 기록**(`isReleased`) — 졸업시키지 않고 포기한 개체다.
+    ///  - ❌ **아머 기록**(`isArmored`) — 사다리 밖 표시 오버레이일 뿐 졸업이 아니다.
+    ///
+    /// `chainOrder` 로 대조하는 이유: 졸업 항목은 체인 전체를 담으므로 최종체가 아닌 중간 단계
+    /// (예: Angemon 3 — Patamon 라인의 Adult)도 파트너가 된다. `finalID` 만 보면 그 조합이 막힌다.
+    func hasJogressPartnerRecord(_ speciesID: Int) -> Bool {
+        state.dex.contains { entry in
+            !entry.isReleased && !entry.isArmored && entry.chainOrder.contains(speciesID)
+        }
+    }
+
+    /// 파트너 기록이 없을 때의 안내 — "<파트너>을 먼저 졸업시켜야 합니다".
+    /// 이름은 현재 언어로 해석한다. 라인(`currentLine`)이 아니라 `dataName` 을 쓰는 이유는
+    /// `ladderName` 주석과 같다 — 파트너는 다른 라인의 종이라 애초에 현재 라인에 없다.
+    func jogressPartnerHint(_ candidate: JogressCandidate) -> String {
+        l.jogressNeedsPartner(Self.dataName(candidate.partnerID, state.language))
+    }
+
+    /// 죠그레스 결과의 현재 언어 이름 — 버튼 문구가 "무엇이 되는가" 를 가리킨다.
+    func jogressResultName(_ candidate: JogressCandidate) -> String {
+        Self.dataName(candidate.resultID, state.language)
+    }
+
+    /// 죠그레스 실행 — **도감 기록만 만든다.**
+    ///
+    /// ⚠️ 사다리 필드(`pathIDs`/`currentID`/`stageIndex`/`plannedPathIDs`)는 절대 건드리지 않는다.
+    /// 죠그레스 결과 종은 12개 라인의 stages 어디에도 없어서 `line.tree.node(withID:)` 가 nil 을
+    /// 반환하고, 그러면 `applyUsage` 의 진화 판정이 멈춰 성장이 영구 정지한다. 아머가 `currentID`
+    /// (사다리)와 `displayID`(표시)를 갈라 둔 것과 같은 이유다 — 여기선 표시 축조차 안 건드린다.
+    ///
+    /// 파트너는 **소모되지 않는다**(§3: 도감은 재고가 아니라 기록이다).
+    /// - Returns: 새 기록을 만들었으면 true. 불가(파트너 미충족·조합 없음)이거나 **이미 있는 기록**이면
+    ///   false — 아머와 달리 두 번째 호출은 상태를 전혀 바꾸지 않으므로 "아무 일도 없었다"가 맞다.
+    @discardableResult
+    func performJogress(_ candidate: JogressCandidate) -> Bool {
+        // 파트너 판정을 **여기서 다시 한다** — `candidate.hasPartner` 는 뷰의 `.disabled` 용 표시값이라
+        // 그걸 믿으면 손으로 만든 후보가 게이트를 통과한다. 조합도 같은 이유로 데이터에 재조회한다.
+        // 판정 권한은 후보 구조체가 아니라 store 에 있다.
+        guard let a = state.active, hasJogressPartnerRecord(candidate.partnerID) else { return false }
+        // 조합 성립 판정도 **데이터에 재조회**한다. 두 경로 중 하나를 만족해야 한다:
+        //  ① 사다리 경로 — 육성 중인 개체가 한쪽 부모다.
+        //  ② 도감 전용 경로 — 양쪽 부모가 모두 사다리 밖 종이고, 둘 다 도감 기록이 있다(481).
+        //     `jogressCandidates` 와 같은 조건을 여기서 **다시** 세운다. 후보 구조체가 스스로
+        //     "나는 도감 전용이다" 라고 말하게 두면 참칭 호출자가 사다리 조합(202+168)을 개체 없이
+        //     통과시킨다 — 판정 권한은 후보가 아니라 store 에 있다.
+        // `partnerID != a.currentID` 가드는 두지 않는다 — 데이터에 같은 종끼리의 조합이 없어
+        // (jogress 5쌍 전부 `a != b`) 한 마리로 양쪽 부모를 만족시키는 경로가 열리지 않는다.
+        // 생기더라도 `viaLadder` 는 `jogressResult(me, me)` 가 nil, `viaDex` 는 `isLadderSpecies(me)`
+        // 가 true 라 둘 다 막힌다. 후보 산출부가 그 경우를 빼는 건 안내 문구가 "스스로를 졸업시켜라"
+        // 가 되지 않게 하려는 표시 목적이고, 게이트 목적이 아니다.
+        let viaLadder = DigimonData.jogressResult(a.currentID, candidate.partnerID) == candidate.resultID
+        let viaDex = !viaLadder && DigimonData.jogressResults.contains { key, result in
+            let ids = key.speciesIDs
+            return result == candidate.resultID && ids.contains(candidate.partnerID)
+                && ids.allSatisfy { !DigimonData.isLadderSpecies($0) && hasJogressPartnerRecord($0) }
+        }
+        guard viaLadder || viaDex,
+              recordJogressDexEntry(candidate.resultID) else { return false }
+        // 연출·알림은 아머와 같은 기준(=도감에 처음 들어갔을 때만)으로 접는다. 위 guard 가 이미
+        // `recordJogressDexEntry` 의 반환으로 그 조건을 먹었으므로 여기 도달 = 처음 얻은 것이다.
+        let name = Self.dataName(candidate.resultID, state.language)
+        justEvolvedTo = name
+        fireCelebration(.evolve)
+        eventUntil = clock().addingTimeInterval(4)
+        notifyCompanionEvent(l.notifEvolveTitle, l.notifEvolveBody(name))
+        AppLog.write("jogress: \(a.currentID) + \(candidate.partnerID) -> \(candidate.resultID)")
+        save()
+        return true
+    }
+
+    /// 죠그레스 결과의 영구 도감 기록 — 졸업분과 같은 형태(`releasedAt`/`armoredAt` 둘 다 nil)다.
+    /// §3 "죠그레스 결과는 도감에 **졸업** 등록된다" 를 그대로 옮긴 것이라 새 필드가 필요 없고,
+    /// 그 덕에 `hasJogressPartnerRecord` 가 별도 분기 없이 이 기록을 파트너로 인정한다.
+    ///
+    /// 기록은 **결과 종 하나당 한 줄**로 접는다(아머는 `armor-<instanceID>-<id>` 로 개체별이었다).
+    /// 아머는 개체마다 되돌아오는 오버레이라 "이 개체가 처음 입었나" 가 연출 단위였지만, 죠그레스
+    /// 결과는 개체에 붙는 상태가 아니라 도달했다는 사실 자체다 — 오메가몬 기록이 워그레이몬을 키울
+    /// 때마다 한 줄씩 늘어나면 도감이 같은 종으로 도배된다.
+    /// 체인 승급도 같은 형태의 기록을 만든다(`prefix` 로만 갈린다) — §3 이 둘을 같은 "졸업 등록"
+    /// 으로 규정하므로 기록 형태가 갈리면 `hasJogressPartnerRecord` 가 한쪽만 파트너로 인정한다.
+    /// 접두어를 나누는 건 id 충돌 방지용이다(같은 종이 두 경로로 들어올 일은 없지만, 기록의 출처가
+    /// 로그·도감 디버깅에서 드러나는 편이 낫다).
+    /// - Returns: 새 항목을 추가했으면 true, 이미 있었으면 false.
+    @discardableResult
+    private func recordJogressDexEntry(_ resultID: Int, prefix: String = "jogress") -> Bool {
+        let entryID = "\(prefix)-\(resultID)"
+        guard !state.dex.contains(where: { $0.id == entryID }), let a = state.active else { return false }
+        state.dex.append(DexEntry(
+            id: entryID,
+            baseID: a.baseID,
+            finalID: resultID,
+            // 두 부모가 합쳐진 결과라 "체인" 이 아니다 — 결과 종 하나만 담는다. 부모를 여기 넣으면
+            // 파트너 라인의 종이 이 기록만으로 보유 판정을 받아(`dexSpecies`/`hasJogressPartnerRecord`)
+            // 졸업하지 않은 종이 도감에 생긴다.
+            chainOrder: [resultID],
+            rarity: a.rarity,
+            caughtAt: clock(),
+            profile: a.profile,
+            // 아머 기록과 같은 이유로 이름을 심는다 — 비우면 `needsNamesRefresh` 가 영영 true 인데
+            // 사다리 라인엔 죠그레스 결과가 없어 백필이 절대 채우지 못한다.
+            names: DigimonData.name(for: resultID).map { [resultID: $0.localizedNames] }))
+        return true
+    }
+
+    // MARK: 체인 승급 (EVOLUTION.md §3 — Imperialdramon 체인)
+
+    /// 토큰을 지불해 진행하는 **단일 부모 전이** 후보. 331→900→405 두 간선이 전부다.
+    struct ChainCandidate: Sendable, Identifiable {
+        /// 출발 종 — 도감에 기록이 있어야 한다. 승급해도 **소모되지 않는다**.
+        let fromID: Int
+        let toID: Int
+        /// 난이도까지 적용된 실제 지불액.
+        let price: Int
+        /// 잔액이 충분한가 — 뷰의 `.disabled` 가 읽는 **표시값**이다.
+        /// 실행 게이트는 이걸 믿지 않고 `performChainPromotion` 에서 지갑을 다시 본다(참칭 방지).
+        let affordable: Bool
+        /// 출발·도착 종을 **함께** 쓴다 — 한 종에 들어오는 간선이 여럿이면 `toID` 단독 id 는
+        /// SwiftUI 에서 중복이 되어 행이 사라진다(`JogressCandidate.id` 와 같은 이유).
+        /// 두 필드를 다 담으므로 아래 정렬 키(`(fromID, toID)`)와 필드 순서가 달라도 유일하다.
+        var id: String { "\(toID)-\(fromID)" }
+    }
+
+    /// 지금 승급할 수 있는 체인 간선 전부 — 도감에 출발 종 기록이 있는 것만.
+    ///
+    /// **한 단계씩**이라는 규칙은 별도 코드가 아니라 이 조회 자체가 강제한다: 900 기록이 없으면
+    /// 900→405 간선의 출발 종 기록이 없어 후보가 아니다. 331 에서 405 로 건너뛰는 간선은
+    /// 데이터에 아예 없으므로 "건너뛰기 금지" 를 판정하는 분기도 필요 없다.
+    ///
+    /// 간선은 `forwardEdges` 에서 온다(중복 진실 원천 금지 — 로더가 chain 테이블로 만든 그것).
+    /// 사다리 간선과 타입상 구별되지 않는 `.normal` 이지만, **출발 종이 사다리 밖**일 때만 보므로
+    /// 정규 진화가 여기 섞이지 않는다 — 정규 진화의 출발 종은 정의상 전부 사다리 종이다.
+    /// 그래서 `EvolutionEdge` 에 새 case 를 만들지 않았다.
+    var chainCandidates: [ChainCandidate] {
+        // `jogressCandidates` 와 같은 형태의 알(육성 개체 없음) 가드다. 없으면 331 기록을 들고 알
+        // 상태인 플레이어에게 승급 행이 **활성 버튼**으로 뜨는데, 눌러도 `recordJogressDexEntry` 가
+        // `state.active` 언랩에서 false 로 떨어져 아무 일도 안 난다(토큰은 안 빠진다).
+        // `chainPromotionControl` 은 `armorControl` 과 달리 body 에 무조건 있고 `CompanionHeader` 도
+        // `hasActive` 와 무관하게 렌더되므로, 이 가드가 그 죽은 컨트롤을 막는 유일한 지점이다.
+        guard state.active != nil else { return [] }
+        let price = chainPromotionPrice
+        let affordable = availableTokens >= price
+        return DigimonData.chainEdges
+            .filter { edge in
+                // 이미 기록이 있으면 후보에서 뺀다 — 두 번째 지불이 아무것도 안 만들고 끝나지 않게.
+                hasJogressPartnerRecord(edge.from)
+                    && !state.dex.contains { $0.id == "chain-\(edge.to)" }
+            }
+            .map { ChainCandidate(fromID: $0.from, toID: $0.to, price: price, affordable: affordable) }
+            // **출발 종** 오름차순이다. `DigimonData.chainEdges` 의 `(to, from)` 정렬을 여기서
+            // 덮어쓴다 — 아래 `availableChainPromotion` 의 `first {}` 가 고르는 항목이 이 정렬로
+            // 결정되므로, 도착 종 순서로 두면 두 간선이 동시에 열렸을 때 뒷 단계(900→405)가 앞에
+            // 온다(405 < 900). 출발 종 순으로 두면 앞 단계(331→900)가 먼저 나와 한 단계씩 진행한다.
+            // 이 체인에서 출발 종 오름차순 = 진행 순서인 건 331 < 900 이라서다(구조적 보장은 아니다 —
+            // 간선이 늘어나면 `chainDepth` 같은 명시적 진행 순서 키가 필요하다).
+            .sorted { ($0.fromID, $0.toID) < ($1.fromID, $1.toID) }
+    }
+
+    /// 지금 바로 실행할 수 있는 승급(잔액 충족).
+    ///
+    /// 앱 정상 경로로는 두 간선이 동시에 열리지 않지만(900 기록이 곧 331→900 을 닫는다), 손편집
+    /// 세이브로 `chain-900` 이 아닌 id 의 항목에 `chainOrder: [900]` 을 심으면 열릴 수 있다.
+    /// 그때도 위 정렬이 **앞 단계**를 먼저 주므로 900 을 건너뛴 1회 지불 승급은 성립하지 않는다.
+    var availableChainPromotion: ChainCandidate? { chainCandidates.first { $0.affordable } }
+
+    /// 승급 1회 가격 — 상점과 **같은 난이도 배율**을 적용한다(아이템·알과 한 축으로 움직인다).
+    var chainPromotionPrice: Int {
+        DigimonBalance.scaled(ChainPromotion.price, by: shopDifficulty)
+    }
+
+    /// 승급 결과의 현재 언어 이름 — 버튼 문구가 "무엇이 되는가" 를 가리킨다.
+    func chainResultName(_ candidate: ChainCandidate) -> String {
+        Self.dataName(candidate.toID, state.language)
+    }
+
+    /// 잔액 부족 시의 안내 — 필요한 금액을 보여준다.
+    func chainPriceHint(_ candidate: ChainCandidate) -> String {
+        l.chainNeedsTokens(TokenFormatter.compact(candidate.price))
+    }
+
+    /// 체인 승급 실행 — **토큰을 지불하고 도감 기록만 만든다.**
+    ///
+    /// ⚠️ 죠그레스와 같은 이유로 사다리 필드(`pathIDs`/`currentID`/`stageIndex`/`plannedPathIDs`)를
+    /// 절대 건드리지 않는다. 결과 종(900/405)은 12개 라인 stages 어디에도 없어서 사다리에 얹으면
+    /// `line.tree.node(withID:)` 가 nil 을 반환해 성장이 영구 정지한다.
+    ///
+    /// 지갑은 `spentTokens` 만 올린다 — `usedSinceInstall`(성장 미터·통계)은 읽기만 한다. 아머 §7
+    /// 불변조건과 같은 원칙이라, 승급을 반복해도 진화 진행·오늘/주/월 통계가 전혀 움직이지 않는다.
+    ///
+    /// 출발 종 기록은 **소모되지 않는다**(§3: 도감은 재고가 아니라 기록이다).
+    /// - Returns: 지불하고 새 기록을 만들었으면 true. 불가(기록 없음·잔액 부족·간선 없음)이거나
+    ///   **이미 있는 기록**이면 false — 그 경우 토큰도 빠져나가지 않는다.
+    @discardableResult
+    func performChainPromotion(_ candidate: ChainCandidate) -> Bool {
+        // 전부 **여기서 다시 판정한다** — `price`/`affordable` 은 뷰의 표시값이라 그걸 믿으면
+        // 손으로 만든 후보가 0원 승급을 통과시킨다. 간선·기록·잔액 모두 원천에 재조회한다.
+        let price = chainPromotionPrice
+        guard DigimonData.chainEdges.contains(where: { $0.from == candidate.fromID && $0.to == candidate.toID }),
+              hasJogressPartnerRecord(candidate.fromID),
+              availableTokens >= price,
+              recordJogressDexEntry(candidate.toID, prefix: "chain") else { return false }
+        state.spentTokens += price      // 지출 원장만 — 성장 미터(usedSinceInstall)는 불변
+        let name = Self.dataName(candidate.toID, state.language)
+        justEvolvedTo = name
+        fireCelebration(.evolve)
+        eventUntil = clock().addingTimeInterval(4)
+        notifyCompanionEvent(l.notifEvolveTitle, l.notifEvolveBody(name))
+        AppLog.write("chain promotion: \(candidate.fromID) -> \(candidate.toID) for \(price)")
+        save()
+        return true
+    }
+
     // MARK: 상점 (재화 = 사용한 토큰)
 
     /// 상점에서 쓸 수 있는 토큰(재화) = 실사용 누적 − 상점 지출 누적. 성장 미터(usedSinceInstall)는

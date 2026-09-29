@@ -186,6 +186,11 @@ enum SaveTransfer {
     ///
     /// 다운스트림 산술 지점마다 막으면 새 지점이 생길 때마다 재발하므로, 값이 **들어오는 경계 한 곳**에서
     /// 정규화한다. 대상은 실제로 산술에 쓰이는 필드뿐이다 — 도감·인벤토리 항목은 잘라내지 않는다(데이터 손실).
+    ///
+    /// ⚠️ **도감 항목을 라인 트리로 검증하지 말 것.** 죠그레스·체인·아머 결과 종(331/900/405/481/183,
+    /// 아머체 10종)은 12개 라인의 stages 어디에도 없으므로 "유령 종을 떨군다" 규칙을 넣으면 그 기록이
+    /// 전부 사라진다. 그 기록이 `hasJogressPartnerRecord` 의 유일한 근거라, 게이트는 green 으로
+    /// 통과하면서 팔라딘 모드(481)만 조용히 영구 도달 불가가 된다(EVOLUTION.md §3).
     static func sanitized(_ state: CompanionState) -> CompanionState {
         func clampToken(_ v: Int) -> Int { min(max(0, v), maxTokenValue) }
         var s = state
