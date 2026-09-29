@@ -117,17 +117,17 @@
       }
     },
     {
-      "id": "hawkmon",
+      "id": "aquilamon",
       "lane": "jogress_silphymon",
       "col": 1,
-      "type": "frontend",
-      "label": "Hawkmon",
+      "type": "backend",
+      "label": "Aquilamon",
       "width": 138,
       "height": 92,
       "tag": "파트너 종",
       "brand": {
-        "url": "https://wikimon.net/images/b/b7/Hawkmon_vpet_vb.png",
-        "sha256": "5b138da9a98e8c82295d77bc02089f557747e580defbd9963a2d02ce0bf9cf30"
+        "url": "https://wikimon.net/images/4/4b/Aquilamon_vpet_vb.png",
+        "sha256": "5b58b4208aef71b090e402d4fab5e097cabece499021a45151e530c771954641"
       }
     },
     {
@@ -184,8 +184,8 @@
       "role": "branch"
     },
     {
-      "id": "hawkmon-silphymon",
-      "from": "hawkmon",
+      "id": "aquilamon-silphymon",
+      "from": "aquilamon",
       "to": "silphymon",
       "label": "죠그레스",
       "variant": "security",
