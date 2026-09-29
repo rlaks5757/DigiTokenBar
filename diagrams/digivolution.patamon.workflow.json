@@ -66,7 +66,7 @@
       "lane": "patamon",
       "col": 1,
       "type": "backend",
-      "label": "Angemon",
+      "label": "엔젤몬",
       "width": 138,
       "height": 92,
       "brand": {
@@ -79,7 +79,7 @@
       "lane": "patamon",
       "col": 2,
       "type": "cloud",
-      "label": "Holy Angemon",
+      "label": "홀리엔젤몬",
       "width": 138,
       "height": 92,
       "brand": {
@@ -92,7 +92,7 @@
       "lane": "patamon",
       "col": 3,
       "type": "security",
-      "label": "Seraphimon",
+      "label": "세라피몬",
       "width": 138,
       "height": 92,
       "brand": {
@@ -119,7 +119,7 @@
       "lane": "armor_patamon",
       "col": 2,
       "type": "messagebus",
-      "label": "Pegasmon",
+      "label": "페가수스몬",
       "width": 138,
       "height": 92,
       "brand": {
@@ -132,7 +132,7 @@
       "lane": "jogress_shakkoumon",
       "col": 2,
       "type": "backend",
-      "label": "Ankylomon",
+      "label": "안킬로몬",
       "width": 138,
       "height": 92,
       "tag": "파트너 종",

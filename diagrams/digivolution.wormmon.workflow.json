@@ -61,7 +61,7 @@
       "lane": "wormmon",
       "col": 1,
       "type": "backend",
-      "label": "Stingmon",
+      "label": "스팅몬",
       "width": 138,
       "height": 92,
       "brand": {
@@ -74,7 +74,7 @@
       "lane": "jogress_imperial",
       "col": 1,
       "type": "backend",
-      "label": "XV-mon",
+      "label": "엑스브이몬",
       "width": 138,
       "height": 92,
       "tag": "파트너 종",

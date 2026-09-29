@@ -52,7 +52,7 @@
       "lane": "hawkmon",
       "col": 0,
       "type": "frontend",
-      "label": "Hawkmon",
+      "label": "호크몬",
       "width": 138,
       "height": 92,
       "brand": {
@@ -65,7 +65,7 @@
       "lane": "hawkmon",
       "col": 1,
       "type": "backend",
-      "label": "Aquilamon",
+      "label": "아큐라몬",
       "width": 138,
       "height": 92,
       "brand": {
@@ -120,7 +120,7 @@
       "lane": "armor_hawkmon",
       "col": 4,
       "type": "messagebus",
-      "label": "Shurimon",
+      "label": "수리몬",
       "width": 138,
       "height": 92,
       "brand": {
@@ -148,7 +148,7 @@
       "lane": "jogress_silphymon",
       "col": 5,
       "type": "messagebus",
-      "label": "Silphymon",
+      "label": "실피드몬",
       "width": 138,
       "height": 92,
       "tag": "죠그레스",

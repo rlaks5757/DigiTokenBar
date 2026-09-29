@@ -56,7 +56,7 @@
       "lane": "palmon",
       "col": 1,
       "type": "backend",
-      "label": "Togemon",
+      "label": "니드몬",
       "width": 138,
       "height": 92,
       "brand": {
@@ -69,7 +69,7 @@
       "lane": "palmon",
       "col": 2,
       "type": "cloud",
-      "label": "Lilimon",
+      "label": "릴리몬",
       "width": 138,
       "height": 92,
       "brand": {
