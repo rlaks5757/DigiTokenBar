@@ -226,6 +226,8 @@ final class DigimonEvolutionDiagramTests: XCTestCase {
             let id: String
             let speciesID: Int
             let label: String
+            /// JSON `sublabel` 필드값(없으면 nil — 대다수 노드는 없다).
+            let sublabel: String?
         }
         let speciesNodeIDs: Set<Int>
         let digimentalItemNodes: [Node]
@@ -447,6 +449,15 @@ final class DigimonEvolutionDiagramTests: XCTestCase {
             let attrLabel: String
             /// 블록 안 `class="t-primary"` `<text>` 의 화면 표시 텍스트(trim 됨).
             let visibleLabel: String
+            /// 여는 태그의 `data-node-sublabel` 속성값. 부 라벨 층 대조용(모든 노드에 값이
+            /// 있는 건 아니다 — 없으면 nil).
+            let attrSublabel: String?
+            /// 블록 안 `class="t-muted"` `<text>` 의 화면 표시 텍스트(trim 됨, 없으면 nil).
+            let visibleSublabel: String?
+            /// 블록 안 `<title>` 전체 텍스트.
+            let title: String?
+            /// 여는 태그의 `aria-label` 속성값.
+            let ariaLabel: String?
         }
         struct JogressEdge {
             let from: String
@@ -489,9 +500,9 @@ final class DigimonEvolutionDiagramTests: XCTestCase {
             (text: ns.substring(with: m.range), range: m.range)
         }
 
-        var nodeBlocks: [(id: String, attrLabel: String, body: String)] = []
+        var nodeBlocks: [(id: String, attrLabel: String, attrSublabel: String?, ariaLabel: String?, body: String)] = []
         var depth = 0
-        var openNodeStack: [(id: String, attrLabel: String, startDepth: Int, bodyStart: Int)] = []
+        var openNodeStack: [(id: String, attrLabel: String, attrSublabel: String?, ariaLabel: String?, startDepth: Int, bodyStart: Int)] = []
         for token in gTokens {
             if token.text == "</g>" {
                 depth -= 1
@@ -499,12 +510,14 @@ final class DigimonEvolutionDiagramTests: XCTestCase {
                     openNodeStack.removeLast()
                     let body = ns.substring(with: NSRange(
                         location: top.bodyStart, length: token.range.location - top.bodyStart))
-                    nodeBlocks.append((id: top.id, attrLabel: top.attrLabel, body: body))
+                    nodeBlocks.append((id: top.id, attrLabel: top.attrLabel, attrSublabel: top.attrSublabel,
+                        ariaLabel: top.ariaLabel, body: body))
                 }
             } else {
                 let attrs = attributes(token.text)
                 if let gid = attrs["id"], gid.hasPrefix("node-"), let nodeID = attrs["data-node-id"] {
                     openNodeStack.append((id: nodeID, attrLabel: attrs["data-node-label"] ?? "",
+                        attrSublabel: attrs["data-node-sublabel"], ariaLabel: attrs["aria-label"],
                         startDepth: depth, bodyStart: token.range.location + token.range.length))
                 }
                 depth += 1
@@ -522,6 +535,12 @@ final class DigimonEvolutionDiagramTests: XCTestCase {
         var speciesIDs = Set<String>()
         var labeledNodes: [HTMLDiagramSpec.LabeledNode] = []
         let primaryTextRE = try NSRegularExpression(pattern: "<text\\b[^>]*class=\"t-primary\"[^>]*>([^<]*)</text>")
+        // t-muted 와 <title> 은 부 라벨 층 대조용으로만 쓴다(testSublabel… 계열). t-primary 와
+        // 달리 개수를 강제하지 않는다 — sublabel 이 없는 노드(대다수)는 t-muted 가 0개일 수
+        // 있어서, 여기서 count==1 을 요구하면 기존 통과 테스트(`testHTMLNodeLabelsMatchDiagramSpecJSON`
+        // 등)가 새로 깨진다.
+        let mutedTextRE = try NSRegularExpression(pattern: "<text\\b[^>]*class=\"t-muted\"[^>]*>([^<]*)</text>")
+        let titleRE = try NSRegularExpression(pattern: "<title>([^<]*)</title>")
         for block in nodeBlocks {
             if block.id.hasPrefix("digimental") { continue }
             speciesIDs.insert(block.id)
@@ -531,7 +550,14 @@ final class DigimonEvolutionDiagramTests: XCTestCase {
                 "노드 '\(block.id)' 블록에 t-primary 텍스트가 정확히 1개가 아니라 \(matches.count)개")
             guard let m = matches.first else { continue }
             let visible = bodyNS.substring(with: m.range(at: 1)).trimmingCharacters(in: .whitespacesAndNewlines)
-            labeledNodes.append(HTMLDiagramSpec.LabeledNode(id: block.id, attrLabel: block.attrLabel, visibleLabel: visible))
+            let mutedMatch = mutedTextRE.firstMatch(in: block.body, range: NSRange(location: 0, length: bodyNS.length))
+            let visibleSublabel = mutedMatch.map {
+                bodyNS.substring(with: $0.range(at: 1)).trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+            let titleMatch = titleRE.firstMatch(in: block.body, range: NSRange(location: 0, length: bodyNS.length))
+            let title = titleMatch.map { bodyNS.substring(with: $0.range(at: 1)) }
+            labeledNodes.append(HTMLDiagramSpec.LabeledNode(id: block.id, attrLabel: block.attrLabel, visibleLabel: visible,
+                attrSublabel: block.attrSublabel, visibleSublabel: visibleSublabel, title: title, ariaLabel: block.ariaLabel))
         }
 
         // 2) 죠그레스 엣지: 여는 태그 하나 단위로 매칭(전방 N자 윈도우 금지 — 다음 엣지 속성과
@@ -655,6 +681,87 @@ final class DigimonEvolutionDiagramTests: XCTestCase {
         XCTAssertEqual(totalEdges, 18, "HTML 의 '죠그레스' 라벨 엣지 총수가 달라짐 — 파일 구성이 변경됨")
     }
 
+    // MARK: - (f-2) 부 라벨(sublabel) 층 가드
+
+    // 기존 (e)/(f) 는 주 라벨(t-primary)만 본다. 부 라벨 층엔 단언이 0건이었다 — 황제드라몬
+    // 3종(900/405/481)의 모드 문자열("드래곤 모드"/"파이터 모드"/"팔라딘 모드")을 전부 지워도
+    // 기존 14개 테스트가 전부 green 이었다(직접 확인). 이 모드 문자열은 vmon 챕터의 3종,
+    // wormmon 챕터의 2종(impdragon/impfighter — imppaladin 은 브이몬 라인이 필요해 정당하게
+    // 없음)을 화면에서 구분하는 유일한 요소다.
+    //
+    // 대상 노드는 `names.ko` 에 콜론이 있는 종(데이터셋에서 유도 — 하드코딩 아님)을
+    // `nodeToSpeciesID` 로 역매핑해 각 차트가 실제로 담고 있는 노드만 추적한다.
+    //
+    // 4개 층을 전부 본다: `data-node-sublabel` 속성, `t-muted` 화면 텍스트, `<title>`,
+    // `aria-label`. 앞의 둘은 부 라벨 자체이므로 **완전 일치**로 비교한다(접두 일치를 허용하면
+    // "파이터 모드"→"파이터" 같은 잘림도 통과해버려 회귀 가드가 무의미해진다 — 파일 상단
+    // `baseName` 관련 주석과 같은 이유). `<title>`/`aria-label` 은 여러 필드를 이어붙인
+    // 합성 문자열이라 완전 일치를 요구할 수 없으므로, 데이터셋에서 유도한 부분 문자열을
+    // 포함하는지로 대조한다 — 이때도 그 부분 문자열 자체가 "이 노드의" 전체 이름(`names.ko`,
+    // 콜론 포함)이라 스왑 뮤테이션(드래곤↔파이터)에서 여전히 깨진다.
+    //
+    // 반드시 **노드 블록 단위**로 스코프한다: vmon.html 한 파일 안에 impdragon 과 impfighter가
+    // 같이 있어서, 파일 전체에서 "드래곤 모드"라는 문자열이 어딘가에 있는지만 보면 두 노드를
+    // 맞바꿔도 파일 전체 집합은 그대로라 통과해버린다. `parseHTMLDiagramSpec` 이 이미 노드별로
+    // 블록을 분리해뒀으므로 각 `HTMLDiagramSpec.LabeledNode`/`DiagramSpec.LabeledNode` 단위로
+    // 비교한다. JSON `sublabel` 도 같은 루프에서 **데이터셋에 독립적으로** 대조한다 — HTML 을
+    // JSON 과만 비교하면 둘이 같이 오염된 경우를 못 잡는다.
+    func testModeVariantSublabelsMatchDatasetAcrossAllLayers() throws {
+        let ds = try DigimonData.loaded()
+
+        // 콜론 표기 종만 추적 대상. baseName() 의 여집합이 부 라벨이다.
+        let modeVariantSpeciesIDs = ds.names.compactMap { id, name -> (Int, String, String)? in
+            guard let ko = name.localeNames["ko"], ko.contains(":") else { return nil }
+            let base = baseName(ko)
+            let suffix = ko.dropFirst(base.count)
+                .trimmingCharacters(in: CharacterSet(charactersIn: ": "))
+            return (id, ko, suffix)
+        }
+        XCTAssertEqual(modeVariantSpeciesIDs.count, 3,
+            "콜론 표기 종 수가 3이 아님(현재 황제드라몬 3종 기대) — 데이터셋 구성이 변경됨")
+        var expectedByID: [Int: (fullKo: String, suffix: String)] = [:]
+        for (id, ko, suffix) in modeVariantSpeciesIDs { expectedByID[id] = (ko, suffix) }
+
+        var checkedInstances = 0
+        for (fileKey, html, json) in try allHTMLAndJSONSpecPairs() {
+            var jsonSublabelsByID: [String: String?] = [:]
+            for node in json.labeledNodes { jsonSublabelsByID[node.id] = node.sublabel }
+
+            for node in html.labeledNodes {
+                guard let speciesID = Self.nodeToSpeciesID[node.id],
+                      let expected = expectedByID[speciesID]
+                else { continue }
+                checkedInstances += 1
+                let context = "'\(fileKey)': 노드 '\(node.id)'(species \(speciesID))"
+
+                XCTAssertEqual(node.attrSublabel, expected.suffix,
+                    "\(context) data-node-sublabel('\(node.attrSublabel ?? "nil")')이 기대 부 라벨('\(expected.suffix)')과 다름")
+                XCTAssertEqual(node.visibleSublabel, expected.suffix,
+                    "\(context) 화면 표시 부 라벨(t-muted, '\(node.visibleSublabel ?? "nil")')이 "
+                    + "기대 부 라벨('\(expected.suffix)')과 다름")
+                XCTAssertEqual(jsonSublabelsByID[node.id] ?? nil, expected.suffix,
+                    "\(context) JSON sublabel('\(jsonSublabelsByID[node.id].flatMap { $0 } ?? "nil")')이 "
+                    + "기대 부 라벨('\(expected.suffix)')과 다름")
+
+                // <title> 은 "{라벨} · {부라벨} · {컨텍스트} · {브랜드}" 형식(콜론이 아니라
+                // 가운뎃점으로 이어붙인다 — names.ko 원문과 구분자가 다르다).
+                let titleNeedle = "\(baseName(expected.fullKo)) · \(expected.suffix)"
+                let title = try XCTUnwrap(node.title, "\(context) <title> 이 없음")
+                XCTAssertTrue(title.contains(titleNeedle),
+                    "\(context) <title>('\(title)')이 기대 부분 문자열('\(titleNeedle)')을 포함하지 않음")
+
+                let aria = try XCTUnwrap(node.ariaLabel, "\(context) aria-label 이 없음")
+                XCTAssertTrue(aria.contains(expected.fullKo),
+                    "\(context) aria-label('\(aria)')이 기대 전체 이름('\(expected.fullKo)')을 포함하지 않음")
+            }
+        }
+        // 긍정 대조: vmon 3개 + wormmon 2개 = 5 인스턴스. imppaladin 은 wormmon 에 없는 게
+        // 정상(팔라딘은 브이몬 라인 필요)이라 이 총수가 6이 아니라 5다. 파싱이 조용히
+        // 비어버리면(필터 오류 등) 이 루프가 공허하게 통과하는 걸 여기서 막는다.
+        XCTAssertEqual(checkedInstances, 5,
+            "모드 변형 노드 인스턴스 총수가 5가 아님 — 차트 구성이 변경됐거나 파싱이 깨짐")
+    }
+
     // MARK: - (g) 통합 스펙 JSON(`diagrams/digivolution.workflow.json`) 가드
 
     // 이 파일은 git 추적 파일인데(위 (f) 섹션 주석 참고) 어떤 테스트도 읽지 않아서 가드
@@ -682,6 +789,34 @@ final class DigimonEvolutionDiagramTests: XCTestCase {
                 context: "통합 차트: 노드 '\(node.id)'(species \(node.speciesID))")
         }
         XCTAssertEqual(spec.labeledNodes.count, 52, "통합 차트의 라벨 붙은 species 노드 총수가 달라짐")
+    }
+
+    /// 통합 차트 JSON(`diagrams/digivolution.workflow.json`)의 황제드라몬 3종 sublabel 을
+    /// 데이터셋과 대조한다. 이 파일은 git 추적 파일이라 (g) 섹션 나머지 테스트와 같은 이유로
+    /// 별도 가드가 필요하다 — HTML 쪽(`Resources/digivolution.html`)은 gitignore 대상이라
+    /// 원천적으로 대조 불가능하므로 대상에서 뺀다(브리프 범위 밖의 판단 — 파일 상단 (f) 섹션
+    /// 주석의 제외 근거와 동일).
+    func testCombinedDiagramSublabelsMatchDataset() throws {
+        let ds = try DigimonData.loaded()
+        let modeVariantSpeciesIDs = ds.names.compactMap { id, name -> (Int, String)? in
+            guard let ko = name.localeNames["ko"], ko.contains(":") else { return nil }
+            let suffix = ko.dropFirst(baseName(ko).count)
+                .trimmingCharacters(in: CharacterSet(charactersIn: ": "))
+            return (id, suffix)
+        }
+        var expectedSuffixByID: [Int: String] = [:]
+        for (id, suffix) in modeVariantSpeciesIDs { expectedSuffixByID[id] = suffix }
+
+        let spec = try combinedDiagramSpec()
+        var checked = 0
+        for node in spec.labeledNodes {
+            guard let expectedSuffix = expectedSuffixByID[node.speciesID] else { continue }
+            checked += 1
+            XCTAssertEqual(node.sublabel, expectedSuffix,
+                "통합 차트: 노드 '\(node.id)'(species \(node.speciesID)) sublabel('\(node.sublabel ?? "nil")')이 "
+                + "기대 부 라벨('\(expectedSuffix)')과 다름")
+        }
+        XCTAssertEqual(checked, 3, "통합 차트에서 모드 변형 노드 수가 3이 아님 — 차트 구성이 변경됨")
     }
 
     /// 통합 차트의 죠그레스 엣지를 `digimon.json` 의 `jogress` 배열과 대조한다.
@@ -771,7 +906,8 @@ final class DigimonEvolutionDiagramTests: XCTestCase {
             } else if let speciesID = Self.nodeToSpeciesID[nodeID] {
                 speciesIDs.insert(speciesID)
                 if let label = node["label"] as? String {
-                    labeledNodes.append(DiagramSpec.LabeledNode(id: nodeID, speciesID: speciesID, label: label))
+                    labeledNodes.append(DiagramSpec.LabeledNode(id: nodeID, speciesID: speciesID, label: label,
+                        sublabel: node["sublabel"] as? String))
                 }
             } else {
                 // nodeToSpeciesID 가 모르는 노드. 조용히 넘기면 새로 추가된 노드가 라벨 대조를
