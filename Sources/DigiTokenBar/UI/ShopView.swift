@@ -194,9 +194,9 @@ private struct EggCard: View {
             }
         case .confirm:
             HStack(spacing: 8) {
-                // 놓아주는 대상은 **사다리 개체**다 — `releasedDexEntry` 가 남기는 chainOrder 도
-                // 사다리 종이라, 표시 이름(아머 착용 중이면 아머체)을 쓰면 확인 문구가 실제로
-                // 기록되는 것과 다른 종을 가리킨다.
+                // 보관 대상은 **사다리 개체**다 — 나중에 꺼낼 때도 사다리 종 기준으로 이어서
+                // 키우므로, 표시 이름(아머 착용 중이면 아머체)을 쓰면 확인 문구가 실제로
+                // 보관되는 것과 다른 종을 가리킨다.
                 Text(l.eggConfirm(store.ladderName, l.eggName(tier)))
                     .font(.caption2).foregroundStyle(.secondary).lineLimit(2)
                 Spacer()
