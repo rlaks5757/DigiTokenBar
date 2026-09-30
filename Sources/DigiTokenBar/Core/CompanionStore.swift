@@ -1389,7 +1389,7 @@ final class CompanionStore {
         state.eggUsage = 0            // 새 알은 처음부터 인큐베이션(재부화에 5M 필요)
         isHatchRetryDelayed = false
         state.eggTier = tier          // 등급 보증(nil = 보증 없음)
-        state.pendingHatchID = nil    // 새 보증으로 처음부터 롤(활성 디지몬이 있는 동안엔 원래 비어 있다)
+        setPendingHatch(nil, userPicked: false)    // 새 보증으로 처음부터 롤(활성 디지몬이 있는 동안엔 원래 비어 있다)
         prefetchedLineID = nil
         justGraduated = nil; justEvolvedTo = nil; eventUntil = nil
         AppLog.write("egg purchased: stored active, tier=\(tier?.rawValue ?? "none")")
@@ -1436,7 +1436,7 @@ final class CompanionStore {
         activeGeneration += 1
         currentLine = nil
         prefetchedLineID = nil
-        state.pendingHatchID = nil   // 알이 사라졌으니 그 알의 pre-roll 은 더 이상 의미가 없다.
+        setPendingHatch(nil, userPicked: false)   // 알이 사라졌으니 그 알의 pre-roll 은 더 이상 의미가 없다.
         state.eggUsage = 0   // 알을 포기했으니 그 알의 인큐베이션 진행분도 버린다(값은 buyEgg/graduate 와 같지만 이유는 반대 — 그쪽은 새 알을 주며 여는 0, 여기는 알을 버리며 잃는 0)
         isHatchRetryDelayed = false
         justGraduated = nil; justEvolvedTo = nil; eventUntil = nil   // 이전 개체 기준 1회성 배너 — 꺼낸 개체 위에 뜨면 안 된다(buyEgg 와 동일)
@@ -1634,13 +1634,13 @@ final class CompanionStore {
 
     /// 사용자가 **직접 고른 것으로 보이는** 종 — 화면에 예고해도 되는 유일한 `pendingHatchID` 다.
     ///
-    /// 후보(`babyPicks`)에 있는 종으로 좁힌다. 프리패치가 미리 롤해 둔 종까지 노출하면 알이 스스로
-    /// 정답을 알려주는 셈이 되어 랜덤 부화의 기대감이 사라진다(기존 동작 변경). 선택과 프리패치가
-    /// 같은 필드를 쓰는 대가이며, 이 좁힘이 그 대가를 UI 경계에서 흡수한다. 정확히 말해 "도감에
-    /// 이미 있는 유아기" 가 우연히 롤되면 예고가 뜰 수 있는데, 그 종은 어차피 사용자가 고를 수도
-    /// 있었던 후보라 노출되는 정보가 선택 화면과 동일하다.
+    /// `pendingHatchIsUserPick` 이 진짜 판정이다(`pickHatchSpecies` 만 true 로 세운다). 후보
+    /// (`babyPicks`)에 있는지도 함께 본다 — 고른 뒤 그 종이 후보에서 빠지는 창(등급 기준이 바뀌는 등)을
+    /// 막는 방어층으로, 플래그만으로는 못 잡는 경우다. 즉 "사용자가 골랐다 **그리고** 여전히 후보"일
+    /// 때만 노출한다.
     var pickedHatchBaseID: Int? {
-        guard let id = pendingHatchSpeciesID,
+        guard state.pendingHatchIsUserPick,
+              let id = pendingHatchSpeciesID,
               babyPicks.contains(where: { $0.baseID == id }) else { return nil }
         return id
     }
@@ -1648,6 +1648,15 @@ final class CompanionStore {
     /// 위 선택의 현재 언어 이름 — 알 카드의 "무엇이 깨어날지" 한 줄.
     var pickedHatchName: String? {
         pickedHatchBaseID.map { Self.dataName($0, state.language) }
+    }
+
+    /// `pendingHatchID` 를 세우거나 비우는 모든 곳이 반드시 거치는 단일 지점 — 한 write 사이트라도
+    /// 이 함수를 건너뛰면 `pendingHatchIsUserPick` 이 stale true 로 남아 프리패치 롤을 "사용자가
+    /// 골랐다"고 예고하게 된다(지금 고치는 버그보다 나쁘다). `save()` 는 호출자 책임으로 남긴다 —
+    /// 기존 호출부가 이미 각자 적절한 시점에 저장한다.
+    private func setPendingHatch(_ id: Int?, userPicked: Bool) {
+        state.pendingHatchID = id
+        state.pendingHatchIsUserPick = userPicked
     }
 
     /// 부화할 유아기 종을 직접 지정한다 — **랜덤 롤 대신 이 종으로 부화**한다.
@@ -1677,9 +1686,14 @@ final class CompanionStore {
         // 실패했을 수 있고(`isHatchRetryDelayed`, `pendingHatchID` 는 남아 있다), 그 경우 여기서
         // 그냥 true 만 돌려주면 버튼이 성공을 보고하고 화면을 닫은 뒤 아무 일도 일어나지 않는다
         // (다음 update 틱까지). 상태 변경이 없는 것과 아무것도 안 하는 것은 다르다.
+        //
+        // `isRepeat` 은 id 만 비교한다 — 프리패치가 먼저 이 종을 롤해 뒀다가(플래그 false) 사용자가
+        // 같은 종을 고르는 경우가 있어(도감에 이미 있는 유아기가 우연히 롤될 수 있다), id 가 같다고
+        // 사용자 선택 표시를 건너뛰면 그 경로만 영구히 예고가 안 뜬다. 그래서 마커는 `isRepeat` 과
+        // 무관하게 매번 세우고, 예열 무효화·로그만 "진짜로 값이 바뀐" 경우로 좁힌다.
         let isRepeat = state.pendingHatchID == baseID
+        setPendingHatch(baseID, userPicked: true)
         if !isRepeat {
-            state.pendingHatchID = baseID
             prefetchedLineID = nil    // 예열해 둔 라인은 이전 종 것이다 — 다음 프리패치가 새로 데운다
             AppLog.write("egg pick: base=\(baseID) tier=\(state.eggTier?.rawValue ?? "none")")
         }
@@ -1801,7 +1815,7 @@ final class CompanionStore {
             // — `canBuyEgg` 는 `hasActive` 를 요구하므로 구매는 항상 빈 롤에서 출발한다. 즉
             // "미달 종이 미리 롤된 뒤 보증이 붙는" 순서가 없어서 보증이 헛도는 경우가 없다.
             if let id = selected, state.pendingHatchID == nil {
-                state.pendingHatchID = id
+                setPendingHatch(id, userPicked: false)
                 save()
             }
         }
@@ -1867,13 +1881,21 @@ final class CompanionStore {
         // 돌려주는 provider 를 주입하면 이 관문이 선택 부화도 걸러낸다 — 그게 의도된 동작이다.
         if let tier = state.eggTier, line.rarity.sortRank < tier.sortRank {
             AppLog.write("hatch: rolled \(line.rarity) below guaranteed \(tier) — discarded, re-roll next tick")
-            state.pendingHatchID = nil
+            setPendingHatch(nil, userPicked: false)
             prefetchedLineID = nil
             markHatchRetryDelayedIfReady(generation: generation)
             save()
             return
         }
-        state.pendingHatchID = nil
+        // `baseID` 가 pending 과 일치할 때만 그 선택을 "소비"한다 — `hatch(baseID:)` 는 인자를 직접
+        // 받을 수 있어(경합 등으로) pending 과 다른 종을 부화시킬 수 있다. 그 경우 갓 태어난 개체에
+        // 엉뚱한 종의 사용자 선택 표시를 붙이면 안 되므로 false 로 둔다.
+        // 비교는 **fetch 해 온 `line.baseID`** 로 한다 — 인자 `baseID` 가 아니다. 소비되는 개체가
+        // `MonState(baseID: line.baseID, ...)` 로 만들어지므로, provider 가 요청과 다른 종의 라인을
+        // 돌려주면 "고른 종"과 "태어난 종"이 갈라지고 사용자가 고르지 않은 종에 선택 표시가 찍힌다.
+        // 바로 위 등급 관문(:1882)이 `line.rarity` 를 보는 것과 같은 이유다(유도값이 어긋날 수 있다).
+        let wasUserPicked = state.pendingHatchID == line.baseID && state.pendingHatchIsUserPick
+        setPendingHatch(nil, userPicked: false)
         prefetchedLineID = nil
         currentLine = line
         isHatchRetryDelayed = false
@@ -1888,7 +1910,8 @@ final class CompanionStore {
         activeGeneration += 1
         state.active = MonState(baseID: line.baseID, pathIDs: [line.baseID], plannedPathIDs: evolutionPlan,
                                 stageIndex: 0, usedAtStage: 0, rarity: line.rarity, totalForms: evolutionPlan.count,
-                                profile: profile, hasGrowthBoost: hasGrowthBoost)
+                                profile: profile, hasGrowthBoost: hasGrowthBoost,
+                                pickedByUser: wasUserPicked)
         AppLog.write("hatch: base=\(line.baseID) rarity=\(line.rarity) forms=\(evolutionPlan.count) boost=\(hasGrowthBoost)")
         let name = line.localizedName(line.baseID, state.language)
         notifyCompanionEvent(l.notifHatchTitle, l.notifHatchBody(name))

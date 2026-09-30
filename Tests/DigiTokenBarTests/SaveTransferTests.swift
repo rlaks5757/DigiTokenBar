@@ -616,8 +616,11 @@ final class SaveTransferTests: XCTestCase {
         // eggTier(알 등급 보증) = 진행 — 산 물건이지 이 기기의 장부가 아니라 기기를 옮겨도 따라간다.
         // stored(보관함) = 진행 — active 와 같은 육성 상태(성장분 포함)를 보관만 한 것이라, 기기를
         // 옮겨도 그대로 따라가야 한다. active 를 분류에서 빼면 안 되는 것과 같은 이유.
+        // pendingHatchIsUserPick = 진행 — pendingHatchID 가 무엇인지(사용자 선택 vs 프리패치 롤)를
+        // 나타내는 부속 필드라 그 필드와 같은 부류다. 따로 떼면 기기를 옮겼을 때 선택 예고만 사라지고
+        // pendingHatchID 는 그대로 남는 반쪽짜리 이전이 된다.
         let progress: Set<String> = ["usedSinceInstall", "spentTokens", "eggUsage", "eggTier",
-                                     "pendingHatchID", "active", "stored",
+                                     "pendingHatchID", "pendingHatchIsUserPick", "active", "stored",
                                      "representativeSpeciesID", "dex",
                                      "collectedFinals", "inventory"]
         let deviceLedger: Set<String> = ["installBaselineSet", "claimedTodayTokensByProvider", "lastDate"]
