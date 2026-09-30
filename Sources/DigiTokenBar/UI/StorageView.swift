@@ -125,11 +125,12 @@ private struct StoredMonRow: View {
                     Spacer(minLength: 0)
                     Button(l.storageRelease) { stage = .confirming }
                         .buttonStyle(.borderless).controlSize(.small).foregroundStyle(.secondary)
-                    Button(l.storageRetrieve) { retrieveNow() }
+                    Button(store.storageRetrieveLabel) { retrieveNow() }
                         .buttonStyle(.bordered).controlSize(.small)
                         .disabled(!store.canRetrieveStored(stored.id))
                 }
-                // 왜 못 꺼내는지 — 비활성 버튼만 두면 사용자가 할 일을 알 수 없다.
+                // 왜 못 꺼내는지 — 비활성 버튼만 두면 사용자가 할 일을 알 수 없다. 이제 사유는
+                // 부화 중 하나뿐이고(활성·보증은 교체·파킹으로 처리) 기다리면 열린다.
                 if let reason = store.storedRetrieveBlockReason(stored.id) {
                     Text(reason)
                         .font(.caption2).foregroundStyle(.tertiary)
@@ -152,8 +153,12 @@ private struct StoredMonRow: View {
         }
     }
 
-    /// 꺼내기가 반영됐을 때만 화면을 닫는다 — 거절(활성 개체·부화 중·보증)이면 목록에 남아 사유를
-    /// 읽고 다시 누를 수 있다(`BabyPickRow.pickNow` 와 같은 태도).
+    /// 꺼내기가 반영됐을 때만 화면을 닫는다 — 거절(부화 중)이면 목록에 남아 사유를 읽고 다시 누를 수
+    /// 있다(`BabyPickRow.pickNow` 와 같은 태도).
+    ///
+    /// 활성 개체가 있으면 **확인 없이 바로 교체**한다(제품 결정) — 잃는 것이 없기 때문이다. 나가는
+    /// 개체는 방생이 아니라 같은 보관함으로 들어가고(육성 상태 그대로), 품고 있던 알의 보증도 파킹돼
+    /// 다음 알에서 돌아온다. 방생(`stage == .confirming`)만 되돌릴 수 없어서 2단계를 둔다.
     private func retrieveNow() {
         if store.retrieveStored(id: stored.id) { onRetrieved() }
     }

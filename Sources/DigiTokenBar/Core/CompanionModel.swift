@@ -645,6 +645,25 @@ struct CompanionState: Codable, Sendable {
     /// `MonState` 가 아직 없어 여기(`CompanionState`)에 영속해야 하고, 부화 전 예고가 재시작을 건너
     /// 살아남으려면(`testPickSurvivesRestart`) 휘발성 프로퍼티가 아니라 저장 필드여야 한다.
     var pendingHatchIsUserPick = false
+    /// 보관 개체를 꺼내면서 **잠시 맡겨 둔** 알 보증 — 나중에 다시 알 상태가 되면 `eggTier` 로 돌아온다.
+    ///
+    /// 보증은 "지금 품고 있는 알"에만 붙는 값이라 활성 디지몬과 공존할 수 없다(`SaveTransfer.sanitized`).
+    /// 그래서 보증 알을 품은 채로 보관 개체를 꺼내면 산 보증이 증발한다 — 예전엔 그래서 꺼내기 자체를
+    /// 거절했다. 이제는 거절하지 않고 보증을 이 필드로 옮겨 둔다(= 보관함에 같이 파킹). 다음에 알이
+    /// 생기는 순간(`graduate`/`buyEgg`) 복원되므로 사용자는 산 것을 잃지 않는다.
+    ///
+    /// **`eggTier` 와 달리 활성 디지몬과 공존하는 것이 정상 상태다** — sanitize 의 `active != nil`
+    /// 분기를 이 필드에 미러링하면 기능 자체가 조용히 사라진다.
+    var parkedEggTier: Rarity?
+    /// 파킹한 보증과 **한 묶음**으로 맡긴 pre-roll(`pendingHatchID`).
+    ///
+    /// 보증만 지키고 pre-roll 을 버리면 안 되는 게 아니라, 그 반대가 위험하다: pre-roll 만 남기면
+    /// 졸업으로 받는 **무료** 알이 프리미엄 롤 결과로 부화한다(`sanitized` 의 같은 주석). 그래서 두
+    /// 값은 항상 함께 맡기고 함께 복원한다.
+    var parkedPendingHatchID: Int?
+    /// 파킹한 pre-roll 이 사용자가 직접 고른 것인가 — `pendingHatchIsUserPick` 의 파킹 짝.
+    /// 이걸 안 맡기면 꺼내기 한 번으로 "사용자가 고른 종" 예고가 프리패치 롤로 강등된다.
+    var parkedPendingHatchIsUserPick = false
     /// 오늘 사용량 적립 기준값 — 프로바이더별로 독립 관리한다.
     ///
     /// `nil`은 aggregate `claimedTodayTokens`만 가지고 있던 구버전 세이브가 아직 첫 유효
@@ -693,6 +712,11 @@ struct CompanionState: Codable, Sendable {
         pendingHatchID     = c.lenientOptional(Int.self, forKey: .pendingHatchID)
         // 이 필드 이전 세이브엔 키가 없다 — 없으면 "사용자가 고른 것 아님"이 안전한 기본값이다.
         pendingHatchIsUserPick = c.lenient(Bool.self, forKey: .pendingHatchIsUserPick, default: false)
+        // 파킹 필드는 이 기능 이전 세이브엔 키가 없다 — 없으면 "맡긴 것 없음"이 안전한 기본값이다
+        // (`eggTier` 와 같은 방향: 있지도 않은 보증을 관대 디코딩이 만들어내지 않는다).
+        parkedEggTier          = c.lenientOptional(Rarity.self, forKey: .parkedEggTier)
+        parkedPendingHatchID   = c.lenientOptional(Int.self, forKey: .parkedPendingHatchID)
+        parkedPendingHatchIsUserPick = c.lenient(Bool.self, forKey: .parkedPendingHatchIsUserPick, default: false)
         if c.contains(.claimedTodayTokensByProvider) {
             claimedTodayTokensByProvider = c.lenient([String: Int].self,
                                                       forKey: .claimedTodayTokensByProvider,
@@ -734,6 +758,46 @@ struct CompanionState: Codable, Sendable {
 
     func hasCollectedFinal(forBaseID baseID: Int) -> Bool {
         collectedFinals.contains { $0.hasPrefix("\(baseID):") }
+    }
+
+    /// 맡겨 둔 보증(`parkedEggTier`)과 그 pre-roll 을 현재 알로 **복원**한다 — 알 상태일 때만.
+    ///
+    /// 보증을 파킹하는 경로(`CompanionStore.retrieveStored`)와 되찾는 경로가 갈라져 있으면 한쪽만
+    /// 고쳐진다. 복원은 이 한 지점만 거치고, 알이 생기는 모든 곳(`graduate`/`buyEgg`)과 신뢰 경계
+    /// (`SaveTransfer.sanitized`)가 이걸 호출한다.
+    ///
+    /// 알이 아직 없으면(활성 디지몬이 있다) 아무것도 하지 않는다 — 보증과 활성은 공존할 수 없어서
+    /// 여기서 복원하면 바로 sanitize 대상이 된다(= 증발). 맡긴 값은 그대로 기다린다.
+    ///
+    /// **충돌 시 더 높은 보증을 남기고 pre-roll 은 양방향 모두 버린다.** `buyEgg` 은 `hasActive` 를
+    /// 요구하므로 파킹된 보증이 살아 있는 채로 새 보증을 살 수 있다(둘이 동시에 유효한 유일한 창).
+    /// 낮은 보증의 pre-roll 을 높은 보증 아래 남기면 `hatchCore` 가 등급 미달로 버리는 낭비고,
+    /// 반대로 높은 보증의 pre-roll 을 낮은 보증 아래 남기면 **사지 않은 프리미엄 결과**가 나온다
+    /// (`sanitized` 의 "무료 알이 그 pre-roll 로 부화" 와 같은 누수). 어느 쪽이 이겨도 pre-roll 은
+    /// 버리고 프리패치가 승자 기준으로 다시 롤한다 — 잃는 건 예열뿐이다.
+    mutating func restoreParkedEggGuarantee() {
+        guard active == nil else { return }
+        guard let parked = parkedEggTier else {
+            // 보증 없이 pre-roll 만 맡겨진 상태는 만들지 않는다(파킹은 항상 한 묶음) — 손편집 세이브가
+            // 그 조합을 들고 와도 여기서 함께 버린다.
+            parkedPendingHatchID = nil
+            parkedPendingHatchIsUserPick = false
+            return
+        }
+        if let current = eggTier {
+            // 두 보증이 만났다 — 더 높은 쪽만 남기고 **pre-roll 은 양방향 모두 버린다**(위 doc).
+            eggTier = current.sortRank >= parked.sortRank ? current : parked
+            pendingHatchID = nil
+            pendingHatchIsUserPick = false
+        } else {
+            // 보증이 없는 알 — 맡긴 것을 pre-roll 까지 그대로 되돌려 준다(예열도 함께 살아난다).
+            eggTier = parked
+            pendingHatchID = parkedPendingHatchID
+            pendingHatchIsUserPick = parkedPendingHatchIsUserPick
+        }
+        parkedEggTier = nil
+        parkedPendingHatchID = nil
+        parkedPendingHatchIsUserPick = false
     }
 
     /// 대표 디지몬은 사용자가 현재 보유한 종만 가리킨다. Fresh Egg·손편집 세이브가

@@ -404,6 +404,104 @@ final class PremiumEggTests: XCTestCase {
         XCTAssertEqual(SaveTransfer.sanitized(egg).pendingHatchID, 3)
     }
 
+    // MARK: 파킹 보증의 신뢰 경계 정규화 (보관함에 맡긴 보증 — StoredMonTests 와 짝)
+
+    /// `sanitized` 는 파킹 필드에 `active != nil` 분기를 **미러링하지 않는다** — 활성 개체와 파킹
+    /// 보증의 공존은 모순이 아니라 이 기능의 정상 상태다(보관 개체를 꺼내면 정확히 그 조합이 된다).
+    /// 미러링하면 꺼내기 직후 첫 저장·불러오기에서 맡긴 보증이 지워져 기능이 조용히 사라진다.
+    func testSanitizedKeepsParkedGuaranteeWhileActiveExists() {
+        var s = CompanionState()
+        s.parkedEggTier = .rare
+        s.parkedPendingHatchID = 3
+        s.parkedPendingHatchIsUserPick = true
+        s.active = MonState(baseID: 1, pathIDs: [1], stageIndex: 0, usedAtStage: 0,
+                            rarity: .common, totalForms: 1)
+        let cleaned = SaveTransfer.sanitized(s)
+        XCTAssertEqual(cleaned.parkedEggTier, .rare, "파킹 보증은 활성과 공존하는 것이 정상이다")
+        XCTAssertEqual(cleaned.parkedPendingHatchID, 3)
+        XCTAssertTrue(cleaned.parkedPendingHatchIsUserPick)
+        XCTAssertNil(cleaned.eggTier, "현재 알 보증 쪽 불변식은 그대로 유지돼야 한다")
+    }
+
+    /// 알 상태로 들어온 세이브는 맡긴 보증을 **경계에서 복원**한다 — `applySave` 는 `load()` 를 타지
+    /// 않으므로 여기서 복원하지 않으면 다른 기기에서 온 파킹 보증이 고아가 된다(복원 지점이
+    /// `graduate`/`buyEgg` 뿐이라면, 이미 알 상태로 도착한 세이브는 그 두 곳을 다시 지나지 않는다).
+    func testSanitizedRestoresParkedGuaranteeWhenArrivingInEggState() {
+        var s = CompanionState()
+        s.parkedEggTier = .rare
+        s.parkedPendingHatchID = 3
+        s.parkedPendingHatchIsUserPick = true
+        let cleaned = SaveTransfer.sanitized(s)   // active == nil (알 상태)
+        XCTAssertEqual(cleaned.eggTier, .rare, "알 상태로 도착한 파킹 보증이 복원되지 않았다")
+        XCTAssertEqual(cleaned.pendingHatchID, 3, "보증과 pre-roll 은 한 묶음이다")
+        XCTAssertTrue(cleaned.pendingHatchIsUserPick)
+        XCTAssertNil(cleaned.parkedEggTier, "복원 후 파킹 자리가 남으면 다음 알에도 또 복원된다")
+    }
+
+    /// 모순 조합 정규화 — 손편집·구버전 세이브가 **보증 없이 pre-roll 만** 맡긴 상태를 들고 오면
+    /// 함께 버린다. 남겨 두면 복원 시점에 무료 알이 그 pre-roll 로 부화한다(아무도 사지 않은
+    /// 프리미엄 결과 — `if s.active != nil` 분기가 막는 것과 같은 누수의 파킹 버전).
+    func testSanitizedDropsParkedPreRollWithoutItsGuarantee() {
+        var s = CompanionState()
+        s.parkedEggTier = nil
+        s.parkedPendingHatchID = 3
+        s.parkedPendingHatchIsUserPick = true
+        let cleaned = SaveTransfer.sanitized(s)
+        XCTAssertNil(cleaned.parkedPendingHatchID, "보증 없이 맡겨진 pre-roll 이 살아남았다")
+        XCTAssertFalse(cleaned.parkedPendingHatchIsUserPick)
+        XCTAssertNil(cleaned.eggTier, "있지도 않은 보증이 복원되면 안 된다")
+        XCTAssertNil(cleaned.pendingHatchID, "맡긴 보증이 없으면 복원할 pre-roll 도 없다")
+    }
+
+    /// 만족 불가능한 보증(전설 — `captureRateCeiling == nil`)은 **파킹 경로로도** 못 들어온다.
+    /// 복원이 기존 `eggTier` 가드보다 먼저 돌면 그 가드를 우회해 알이 영구히 안 깨지는 벽돌 상태가
+    /// 되므로, 파킹 값은 복원 전에 같은 기준으로 먼저 걸러야 한다.
+    func testSanitizedDropsUnsatisfiableParkedGuaranteeInsteadOfRestoringIt() {
+        var s = CompanionState()
+        s.parkedEggTier = .legendary
+        s.parkedPendingHatchID = 3
+        s.parkedPendingHatchIsUserPick = true
+        let cleaned = SaveTransfer.sanitized(s)
+        XCTAssertNil(cleaned.eggTier, "만족 불가능한 보증이 파킹을 통해 복원되면 알이 영영 안 깨진다")
+        XCTAssertNil(cleaned.parkedEggTier)
+        XCTAssertNil(cleaned.parkedPendingHatchID, "보증과 함께 그 pre-roll 도 버려야 한다")
+        XCTAssertFalse(cleaned.parkedPendingHatchIsUserPick)
+        // **판별 축**: 여기가 순서를 지키는 유일한 단언이다. 파킹 필터를 복원 **뒤로** 옮기면
+        // 복원이 먼저 `pendingHatchID` 를 써 버리고, 뒤따르는 `eggTier` 가드는 보증만 지운다 —
+        // 보증 없는 pre-roll 이 남아 다음 무료 알이 그 프리미엄 결과로 부화한다(위 `active != nil`
+        // 분기가 막는 것과 같은 누수). `pendingHatchID == nil` 불변식은 복원보다 앞에서 이미
+        // 돌았으므로 아무도 재검사하지 않는다.
+        XCTAssertNil(cleaned.pendingHatchID,
+                     "보증은 버려졌는데 그 pre-roll 이 남았다 — 무료 알이 프리미엄 결과를 받는다")
+        XCTAssertFalse(cleaned.pendingHatchIsUserPick)
+    }
+
+    /// [C1 회귀] **현재 알**이 만족 불가능한 전설(손편집·구버전)이고 파킹에 **실제로 산** 보증이
+    /// 맡겨져 있으면, 산 보증이 복원돼야 한다.
+    ///
+    /// 위 `testSanitizedDropsUnsatisfiableParkedGuaranteeInsteadOfRestoringIt` 과 **반대 방향** 축이다
+    /// (그건 파킹이 전설, 이건 현재 알이 전설). 두 필터 중 한쪽만 복원 앞에 두면 이 조합에서
+    /// 복원의 병합 분기가 아직 안 걸러진 전설을 승자 후보로 받는다: `legendary.sortRank == 3` 이
+    /// `.rare` 를 이기고 → 뒤따르는 필터가 그 전설을 nil 로 지워 → **만족 가능한 `.rare` 가 흔적 없이
+    /// 소멸**한다(복원 지점을 다 지났으므로 되찾을 경로도 없다). 파킹이 막으려던 바로 그 증발이다.
+    ///
+    /// 이 손실은 파킹 필드가 생겨서 비로소 가능해졌다 — 그 전에는 손편집 전설이 nil 되고 끝이었고
+    /// 함께 파괴되는 값이 없었다. 그래서 파킹 쪽 가드와 같은 도달성 클래스(손편집 세이브)다.
+    func testSanitizedRestoresRealParkedGuaranteeWhenCurrentEggTierIsUnsatisfiable() {
+        var s = CompanionState()
+        s.eggTier = .legendary        // 손편집·구버전: 만족 불가능(captureRateCeiling == nil)
+        s.parkedEggTier = .rare      // 사용자가 실제로 산 보증 — 이게 살아남아야 한다
+        s.parkedPendingHatchID = 331
+        s.parkedPendingHatchIsUserPick = true
+        let cleaned = SaveTransfer.sanitized(s)   // active == nil (알 상태)
+
+        XCTAssertEqual(cleaned.eggTier, .rare, "산 보증이 손편집 전설과의 병합에서 소멸했다")
+        // 병합 분기가 성립하지 않아야 pre-roll 까지 함께 돌아온다 — 병합을 타면 양방향 폐기된다.
+        XCTAssertEqual(cleaned.pendingHatchID, 331, "병합 분기를 탔다 — 필터가 복원보다 뒤에 있다")
+        XCTAssertTrue(cleaned.pendingHatchIsUserPick, "사용자 선택 예고까지 병합에 휩쓸렸다")
+        XCTAssertNil(cleaned.parkedEggTier, "복원됐으면 파킹 자리는 비워야 한다")
+    }
+
     // MARK: 만족 불가능한 보증 — 알이 영구히 안 깨지는 벽돌 상태 방지
 
     /// 전설은 capture_rate 로 표현할 수 없어(ceiling nil) 두 롤 경로 모두 후보가 0개가 된다. 부화가 없으니

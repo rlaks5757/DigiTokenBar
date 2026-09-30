@@ -814,6 +814,10 @@ final class CompanionStore {
         isHatchRetryDelayed = false
         // eggTier 는 손대지 않는다 — 여기 도달했다는 건 활성 디지몬이 있었다는 뜻이라 보증은 이미 nil 이다
         // (부화가 소비, 디스크/불러오기는 sanitized 가 정규화). 소비 지점은 hatchCore 한 곳으로 유지한다.
+        // 다만 **맡겨 둔 보증**은 여기서 되찾는다 — 방금 알이 생겼으니 보증이 붙을 자리가 열렸다
+        // (보관 개체를 꺼낼 때 파킹한 값. `retrieveStored`/`parkEggGuarantee`).
+        // 프리패치 **전에** 복원해야 한다 — 순서가 뒤바뀌면 보증 없는 롤이 먼저 돌아 산 등급이 무시된다.
+        state.restoreParkedEggGuarantee()
         // "알을 받는 순간" 즉시 프리패칭 시작 — 다음 부화의 종·라인·스프라이트 예열.
         Task { await self.ensureEggPrefetch() }
     }
@@ -1390,6 +1394,11 @@ final class CompanionStore {
         isHatchRetryDelayed = false
         state.eggTier = tier          // 등급 보증(nil = 보증 없음)
         setPendingHatch(nil, userPicked: false)    // 새 보증으로 처음부터 롤(활성 디지몬이 있는 동안엔 원래 비어 있다)
+        // 맡겨 둔 보증도 여기서 되찾는다 — 방금 알이 생겼다. 새로 산 보증과 **동시에 유효할 수 있는
+        // 유일한 창**이다(`canBuyEgg` 가 `hasActive` 를 요구하므로 파킹 상태에서도 알을 살 수 있다):
+        // 더 높은 쪽만 남고 pre-roll 은 양방향 모두 버려진다(`restoreParkedEggGuarantee` doc).
+        // 위 `setPendingHatch` **뒤에** 둔다 — 앞에 두면 되찾은 pre-roll 을 그 줄이 다시 지운다.
+        state.restoreParkedEggGuarantee()
         prefetchedLineID = nil
         justGraduated = nil; justEvolvedTo = nil; eventUntil = nil
         AppLog.write("egg purchased: stored active, tier=\(tier?.rawValue ?? "none")")
@@ -1410,14 +1419,18 @@ final class CompanionStore {
 
     /// 지금 보관 개체를 꺼내 활성으로 되돌릴 수 있는가.
     ///
-    /// 활성 개체가 있으면 자리가 없고(교체가 아니라 거절 — `pickHatchSpecies` 와 같은 태도),
-    /// 부화가 진행 중이면 `isHatching` 락 창에서 활성을 바꾸는 경합이 생긴다(함정 4).
-    /// **알 보증(`eggTier`)이 걸려 있으면 거절한다** — 보증은 "지금 품고 있는 알" 에만 붙는 값이라
-    /// 활성 디지몬과 공존할 수 없다(`SaveTransfer.sanitized`). 꺼내기가 그 상태로 활성을 세우면
-    /// 다음 디스크 로드에서 sanitize 가 보증을 지운다 — **산 보증이 조용히 증발**한다. 보증을 지키는
-    /// 유일한 방법은 알을 먼저 부화/소비시키는 것이므로, 지금은 거절만 하고 제품 결정을 미룬다.
+    /// **보관한 건 언제든 꺼낼 수 있다**(제품 결정, 2026-09-30). 남은 조건은 `isHatching` 하나다 —
+    /// 부화 락 창에서 활성을 바꾸면 경합이 생긴다(함정 4). 부화는 기다리면 끝나므로 이 거절은
+    /// 영구 차단이 아니다.
+    ///
+    /// 예전에 막았던 두 조건은 이제 **거절이 아니라 분기**다(`retrieveStored`):
+    ///  - 활성 개체가 있으면 → 교체(현재 활성을 보관함에 넣고 꺼낸 개체를 세운다).
+    ///  - 알 보증(`eggTier`)이 걸려 있으면 → 보증과 pre-roll 을 `parkedEggTier` 로 맡겨 둔다.
+    ///    보증은 알에만 붙는 값이라 활성과 공존할 수 없어(`SaveTransfer.sanitized`) 그대로 두면
+    ///    다음 로드에서 증발한다. 파킹해 두면 다시 알이 되는 순간 복원된다
+    ///    (`CompanionState.restoreParkedEggGuarantee`).
     func canRetrieveStored(_ id: String) -> Bool {
-        guard state.active == nil, !isHatching, state.eggTier == nil else { return false }
+        guard !isHatching else { return false }
         return state.stored.contains { $0.id == id }
     }
 
@@ -1425,52 +1438,100 @@ final class CompanionStore {
     ///
     /// 후보 여부는 여기서 다시 판정한다(`canRetrieveStored`) — 참칭 호출자가 존재하지 않는 id 나
     /// 부적절한 시점에 꺼내기를 통과시키지 못하게 한다(`performJogress`/`pickHatchSpecies` 와 같은 태도).
-    /// - Returns: 꺼냈으면 true. 활성 개체가 있거나 부화 중이거나 보증이 걸려 있거나 id 가 없으면 false.
+    ///
+    /// **두 분기다** — "빈 슬롯" 과 "교체" 는 치우는 대상이 다르다. 알을 버리는 처리
+    /// (`eggUsage = 0`·pre-roll 폐기)는 **알이 있는 경로에서만** 의미가 있다. 교체 경로에는 알이
+    /// 없으므로 그 줄을 같이 태우면 존재하지 않는 알의 진행분을 "버리는" 헛일이 된다.
+    /// - Returns: 꺼냈으면 true. 부화 중이거나 id 가 없으면 false.
     @discardableResult
     func retrieveStored(id: String) -> Bool {
         guard canRetrieveStored(id) else { return false }
         guard let index = state.stored.firstIndex(where: { $0.id == id }) else { return false }
+        let hadActive = state.active
         var mon = state.stored.remove(at: index).mon
         mon.pickedByUser = true   // 사용자가 직접 꺼낸 개체 — 프리패치 롤과 구분(다음 단계에서 소비).
+
+        if let outgoing = hadActive {
+            // ── 교체: 알이 아니라 활성 개체와 자리를 바꾼다. 보증·인큐베이션은 애초에 없다
+            // (활성이 있으면 `eggTier` 는 `sanitized` 불변식으로 nil, `eggUsage` 는 이 개체 것이
+            // 아니라 다음 알 것이라 손대지 않는다).
+            state.stored.append(StoredMon(mon: outgoing, storedAt: clock()))   // 육성 상태 그대로(buyEgg 와 같은 방식)
+        } else {
+            // ── 빈 슬롯: 품고 있던 알을 포기하고 그 자리에 꺼낸 개체를 세운다.
+            // 보증과 그 pre-roll 은 **버리지 않고 맡긴다** — 산 물건이라 꺼내기로 증발하면 안 된다.
+            // 둘은 한 묶음으로 움직인다(pre-roll 만 남으면 무료 알이 프리미엄 결과를 받는다).
+            parkEggGuarantee()
+            setPendingHatch(nil, userPicked: false)   // 알이 사라졌으니 그 알의 pre-roll 은 더 이상 의미가 없다.
+            state.eggUsage = 0   // 알을 포기했으니 그 알의 인큐베이션 진행분도 버린다(값은 buyEgg/graduate 와 같지만 이유는 반대 — 그쪽은 새 알을 주며 여는 0, 여기는 알을 버리며 잃는 0)
+        }
+
         state.active = mon
+        // 보관함 구성이 바뀌었다(교체는 넣고 빼므로) — 대표 종이 여전히 보유 범위 안인지 확인한다.
+        state.reconcileRepresentativeSelection()
         activeGeneration += 1
         currentLine = nil
         prefetchedLineID = nil
-        setPendingHatch(nil, userPicked: false)   // 알이 사라졌으니 그 알의 pre-roll 은 더 이상 의미가 없다.
-        state.eggUsage = 0   // 알을 포기했으니 그 알의 인큐베이션 진행분도 버린다(값은 buyEgg/graduate 와 같지만 이유는 반대 — 그쪽은 새 알을 주며 여는 0, 여기는 알을 버리며 잃는 0)
         isHatchRetryDelayed = false
         justGraduated = nil; justEvolvedTo = nil; eventUntil = nil   // 이전 개체 기준 1회성 배너 — 꺼낸 개체 위에 뜨면 안 된다(buyEgg 와 동일)
         displayState = .idle
-        AppLog.write("stored mon retrieved: base=\(mon.baseID) stage=\(mon.stageIndex)")
+        AppLog.write("stored mon retrieved: base=\(mon.baseID) stage=\(mon.stageIndex) swapped=\(hadActive != nil) parked=\(state.parkedEggTier?.rawValue ?? "none")")
         save()
         Task { await self.loadCurrentLine() }
         if detailProvider != nil { Task { await self.loadDigimonDetails(speciesID: mon.currentID) } }
         return true
     }
 
-    /// 보관 개체를 꺼낼 수 없는 **이유** — 꺼낼 수 있으면 nil. `canRetrieveStored` 의 세 조건을
-    /// 그대로 뒤집어 화면에 말해 준다.
+    /// 품고 있던 알의 보증과 pre-roll 을 파킹 필드로 옮긴다 — 꺼내기가 알을 치우기 **전에** 부른다.
     ///
-    /// 뷰가 `store.hasActive`/`isHatching`/`eggGuarantee` 를 직접 조합해 문구를 고르면 게이트와
-    /// 문구가 두 곳에 갈라져 한쪽만 고쳐진다(`jogressPartnerHint` 와 같은 태도 — 판정과 그 설명은
-    /// 둘 다 store 에 있다). 순서는 게이트와 같다: 활성 → 부화 중 → 보증.
+    /// 순서가 생명이다: `setPendingHatch(nil, ...)` 뒤에 부르면 맡길 pre-roll 이 이미 지워져 있다.
+    /// 보증이 없으면 맡길 것도 없다(pre-roll 만 맡기면 무료 알이 그 결과를 받는다 —
+    /// `CompanionState.restoreParkedEggGuarantee` 와 `SaveTransfer.sanitized` 의 같은 누수).
     ///
-    /// **분기 순서는 정확성이 아니라 문구 선택이다** — 뮤테이션으로 순서를 뒤집어도 테스트는 초록이고,
-    /// 그게 맞다. 세 조건 중 둘이 동시에 참인 상태는 하나뿐이고(활성 + `isHatching` — `hatch(baseID:)`
-    /// 가 활성 유무를 안 보므로 원리상 가능하다. 활성 + 보증은 `SaveTransfer.sanitized` 가 정규화해
-    /// 도달 불가), 그 창에서는 두 문구가 **둘 다 사실**이라 어느 쪽을 골라도 틀리지 않는다.
-    /// 활성을 먼저 두는 이유는 사용자가 할 일이 그쪽이 더 크기 때문이다(부화는 기다리면 끝난다).
-    /// 도달 불가·무해한 축에 순서 단언을 세우면 공허한 초록만 남는다.
+    /// **전제: 여기 도달할 때 파킹 자리는 항상 비어 있다.** 그래서 병합 없이 덮어쓴다(복원 쪽이
+    /// `sortRank` 로 병합하는 것과 비대칭인 이유). 근거는 `active` 를 nil 로 만드는 지점이
+    /// `graduate()`/`buyEgg()` 둘뿐이고 **둘 다 직후에 `restoreParkedEggGuarantee()` 로 파킹을
+    /// 비운다**는 것이다(`sanitized` 도 `active == nil` 이면 비운다). 이 함수는
+    /// `active == nil && eggTier != nil` 에서만 실행되므로 삼중 조합이 성립하지 않는다.
+    ///
+    /// ⚠️ **`active = nil` 쓰기 지점이 하나라도 늘어나면**(복원을 부르지 않는 경로로) 이 전제가
+    /// 깨져 두 번째 파킹이 첫 번째를 조용히 덮어쓴다 — 산 보증 유실이다. 그때는 여기에도
+    /// `restoreParkedEggGuarantee` 와 같은 `sortRank` 병합을 두어야 한다. 지금 그 병합을 미리
+    /// 넣지 않는 이유는 도달 불가한 분기에는 테스트를 세울 수 없어 회귀를 못 지키기 때문이다.
+    private func parkEggGuarantee() {
+        guard let tier = state.eggTier else { return }
+        state.parkedEggTier = tier
+        state.parkedPendingHatchID = state.pendingHatchID
+        state.parkedPendingHatchIsUserPick = state.pendingHatchIsUserPick
+        state.eggTier = nil   // 활성과 공존할 수 없으므로 즉시 비운다(맡긴 값이 진짜 소유자다)
+    }
+
+    /// 보관 개체를 꺼낼 수 없는 **이유** — 꺼낼 수 있으면 nil. `canRetrieveStored` 를 그대로 뒤집어
+    /// 화면에 말해 준다.
+    ///
+    /// 뷰가 `isHatching` 을 직접 읽어 문구를 고르면 게이트와 문구가 두 곳에 갈라져 한쪽만 고쳐진다
+    /// (`jogressPartnerHint` 와 같은 태도 — 판정과 그 설명은 둘 다 store 에 있다).
+    ///
+    /// 조건이 하나뿐인 건 설계가 바뀐 결과다: 활성 개체가 있는 상태와 보증 알을 품은 상태는 이제
+    /// **차단이 아니라 동작**이다(교체 / 보증 파킹 — `retrieveStored`). 그 두 문구를 여기 남겨 두면
+    /// 열려 있는 게이트에 차단 안내가 뜬다.
     ///
     /// id 가 없는 경우는 문구가 없다(nil) — 목록에 뜬 행은 항상 존재하는 id 라 도달하지 않고,
     /// 안내할 사용자 행동도 없다.
     func storedRetrieveBlockReason(_ id: String) -> String? {
         guard state.stored.contains(where: { $0.id == id }) else { return nil }
-        if state.active != nil { return l.storageBlockedActive }
         if isHatching { return l.storageBlockedHatching }
-        if state.eggTier != nil { return l.storageBlockedGuarantee }
         return nil
     }
+
+    /// 꺼내기 버튼에 쓸 문구 — 활성 개체가 있으면 "자리 바꾸기"다.
+    ///
+    /// 확인 단계가 없다(제품 결정: 즉시 교체). 그래서 이 라벨이 **지금 키우던 개체가 보관함으로
+    /// 들어간다**는 사실을 누르기 전에 알려 주는 유일한 수단이다 — 두 동작에 같은 "꺼내기"를 쓰면
+    /// 사용자는 누른 뒤에야 안다. 방생처럼 확인을 한 단계 두지 않는 대신 라벨로 구분한다.
+    ///
+    /// 뷰가 `hasActive` 를 직접 읽어 고르지 않는다(`storedRetrieveBlockReason` 과 같은 태도 —
+    /// 판정과 그 문구는 둘 다 store 에 있다).
+    var storageRetrieveLabel: String { hasActive ? l.storageSwap : l.storageRetrieve }
 
     /// 보관함 진입점을 그릴지 — 보관 개체가 하나도 없으면 숨긴다(`canPickHatchSpecies` 선례:
     /// 후보가 0개인 화면으로 보내는 죽은 버튼을 두지 않는다).

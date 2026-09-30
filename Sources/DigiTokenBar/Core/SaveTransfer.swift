@@ -230,12 +230,31 @@ enum SaveTransfer {
         // `pendingHatchID` 를 지우는 경우를 포함해 손편집·구버전 세이브가 이 조합을 깨뜨리면 여기서
         // 한 번에 닫는다(개별 write 사이트가 아니라 들어오는 경계에서 정규화 — 이 파일 상단 원칙과 동일).
         if s.pendingHatchID == nil { s.pendingHatchIsUserPick = false }
+        // 파킹 필드의 같은 불변식 — 보증 없이 맡겨진 pre-roll 은 복원될 때 무료 알에 프리미엄 결과를
+        // 준다. 위 `active != nil` 분기를 **파킹 필드에 미러링하지 않는다**: 활성과 파킹 보증의 공존은
+        // 모순이 아니라 이 기능의 정상 상태다(보관 개체를 꺼내면 정확히 그 조합이 된다).
+        if s.parkedEggTier == nil { s.parkedPendingHatchID = nil }
+        if s.parkedPendingHatchID == nil { s.parkedPendingHatchIsUserPick = false }
         // 만족시킬 수 없는 보증은 알을 영구히 못 깨게 만든다 — 전설은 capture_rate 로 표현할 수 없어
         // (captureRateCeiling == nil) 두 롤 경로 모두 후보를 0개로 만들고, 부화가 없으니 보증도 소비되지
         // 않으며, 새 알 구매는 `hasActive` 게이트에 막혀 빠져나갈 수단이 없다. 디코드는 *성공*하므로
         // load() 의 .corrupt 복구도 안 걸려 파일을 손으로 지우기 전엔 앱을 못 쓴다.
         // 관대 디코딩은 모르는 rawValue 만 걸러낼 뿐 **아는데 만족 불가능한 값**은 그대로 통과시킨다.
+        //
+        // **두 축을 복원보다 먼저, 같은 지점에서 거른다**(현재 알 + 파킹). 한쪽만 앞에 두면 복원의
+        // 병합 분기가 아직 안 걸러진 전설을 승자 후보로 받는다: `eggTier = .legendary`(손편집) +
+        // `parkedEggTier = .rare`(실제로 산 보증)이면 legendary 가 sortRank 3 으로 이기고, 그 뒤
+        // 필터가 그것을 nil 로 지워 **만족 가능한 .rare 가 흔적 없이 소멸**한다(복원 지점을 다 지났으므로
+        // 되찾을 경로도 없다). 먼저 걸러 두면 병합 분기 자체가 성립하지 않아 `.rare` 가 pre-roll 까지
+        // 함께 복원된다. 파킹 쪽은 한 번 더 이유가 있다 — 복원되는 순간 그 전설이 알을 영구히 못 깨게 만든다.
         if s.eggTier?.captureRateCeiling == nil { s.eggTier = nil }
+        if s.parkedEggTier?.captureRateCeiling == nil {
+            s.parkedEggTier = nil; s.parkedPendingHatchID = nil; s.parkedPendingHatchIsUserPick = false
+        }
+        // 알 상태로 들어온 세이브라면 맡긴 보증을 지금 되돌린다 — `applySave` 는 `load()` 를 타지
+        // 않으므로(다른 기기에서 온 세이브) 이 경계에서 복원하지 않으면 맡긴 보증이 고아가 된다.
+        // 활성이 있으면 이 호출은 no-op 이고 파킹 값은 그대로 기다린다.
+        s.restoreParkedEggGuarantee()
         if let active = s.active {
             s.active = normalizedMon(active, clampToken: clampToken)
         }
