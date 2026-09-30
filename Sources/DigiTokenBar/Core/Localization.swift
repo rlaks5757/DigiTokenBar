@@ -825,6 +825,90 @@ struct L {
           "Noch keine Baby-Digimon zur Wahl. Zieh eines bis zum Abschied groß, um das freizuschalten.")
     }
 
+    // MARK: 보관함 (알을 사면서 보관한 개체를 꺼내거나 놓아준다)
+
+    /// 진입점 — 보관 개체가 있을 때만 그린다(`canOpenStorage`).
+    var storageEntry: String {
+        t("보관함", "Storage", "預かり", "Almacén", "Réserve", "Depósito", "Verwahrung")
+    }
+    /// 보관함 화면 제목.
+    var storageTitle: String {
+        t("보관한 디지몬", "Stored Digimon", "預けたデジモン", "Digimon almacenados",
+          "Digimon en réserve", "Digimon guardados", "Verwahrte Digimon")
+    }
+    /// 화면 안내 — 무엇이 보관되는지 + 꺼내면 이어서 키운다는 것.
+    var storageHint: String {
+        t("알을 새로 살 때 맡겨 둔 디지몬이에요. 꺼내면 중단한 단계부터 이어서 키울 수 있어요.",
+          "These Digimon were kept when you bought a new egg. Retrieve one to continue from where it stopped.",
+          "新しいタマゴを買ったときに預けたデジモンです。引き取ると止まった段階から育て直せます。",
+          "Son los Digimon que dejaste al comprar un huevo nuevo. Al recuperarlo, sigue desde donde se quedó.",
+          "Ce sont les Digimon confiés lors de l'achat d'un nouvel œuf. En le récupérant, tu reprends où il s'était arrêté.",
+          "São os Digimon que você guardou ao comprar um ovo novo. Ao retirá-lo, continua de onde parou.",
+          "Diese Digimon wurden beim Kauf eines neuen Eis verwahrt. Beim Abholen geht es dort weiter, wo es aufhörte.")
+    }
+    /// 목록이 빈 상태(진입점을 숨기므로 도달은 드물다 — 화면을 열어 둔 채 마지막 개체를 꺼낸 경우).
+    var storageEmpty: String {
+        t("보관한 디지몬이 없어요. 알을 새로 사면 키우던 디지몬이 여기로 와요.",
+          "Nothing in storage. Buy a new egg and the Digimon you were raising comes here.",
+          "預けたデジモンはいません。新しいタマゴを買うと育てていたデジモンがここに来ます。",
+          "No hay nada en el almacén. Si compras un huevo nuevo, el Digimon que criabas vendrá aquí.",
+          "Réserve vide. Achète un nouvel œuf et le Digimon que tu élevais arrivera ici.",
+          "Nada no depósito. Compre um ovo novo e o Digimon que você criava vem para cá.",
+          "Die Verwahrung ist leer. Kauf ein neues Ei, dann kommt das Digimon hierher.")
+    }
+    /// 보관 시각 라벨 — 값은 뷰가 상대 시각으로 붙인다.
+    var storageStoredAt: String {
+        t("보관", "Stored", "預けた", "Almacenado", "Confié", "Guardado", "Verwahrt")
+    }
+    /// 꺼내기 버튼.
+    var storageRetrieve: String {
+        t("꺼내기", "Retrieve", "引き取る", "Recuperar", "Récupérer", "Retirar", "Abholen")
+    }
+    /// 꺼낼 수 없는 이유 ① 활성 개체가 있다 — 자리가 하나뿐이다.
+    var storageBlockedActive: String {
+        t("지금 키우는 디지몬이 있어요. 졸업시키거나 알을 새로 사서 자리를 비워야 꺼낼 수 있어요.",
+          "You're raising a Digimon right now. Graduate it or buy a new egg to free the slot.",
+          "今は育てているデジモンがいます。卒業させるか新しいタマゴを買って空けてください。",
+          "Ahora estás criando un Digimon. Gradúalo o compra un huevo nuevo para liberar el espacio.",
+          "Tu élèves déjà un Digimon. Fais-le diplômer ou achète un nouvel œuf pour libérer la place.",
+          "Você está criando um Digimon agora. Forme-o ou compre um ovo novo para liberar o espaço.",
+          "Du ziehst gerade ein Digimon groß. Lass es abschließen oder kauf ein neues Ei, um Platz zu machen.")
+    }
+    /// 꺼낼 수 없는 이유 ② 부화가 진행 중이다 — 끝나면 열린다.
+    var storageBlockedHatching: String {
+        t("알이 지금 부화하고 있어요. 끝나면 꺼낼 수 있어요.",
+          "An egg is hatching right now. You can retrieve once it finishes.",
+          "いまタマゴが孵化中です。終われば引き取れます。",
+          "Un huevo está eclosionando. Podrás recuperarlo cuando termine.",
+          "Un œuf est en train d'éclore. Tu pourras récupérer une fois terminé.",
+          "Um ovo está chocando agora. Você poderá retirar quando terminar.",
+          "Ein Ei schlüpft gerade. Nach dem Schlüpfen kannst du abholen.")
+    }
+    /// 꺼낼 수 없는 이유 ③ 등급 보증 알을 품고 있다 — 보증은 알에만 붙는 값이라 공존할 수 없다.
+    var storageBlockedGuarantee: String {
+        t("등급 확정 알을 품고 있어요. 그 알이 먼저 부화해야 꺼낼 수 있어요.",
+          "You're holding a guaranteed-rarity egg. It has to hatch first.",
+          "等級確定のタマゴを抱えています。そのタマゴが先に孵化する必要があります。",
+          "Tienes un huevo con rareza garantizada. Ese huevo debe eclosionar primero.",
+          "Tu portes un œuf à rareté garantie. Cet œuf doit éclore d'abord.",
+          "Você está com um ovo de raridade garantida. Esse ovo precisa chocar primeiro.",
+          "Du hältst ein Ei mit garantierter Seltenheit. Dieses Ei muss zuerst schlüpfen.")
+    }
+    /// 방생 버튼(1단계).
+    var storageRelease: String {
+        t("놓아주기", "Release", "はなす", "Liberar", "Relâcher", "Soltar", "Freilassen")
+    }
+    /// 방생 인라인 확인(2단계) — **도감에는 남는다**가 드러나야 한다.
+    func storageReleaseConfirm(_ name: String) -> String {
+        t("\(name)을(를) 놓아줄까요? 보관함에서 사라지지만 도감에는 기록으로 남아요.",
+          "Release \(name)? It leaves storage but stays in your Digidex as a record.",
+          "\(name) をはなしますか？預かりからは消えますが、図鑑には記録として残ります。",
+          "¿Liberar a \(name)? Saldrá del almacén, pero quedará como registro en tu Digidex.",
+          "Relâcher \(name) ? Il quitte la réserve mais reste dans ton Digidex comme trace.",
+          "Soltar \(name)? Ele sai do depósito, mas continua registrado na sua Digidex.",
+          "\(name) freilassen? Es verlässt die Verwahrung, bleibt aber im Digidex vermerkt.")
+    }
+
     func toNextEvolution(_ amount: String) -> String { t("다음 진화까지 \(amount)", "\(amount) to next evolution", "次の進化まで \(amount)", "\(amount) para la siguiente evolución", "\(amount) avant la prochaine évolution", "\(amount) para a próxima evolução", "\(amount) bis zur nächsten Entwicklung") }
     func toGraduation(_ amount: String) -> String { t("졸업까지 \(amount)", "\(amount) to graduation", "卒業まで \(amount)", "\(amount) para graduarse", "\(amount) avant le diplôme", "\(amount) para se formar", "\(amount) bis zum Abschied") }
     func growthBoost(_ multiplier: Int) -> String { t("\(multiplier)× 성장", "\(multiplier)× growth", "成長 \(multiplier)倍", "Crecimiento ×\(multiplier)", "Croissance ×\(multiplier)", "Crescimento ×\(multiplier)", "\(multiplier)× Wachstum") }

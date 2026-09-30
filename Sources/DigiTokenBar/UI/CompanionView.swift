@@ -400,6 +400,8 @@ struct CompanionHeader: View {
     /// 부화할 유아기 종 직접 선택 화면으로 보내는 진입점. nil = 진입점을 그리지 않는다
     /// (플로팅 펫처럼 팝오버 내비게이션이 없는 호출부용). `onBack`/`onClose` 와 같은 클로저 패턴.
     var onPickSpecies: (() -> Void)?
+    /// 보관함 화면으로 보내는 진입점. nil = 진입점을 그리지 않는다(`onPickSpecies` 와 같은 이유·패턴).
+    var onOpenStorage: (() -> Void)?
     // 연출 상태 — 부화/진화 순간 흰 플래시 + 스프링 스케일(본가 진화 신 오마주)
     @State private var flashOpacity: Double = 0
     @State private var celebScale: CGFloat = 1
@@ -467,6 +469,23 @@ struct CompanionHeader: View {
                 }
                 Spacer(minLength: 4)
                 Button(store.l.eggPickEntry, action: onPickSpecies)
+                    .buttonStyle(.bordered).controlSize(.small)
+            }
+        }
+    }
+
+    /// 보관함 진입점 — **알 상태에 한정하지 않는다.** 꺼내기는 알 상태에서만 되지만
+    /// (`canRetrieveStored`), *무엇을 맡겨 뒀는지 보는 것*과 놓아주는 것은 다른 디지몬을 키우는
+    /// 동안에도 돼야 한다. `speciesPickControl` 이 쓰는 알 분기 자리는 그래서 너무 좁다.
+    ///
+    /// 보관 개체가 0건이면 진입점 자체를 숨긴다 — `canPickHatchSpecies`/`jogressControl` 과 같은
+    /// 태도(후보가 없는 화면으로 보내는 죽은 버튼을 두지 않는다). 판정은 store 에 있다.
+    @ViewBuilder
+    private var storageControl: some View {
+        if let onOpenStorage, store.canOpenStorage {
+            HStack(spacing: 6) {
+                Spacer(minLength: 4)
+                Button(store.l.storageEntry, action: onOpenStorage)
                     .buttonStyle(.bordered).controlSize(.small)
             }
         }
@@ -630,6 +649,7 @@ struct CompanionHeader: View {
             // 아머 해제는 **Home** 에 둔다 — 가방은 ownedItems(개수>0)만 그리므로, 디지멘탈을 하나도
             // 안 가진 상태(다른 기기 세이브·손편집)에선 카드 자체가 없어 되돌릴 수단이 사라진다.
             if store.isArmored { armorControl }
+            storageControl
             jogressControl
             chainPromotionControl
             if store.hasActive, !store.lineNodes.isEmpty {

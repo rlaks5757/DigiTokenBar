@@ -23,6 +23,19 @@ final class PopoverNavigationTests: XCTestCase {
         XCTAssertTrue(nav.showingCollectionLog, "일반 재진입은 사용자가 보던 컬렉션 세그먼트를 유지")
     }
 
+    /// 팝오버 내부 화면 전환 플래그는 **전부** reset() 대상이다 — 닫았다 열면 항상 Home 이어야
+    /// 하는데, 새 화면을 추가하면서 reset() 에 빠뜨리면 그 화면에 갇힌 채로 다시 열린다
+    /// (`showEggPicker` 주석의 계약). 두 플래그를 함께 세워 한쪽만 지우는 구현을 레드로 만든다.
+    func testResetClearsInnerScreenFlags() {
+        let nav = PopoverNavigation()
+        nav.showEggPicker = true
+        nav.showStorage = true
+        nav.reset()
+        XCTAssertFalse(nav.showEggPicker)
+        XCTAssertFalse(nav.showStorage, "보관함 화면이 reset() 에서 안 닫히면 재오픈 시 거기 갇힌다")
+        XCTAssertEqual(nav.tab, .home)
+    }
+
     func testOpenRepresentativeDexLeavesSettingsForCollection() {
         let nav = PopoverNavigation()
         nav.showSettings = true
