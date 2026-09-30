@@ -143,16 +143,21 @@ final class StoredMonTests: XCTestCase {
 
     /// 도감 1건(baseID 1) + 활성 개체(baseID 349/브이몬)뿐인 세이브에서 349 를 보관하면, 보관 전엔
     /// `ownsSpecies(349)` 가 active 경로로 true 였다가 보관 후에도 여전히 true 여야 한다(stored 경로).
-    /// 아니면 `babyPicks` 가 349 를 후보에서 빠뜨려 사용자가 방금 보관한 종을 다시 고를 수 없게 된다.
-    /// `DigimonData.lines` 에 실재하는 id 를 써야 `babyPicks`(실 데이터셋만 순회)가 실제로 검증된다.
-    func testOwnsSpeciesRecognizesStoredMonAfterActiveIsCleared() {
+    /// `ownsSpecies` 자체는 이 넓은 의미를 유지한다(`representativeSpeciesID` 검증이 의존한다).
+    ///
+    /// **`babyPicks` 는 그 위에서 좁힌다.** 349 는 도감 기록이 없어(base 1 만 있음) `ownsSpecies`
+    /// 가 순전히 `stored` 경로로만 true 인데, 지금 보관함에 살아있는 349 개체가 있으므로 후보에서
+    /// 빠져야 한다 — 안 그러면 보관 중인 종을 또 부화시켜 복제(보관함에 하나, 알에서 또 하나)가
+    /// 생긴다(제품 결정 2026-09-30). `DigimonData.lines` 에 실재하는 id 를 써야 `babyPicks`
+    /// (실 데이터셋만 순회)가 실제로 검증된다.
+    func testOwnsSpeciesRecognizesStoredMonAfterActiveIsClearedButBabyPicksExcludesIt() {
         let s = store(json: activeStoreJSON())
         XCTAssertTrue(s.state.ownsSpecies(349), "보관 전 — active 경로로 소유")
         XCTAssertTrue(s.buyFreshEgg())
         XCTAssertNil(s.state.active)
         XCTAssertTrue(s.state.ownsSpecies(349), "보관 후 — stored 경로로도 소유가 유지돼야 한다")
-        XCTAssertTrue(s.babyPicks.contains { $0.baseID == 349 },
-                      "보관한 종을 직접 선택 후보에서 다시 고를 수 있어야 한다")
+        XCTAssertFalse(s.babyPicks.contains { $0.baseID == 349 },
+                       "보관 중인 종을 또 후보로 내놓으면 부화 시 복제가 생긴다")
     }
 
     /// 도달하지 못한 미래 단계는 여전히 소유가 아니다 — 보관도 `pathIDs.prefix(stageIndex+1)` 규칙을

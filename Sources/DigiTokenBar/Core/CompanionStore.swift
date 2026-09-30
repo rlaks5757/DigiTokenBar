@@ -1660,13 +1660,43 @@ final class CompanionStore {
         var id: Int { baseID }
     }
 
+    /// 이 라인(`baseID`)의 개체를 **지금 보관함에** 데리고 있는가.
+    ///
+    /// `babyPicks` 를 이 라인만 제외하는 데 쓴다: 졸업·방생 기록(`dex`)은 "한 번 키워 봤다"는
+    /// 과거 사실일 뿐이라 지금 보관함에 개체가 있어도 남는다. 그 위에서 보관 중인 개체가 있으면
+    /// 후보에서 빼야 다시 부화시켜 **복제**(보관함에 하나, 알에서 또 하나)를 만드는 경로를 막는다.
+    /// `MonState.baseID` 는 라인 진입점을 그대로 저장하므로(`ownsSpecies` 의 `chainOrder.contains`
+    /// 와 달리) 직접 비교로 충분하다 — 아머는 `armorID` 오버레이일 뿐 `baseID`/`pathIDs` 를 바꾸지
+    /// 않으므로 아머 착용 여부와 무관하게 정확히 걸린다.
+    ///
+    /// **활성 개체(`active`)는 여기서 보지 않는다.** 호출부가 둘이고 **둘 다** 호출 시점에
+    /// `active == nil` 이 보장된다:
+    ///  - `babyPicks` — 최상단이 `guard state.active == nil` 이다(제약 7). "동행 중인 종 제외" 는
+    ///    그 진입 가드가 전담한다(`testPickIsRejectedWhileActiveExists` 로 고정 — 그 라인이
+    ///    도감에 있는데도 `babyPicks == []`).
+    ///  - `hatchCore` — 부화는 알 상태에서만 돌고(`isCurrentReadyEgg`), `active` 는 이 판정보다
+    ///    **뒤에서** 세워진다. 즉 여기서 `active` 를 비교하면 갓 태어날 개체가 아니라 존재하지
+    ///    않는 값을 보게 된다.
+    /// 그래서 어느 호출부에서도 `active?.baseID` 비교는 도달 불가한 죽은 조건이 된다.
+    /// 호출부를 추가할 때 이 전제(`active == nil`)가 성립하는지 먼저 확인하라 — 성립하지 않는
+    /// 호출부가 생기면 그 축은 여기가 아니라 그 호출부에서 다뤄야 한다.
+    private func hasLiveIndividual(ofLine baseID: Int) -> Bool {
+        state.stored.contains { $0.mon.baseID == baseID }
+    }
+
     /// 지금 직접 골라 부화시킬 수 있는 유아기 종 전부 — 없으면 빈 배열(UI 는 진입점을 아예 숨긴다).
     ///
     /// 유도 규칙:
     ///  ① 후보 집합은 **데이터에서** 온다 — `DigimonData.lines` 의 `baseID`(= `stages[0].id`).
     ///     하드코딩 배열을 두면 52종 데이터와 어긋나도 에러 없이 알 이모지로 떨어진다.
-    ///  ② **도감에 등록된 종만**(`state.ownsSpecies`). 알 상태에서는 활성 개체가 없으므로 이 판정은
-    ///     졸업·방생·죠그레스 기록의 `chainOrder` 로 환원된다 — "한 번 키워 본 유아기" 가 조건이다.
+    ///  ② **도감에 등록됐고(`state.ownsSpecies`) 지금 보관 중인 개체가 없는 종만.** 졸업·방생
+    ///     기록의 `chainOrder` 로 "한 번 키워 본 유아기" 를 확인하는 건 `ownsSpecies` 그대로지만,
+    ///     그 위에 `hasLiveIndividual` 로 **지금 보관 중인 라인은 뺀다** — 넓은 기준(`ownsSpecies`)
+    ///     그대로 두면 보관함에 살아있는 개체를 두고도 같은 종을 또 부화시켜 복제가 생긴다.
+    ///     "동행 중인 라인 제외" 는 별도 비교가 필요 없다 — 바로 아래 진입 가드(`state.active == nil`)
+    ///     가 활성 개체가 있는 모든 경우를 이미 빈 배열로 막는다(제약 7). `ownsSpecies` 자체는
+    ///     건드리지 않는다(`representativeSpeciesID` 검증이 그 넓은 의미에 의존한다) — 후보
+    ///     좁히기는 여기서만 한다.
     ///  ③ **보증 등급(`state.eggTier`) 미달 라인은 후보에서 뺀다.** `hatchCore` 의 마지막 관문과
     ///     **같은 비교**(`rarity.sortRank >= tier.sortRank`)라, 선택된 종이 그 관문에 걸려 버려지는
     ///     일이 구조적으로 불가능하다 — 보증이 무시되지도, 토큰이 낭비되지도 않는다(제약 6).
@@ -1678,6 +1708,7 @@ final class CompanionStore {
         return DigimonData.lines.compactMap { line -> BabyPick? in
             let baseID = line.baseID
             guard state.ownsSpecies(baseID) else { return nil }
+            guard !hasLiveIndividual(ofLine: baseID) else { return nil }
             if let tier, line.rarity.sortRank < tier.sortRank { return nil }
             return BabyPick(baseID: baseID, rarity: line.rarity,
                             name: Self.dataName(baseID, state.language))
@@ -1956,6 +1987,36 @@ final class CompanionStore {
         // 돌려주면 "고른 종"과 "태어난 종"이 갈라지고 사용자가 고르지 않은 종에 선택 표시가 찍힌다.
         // 바로 위 등급 관문(:1882)이 `line.rarity` 를 보는 것과 같은 이유다(유도값이 어긋날 수 있다).
         let wasUserPicked = state.pendingHatchID == line.baseID && state.pendingHatchIsUserPick
+        // 사용자 선택 pre-roll 이 **복원**(`restoreParkedEggGuarantee`)으로 재검사 없이 살아 돌아올
+        // 수 있다 — `pickHatchSpecies` 는 고르는 시점에만 `babyPicks` 를 재조회하고, 알이 깨질
+        // 때까지 다시 보지 않는다. 그 사이 파킹(`retrieveStored` 빈 슬롯 분기)에 실려 있던 선택이
+        // 보증 복원과 함께 그대로 되살아나는데, 그때 이 라인이 이미 보관함에 있으면 이 변경(축 B)이
+        // 막으려던 **복제**(보관함에 하나 + 이 부화로 또 하나)가 그대로 만들어진다 — `babyPicks`
+        // 하나만 좁혀서는 못 막는 경로(리뷰 C1). 소비 지점인 여기서 등급 관문과 **같은 모양**으로
+        // (알 유지 + pre-roll 폐기 + 재시도 예약) 막으면 유입 경로(파킹·손편집 세이브·향후 `stored`
+        // 증가 경로)를 전부 한 곳에서 덮는다 — `babyPicks`/`restoreParkedEggGuarantee` 양쪽에
+        // 판정을 나누면 한쪽만 고쳐질 위험이 있다(권장안 A, (B)/(C) 는 기각 — reviewer_picks.md C1).
+        //
+        // **프리패치 롤(`wasUserPicked == false`)은 여기서 거르지 않는다.** 두 가지 이유가 있다:
+        //  1) 안전 — 이 게이트가 거르면 다음 `ensureEggPrefetch` 가 **다시** 같은 provider 로 롤할
+        //     수 있는 프리패치까지 걸러 버리면, `stored` 후보가 하나뿐인 상황(예: 테스트 스텁이나
+        //     실제로 사용자가 한 라인만 파고든 세이브)에서 롤 → 거절 → 재롤이 같은 결과로 무한
+        //     반복돼 알이 영구히 못 깨는 상태가 된다(`SaveTransfer.sanitized` 가 만족 불가능한
+        //     `.legendary` 보증을 미리 거르는 것과 같은 부류의 함정, :250). 사용자 선택은 이 게이트가
+        //     실패해도 다음 프리패치가 **다른** 선택(`userPicked: false`)으로 갈아 치우므로 이 게이트
+        //     자신의 출력이 스스로를 다시 걸 일이 없다 — 즉 좁은 게이트는 자기 종료적이지만 넓은
+        //     게이트는 그렇지 않다.
+        //  2) 범위 — 프리패치 롤이 보관 중인 종과 우연히 겹쳐 복제를 만드는 것은 `chooseBase` 가
+        //     애초에 소유 여부를 안 보는 **기존 갭**이고, 이번 변경("고르기 후보 기준 좁히기")의
+        //     범위 밖이다. 사용자가 **직접 고른** 선택이 되살아나 복제를 만드는 경로만 닫는다.
+        if wasUserPicked, hasLiveIndividual(ofLine: line.baseID) {
+            AppLog.write("hatch: user pick \(line.baseID) already in storage — discarded, re-roll next tick")
+            setPendingHatch(nil, userPicked: false)
+            prefetchedLineID = nil
+            markHatchRetryDelayedIfReady(generation: generation)
+            save()
+            return
+        }
         setPendingHatch(nil, userPicked: false)
         prefetchedLineID = nil
         currentLine = line

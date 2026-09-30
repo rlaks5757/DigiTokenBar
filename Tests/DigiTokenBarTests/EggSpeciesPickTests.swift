@@ -384,6 +384,53 @@ final class EggSpeciesPickTests: XCTestCase {
         XCTAssertFalse(s.canPickHatchSpecies)
     }
 
+    // MARK: ③-B 지금 보관 중인 개체가 있는 라인은 후보에서 빠진다(복제 방지, 제품 결정 2026-09-30)
+    //
+    // `ownsSpecies` 는 건드리지 않는다 — dex(졸업·방생)·stored·active 를 넓게 보는 그 의미는
+    // `representativeSpeciesID` 검증이 그대로 의존한다. `babyPicks` 만 그 위에서 좁힌다: 도감
+    // 기록이 있어도 지금 보관 중이면 후보에서 뺀다. "동행 중이면 제외" 는 별도 축이 아니다 —
+    // `babyPicks` 최상단의 `state.active == nil` 진입 가드가 활성 개체가 있는 경우를 전부 이미
+    // 빈 배열로 막는다(제④절 `testPickIsRejectedWhileActiveExists` 가 고정). 구성원(멤버십)으로
+    // 단언한다 — 개수만 보면 후보 하나가 다른 하나로 조용히 바뀌어도 통과한다(이 저장소의 전례).
+
+    /// 졸업 기록(dex) + **보관 중인 개체**(stored, 같은 라인) — 도감 기록만으로는 후보이지만
+    /// 지금 살아있는 개체가 있으므로 빠진다.
+    func testCandidateWithLiveStoredIndividualIsExcluded() throws {
+        var seed = CompanionState()
+        seed.installBaselineSet = true
+        seed.dex = [pickGraduated(vmon), pickGraduated(piyomon)]   // 둘 다 졸업 기록 있음
+        let storedVmon = MonState(baseID: vmon.baseID, pathIDs: [vmon.baseID],
+                                  plannedPathIDs: [vmon.baseID], stageIndex: 0, usedAtStage: 0,
+                                  rarity: vmon.rarity, totalForms: vmon.totalForms)
+        seed.stored = [StoredMon(mon: storedVmon, storedAt: pickFixedNow)]   // vmon 만 지금 보관 중
+        let provider = PickStubProvider(
+            lines: Dictionary(uniqueKeysWithValues: DigimonData.lines.map { ($0.baseID, pickLine($0)) }))
+        let s = try store(provider, seed: seed)
+        XCTAssertTrue(s.state.ownsSpecies(vmon.baseID), "사전 조건 — ownsSpecies 는 여전히 넓게 봐야 한다")
+        // 구성원으로 단언 — piyomon 은 남고 vmon 만 빠진다.
+        XCTAssertEqual(Set(s.babyPicks.map(\.baseID)), [piyomon.baseID],
+                       "보관 중인 vmon 이 후보에서 빠지지 않았거나 무관한 piyomon 이 함께 빠졌다")
+        XCTAssertFalse(s.pickHatchSpecies(baseID: vmon.baseID),
+                       "게이트가 후보 재조회 없이 보관 중인 종의 선택을 통과시켰다")
+    }
+
+    /// 졸업 기록만 있고 보관 중인 개체가 없는 라인은 그대로 후보다 — 위 테스트의 대조군.
+    func testCandidateWithoutLiveIndividualStaysEligible() throws {
+        var seed = CompanionState()
+        seed.installBaselineSet = true
+        seed.dex = [pickGraduated(vmon), pickGraduated(piyomon)]
+        let provider = PickStubProvider(
+            lines: Dictionary(uniqueKeysWithValues: DigimonData.lines.map { ($0.baseID, pickLine($0)) }))
+        let s = try store(provider, seed: seed)
+        XCTAssertEqual(Set(s.babyPicks.map(\.baseID)), [vmon.baseID, piyomon.baseID],
+                       "살아있는 개체가 없는 졸업 기록이 후보에서 빠졌다")
+    }
+
+    // "동행 중인 종은 후보에서 빠진다" 축은 여기 별도 테스트를 두지 않는다 — `babyPicks` 최상단의
+    // `state.active == nil` 진입 가드가 활성 개체가 있는 모든 경우를 이미 빈 배열로 막고, 그 가드는
+    // 아래 `testPickIsRejectedWhileActiveExists`(제④절, 이 변경 전부터 있던 테스트)가 같은 시드로
+    // 이미 고정하고 있다 — `hasLiveIndividual` 은 이 가드를 대신하지 않는다(활성 개체는 보지 않는다).
+
     // MARK: ④ 세대 가드 / isHatching 락
 
     /// 부화가 라인 fetch 에서 대기 중(`isHatching == true`)이면 선택을 **거절**한다.
@@ -642,6 +689,133 @@ final class EggSpeciesPickTests: XCTestCase {
                        "같은 id 를 사용자가 다시 골랐는데도 선택 표시가 서지 않았다(isRepeat 구멍)")
     }
 
+    /// **고른 뒤 그 종을 보관함에서 꺼내는 창** — `babyPicks` 기준을 좁힌 뒤(보관 중인 라인 제외)
+    /// 생긴 위험이다. 정상 플레이 경로(`pickHatchSpecies` → `retrieveStored` → `buyEgg` 등)로는
+    /// 이 조합에 도달할 수 없다: `state.stored` 는 `active != nil` 일 때만 자라는데(`buyEgg`/
+    /// `retrieveStored` 교체 분기), `pickHatchSpecies` 는 `active == nil` 을 요구해서 같은 알이
+    /// 살아 있는 동안 그 알의 선택 종이 새로 보관함에 들어올 수 없다(둘이 겹치는 상태가 없다).
+    ///
+    /// 손편집·구버전 세이브를 불러오면(`CompanionStore.load()` → `SaveTransfer.sanitized`) 이
+    /// 불변식이 강제되지 않은 조합이 그대로 디코드를 통과할 수 있다. **단, `sanitized` 자체는 이
+    /// 조합의 어느 분기에도 걸리지 않는다** — `active == nil` 이라 :228 불통과, `pendingHatchID !=
+    /// nil` 이라 :232 불통과, 파킹 필드가 전부 nil 이라 :236-237·:250-253 no-op 이다. 즉 이 테스트가
+    /// 실제로 고정하는 건 "`sanitized` 가 이 조합을 정규화한다"가 아니라, **`pickedHatchBaseID` 가
+    /// `babyPicks` 를 캐시하지 않고 매번 다시 계산해 대조한다**는 것이다 — 그래서 `sanitized` 가
+    /// 손대지 않은 조합에서도 표시 접근자가 안전한 방향(예고 숨김)으로 떨어진다.
+    ///
+    /// 세이브 파일을 직접 인코드해 **`load()` 를 실제로 태운다.** `pendingHatchID`/`pendingHatchIsUserPick`
+    /// 을 살아있는 store 에 바로 대입하면 `CompanionStore.setPendingHatch` 라는 정상 write 사이트를
+    /// 건너뛰어 아무것도 검증하지 못한다 — 여기서는 디코드 경계를 실제로 태워 그 경계를 지나온
+    /// 값으로 `pickedHatchBaseID` 를 확인한다.
+    func testHandEditedSaveCannotRevealPickAlreadyInStorage() throws {
+        var seed = CompanionState()
+        seed.saveVersion = CompanionState.currentSaveVersion
+        seed.installBaselineSet = true
+        seed.usedSinceInstall = 20_000_000_000
+        seed.active = nil                              // 알 상태
+        seed.pendingHatchID = vmon.baseID               // "사용자가 vmon 을 골랐다"
+        seed.pendingHatchIsUserPick = true
+        let storedVmon = MonState(baseID: vmon.baseID, pathIDs: [vmon.baseID],
+                                  plannedPathIDs: [vmon.baseID], stageIndex: 0, usedAtStage: 0,
+                                  rarity: vmon.rarity, totalForms: vmon.totalForms)
+        seed.stored = [StoredMon(mon: storedVmon, storedAt: pickFixedNow)]   // vmon 이 이미 보관 중
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("eggpick-handedited-\(UUID().uuidString).json")
+        try JSONEncoder().encode(seed).write(to: url)
+
+        let provider = PickStubProvider(
+            lines: Dictionary(uniqueKeysWithValues: DigimonData.lines.map { ($0.baseID, pickLine($0)) }))
+        let s = try store(provider, fileURL: url)   // load() → SaveTransfer.sanitized 를 실제로 태운다
+
+        XCTAssertEqual(s.state.pendingHatchID, vmon.baseID,
+                       "sanitized 가 이 필드를 지웠다 — 아래 단언들의 전제가 깨졌다")
+        XCTAssertTrue(s.state.pendingHatchIsUserPick, "사전 조건 — 사용자 선택 표시가 살아있어야 한다")
+        XCTAssertFalse(s.state.stored.isEmpty, "사전 조건 — 보관함에 vmon 이 있어야 한다")
+        XCTAssertFalse(s.babyPicks.contains { $0.baseID == vmon.baseID },
+                       "보관 중인 종이 후보에 남아 있다 — 위 단언들이 이미 공허하다")
+        XCTAssertNil(s.pickedHatchBaseID,
+                    "이미 보관 중인 종의 손편집 선택 표시가 예고로 노출됐다")
+        XCTAssertNil(s.pickedHatchName)
+    }
+
+    /// **C1(리뷰) — 파킹된 pre-roll 이 후보 재검사 없이 복원돼 부화까지 도달한다.**
+    ///
+    /// 위 테스트(`pickedHatchBaseID`)는 **표시만** 안전한 방향으로 떨어지는 것을 확인했을 뿐, 그
+    /// stale `pendingHatchID` 는 `hatchCore` 가 `babyPicks` 를 안 보고 그대로 소비해 실제로
+    /// **부화**시킨다 — 표시가 숨어도 복제는 만들어진다는 게 이번에 닫는 구멍이다.
+    ///
+    /// **정상 플레이 경로(손편집 없이)로는 이 조합을 만들 수 없다** — 코드로 확인했다:
+    ///  - `state.active` 를 nil 로 되돌리는 지점은 `graduate()`/`buyEgg()` 둘뿐이고, **둘 다 같은
+    ///    호출 안에서 곧바로 `restoreParkedEggGuarantee()` 를 부른다**(`CompanionStore.swift:1492-1493`
+    ///    주석이 이 불변식을 이미 명시). 즉 파킹된 선택은 egg-state 로 돌아오는 바로 그 순간 소비된다.
+    ///  - 파킹되는 선택(`parkEggGuarantee`)은 애초에 `pickHatchSpecies` 의 `babyPicks` 재검사를
+    ///    통과한 값이라, 파킹 시점엔 그 라인이 `stored` 에 없다.
+    ///  - 그 라인의 개체가 `stored` 에 생기려면 **부화해서 `active` 가 그 라인이 된 뒤** 보관해야
+    ///    하는데, 부화하려면 먼저 egg-state 로 복귀해야 하고 그 복귀가 파킹을 즉시 소비해 버린다 —
+    ///    "파킹이 살아있는 동안 그 라인이 보관함에 들어오는" 창이 시간적으로 성립하지 않는다.
+    ///  - 죠그레스/체인도 우회로가 아니다 — `MonState.baseID`/`pathIDs` 를 바꾸지 않는다(같은 파일
+    ///    `hasLiveIndividual` 문서의 근거와 동일).
+    ///
+    /// 그래서 이 테스트도 위 테스트와 같은 **손편집 세이브 경계**로 판정한다 — 단 이번엔 실제로
+    /// `sanitized` 의 분기를 태운다: `SaveTransfer.swift:257` 의 `s.restoreParkedEggGuarantee()` 호출이
+    /// **무조건** 실행되므로, `parkedPendingHatchID`/`parkedPendingHatchIsUserPick`/`parkedEggTier` 를
+    /// 심은 세이브를 불러오면 `sanitized` 가 그 값을 `pendingHatchID`/`pendingHatchIsUserPick`/
+    /// `eggTier` 로 **그대로 복원**한다 — `parkEggGuarantee`(정상 write 사이트)를 거치진 않지만,
+    /// `restoreParkedEggGuarantee`(이 수정이 겨냥하는 **읽기** 사이트)는 정상 경로 그대로 통과한다.
+    /// `parkEggGuarantee` 자체의 write 사이트는 기존 `StoredMonTests` 의 파킹 테스트들이 이미
+    /// 덮는다 — 여기서 다시 확인하지 않는다.
+    ///
+    /// 등급은 `.rare` + **patamon(rare)** 로 고정한다 — `line.rarity.sortRank < tier.sortRank` 등급
+    /// 관문(`hatchCore` 위쪽)이 먼저 걸리면(예: uncommon 라인에 rare 보증) 이 테스트의 새 가드
+    /// 전이든 후든 거절이 되어 가드 유무를 구분하지 못한다(`testSpeciesRollPicksSomethingOtherThanThePick`
+    /// 와 같은 이유의 함정).
+    func testParkedUserPickAlreadyInStorageIsDiscardedNotHatched() async throws {
+        var seed = CompanionState()
+        seed.saveVersion = CompanionState.currentSaveVersion
+        seed.installBaselineSet = true
+        seed.usedSinceInstall = 20_000_000_000
+        seed.eggUsage = DigimonBalance.eggHatchThreshold   // 즉시 부화 임계
+        seed.active = nil                                  // 알 상태로 복귀한 시점
+        seed.dex = [pickGraduated(patamon)]                // patamon 은 한 번 키워 본 적 있음(졸업)
+        seed.eggTier = nil
+        seed.pendingHatchID = nil
+        seed.pendingHatchIsUserPick = false
+        // 파킹 필드 — `retrieveStored` 빈 슬롯 분기가 만들었을 값과 같은 모양(보증 + pre-roll 한 묶음).
+        seed.parkedEggTier = .rare
+        seed.parkedPendingHatchID = patamon.baseID
+        seed.parkedPendingHatchIsUserPick = true
+        let storedPatamon = MonState(baseID: patamon.baseID, pathIDs: [patamon.baseID],
+                                     plannedPathIDs: [patamon.baseID], stageIndex: 0, usedAtStage: 0,
+                                     rarity: patamon.rarity, totalForms: patamon.totalForms)
+        seed.stored = [StoredMon(mon: storedPatamon, storedAt: pickFixedNow)]   // patamon 이 이미 보관 중
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("eggpick-c1-\(UUID().uuidString).json")
+        try JSONEncoder().encode(seed).write(to: url)
+
+        let provider = PickStubProvider(
+            lines: Dictionary(uniqueKeysWithValues: DigimonData.lines.map { ($0.baseID, pickLine($0)) }))
+        let s = try store(provider, fileURL: url)   // load() → sanitized 가 restoreParkedEggGuarantee 를 태운다
+
+        // 사전 조건 — sanitized 가 파킹을 복원해 stale 선택을 만들어 냈는가.
+        XCTAssertEqual(s.state.eggTier, .rare, "sanitized 가 파킹된 보증을 복원하지 않았다")
+        XCTAssertEqual(s.state.pendingHatchID, patamon.baseID,
+                       "sanitized 가 파킹된 선택을 복원하지 않았다 — 아래 단언들의 전제가 깨졌다")
+        XCTAssertTrue(s.state.pendingHatchIsUserPick, "사전 조건 — 복원된 선택이 사용자 선택 표시를 유지해야 한다")
+        XCTAssertFalse(s.state.stored.isEmpty, "사전 조건 — 보관함에 patamon 이 있어야 한다")
+        XCTAssertNil(s.pickedHatchBaseID,
+                    "사전 조건 — 표시는 이미 위 테스트가 확인한 대로 숨어야 정상이다")
+
+        // 새 가드가 없으면 여기서 patamon 으로 부화해 버린다(보관함에 하나 + 새로 부화한 하나 = 복제).
+        await s.hatchIfNeeded()
+
+        XCTAssertNil(s.state.active, "복제를 막는 가드가 없어 보관 중인 종으로 부화했다")
+        XCTAssertNil(s.state.pendingHatchID, "부화가 거절됐는데 stale 선택이 남았다 — 다음 틱에도 계속 거절만 반복한다")
+        XCTAssertFalse(s.state.pendingHatchIsUserPick, "거절 후에도 사용자 선택 표시가 stale true 로 남았다")
+        XCTAssertTrue(s.isHatchRetryDelayed, "거절이 재시도 지연 상태를 세우지 않았다 — 등급 관문과 다른 모양이다")
+        // 보증은 살아 있다 — 등급 관문과 같은 태도(산 보증을 이 거절이 삼키지 않는다).
+        XCTAssertEqual(s.state.eggTier, .rare, "이 거절이 산 보증까지 지워 버렸다")
+    }
+
     /// D — 위 테스트는 `pendingHatchID` 를 **직접 세팅**해 롤을 흉내 낸다. 그래서 `ensureEggPrefetch`
     /// 의 실제 롤 write 사이트(`state.pendingHatchIsUserPick` 를 false 로 쓰는 줄)가 정말 도는지는
     /// 아무도 안 본다 — 그 줄을 `true` 로 바꿔도 위 테스트들은 전부 green 이다(`pendingHatchID` 를
@@ -703,10 +877,15 @@ final class EggSpeciesPickTests: XCTestCase {
     /// 그 알의 pre-roll 선택 표시가 클리어된다. `pickedHatchBaseID` 는 `active != nil` 이 되는 순간
     /// 그 자체로 nil 이 되어 이 write 사이트를 가려버리므로, 상태 필드(`pendingHatchIsUserPick`)를
     /// 직접 단언해야 한다(`testPickedFlagClearsAfterHatch` 와 같은 이유).
+    ///
+    /// 두 번째 선택은 **piyomon** 으로 한다 — vmon 은 부화 후 보관되어 지금 살아있는 개체가 있으므로
+    /// (`hasLiveIndividual`) 더는 후보가 아니다. vmon 을 다시 고르면 이 테스트가 검증하려는
+    /// "꺼내기가 pre-roll 표시를 지운다" 축과 무관한 이유로 거절돼 단언이 공허해진다.
     func testRetrieveStoredClearsPendingPickFlag() async throws {
         // buyEgg 는 hasActive 를 요구한다 — 먼저 부화시켜 활성 개체를 만든 뒤 알을 사서 보관시킨다
-        // (StoredMonTests 와 같은 순서).
-        let s = try eggStore(owning: [vmon], eggUsage: DigimonBalance.eggHatchThreshold)
+        // (StoredMonTests 와 같은 순서). piyomon 도 함께 졸업 등록해 둬야 vmon 이 보관된 뒤에도
+        // 고를 후보가 남는다.
+        let s = try eggStore(owning: [vmon, piyomon], eggUsage: DigimonBalance.eggHatchThreshold)
         XCTAssertTrue(s.pickHatchSpecies(baseID: vmon.baseID))
         await s.hatchIfNeeded()
         XCTAssertNotNil(s.state.active, "사전 조건 — 부화가 먼저 일어나야 한다")
@@ -715,7 +894,7 @@ final class EggSpeciesPickTests: XCTestCase {
         XCTAssertEqual(s.state.stored.count, 1, "사전 조건 — 보관 1건이 시드돼야 한다")
         let storedID = try XCTUnwrap(s.state.stored.first?.id)
 
-        XCTAssertTrue(s.pickHatchSpecies(baseID: vmon.baseID))
+        XCTAssertTrue(s.pickHatchSpecies(baseID: piyomon.baseID))
         XCTAssertTrue(s.state.pendingHatchIsUserPick, "선택 직후 플래그가 서지 않았다 — 아래 단언이 공허하다")
 
         XCTAssertTrue(s.retrieveStored(id: storedID))
