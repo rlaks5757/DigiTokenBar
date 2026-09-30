@@ -836,15 +836,20 @@ struct L {
         t("보관한 디지몬", "Stored Digimon", "預けたデジモン", "Digimon almacenados",
           "Digimon en réserve", "Digimon guardados", "Verwahrte Digimon")
     }
-    /// 화면 안내 — 무엇이 보관되는지 + 꺼내면 이어서 키운다는 것.
+    /// 화면 안내 — 무엇이 보관되는지 + 언제든 꺼낼 수 있다는 것(교체·보증 보관 포함).
+    ///
+    /// 보증을 "다음 알까지 그대로 보관" 이라고 단정하지 않는다 — 실제로는 새 알을 사서 보증이
+    /// 겹치면 **더 높은 등급만** 남고(`CompanionState.restoreParkedEggGuarantee` 의 병합), 그때
+    /// 미리 뽑아둔 종 예고도 함께 버려진다. 동작은 테스트가 고정하고 있으므로 문구를 사실에 맞춘다
+    /// (약속을 과하게 하면 충돌 창에서 사용자가 "산 게 사라졌다"고 느낀다).
     var storageHint: String {
-        t("알을 새로 살 때 맡겨 둔 디지몬이에요. 꺼내면 중단한 단계부터 이어서 키울 수 있어요.",
-          "These Digimon were kept when you bought a new egg. Retrieve one to continue from where it stopped.",
-          "新しいタマゴを買ったときに預けたデジモンです。引き取ると止まった段階から育て直せます。",
-          "Son los Digimon que dejaste al comprar un huevo nuevo. Al recuperarlo, sigue desde donde se quedó.",
-          "Ce sont les Digimon confiés lors de l'achat d'un nouvel œuf. En le récupérant, tu reprends où il s'était arrêté.",
-          "São os Digimon que você guardou ao comprar um ovo novo. Ao retirá-lo, continua de onde parou.",
-          "Diese Digimon wurden beim Kauf eines neuen Eis verwahrt. Beim Abholen geht es dort weiter, wo es aufhörte.")
+        t("알을 새로 살 때 맡겨 둔 디지몬이에요. 언제든 꺼내서 중단한 단계부터 이어 키울 수 있어요. 지금 키우는 디지몬이 있으면 자리를 바꾸고, 품고 있던 확정 알의 등급은 다음 알로 옮겨 둬요. 확정 알을 새로 사면 둘 중 높은 등급만 남아요.",
+          "These Digimon were kept when you bought a new egg. Retrieve one anytime to continue from where it stopped. If you're raising a Digimon, they swap places, and a guaranteed egg's rarity carries over to your next egg. Buy another guaranteed egg and only the higher rarity is kept.",
+          "新しいタマゴを買ったときに預けたデジモンです。いつでも引き取って止まった段階から育て直せます。育てているデジモンがいれば入れ替わり、抱えていた確定タマゴの等級は次のタマゴに引き継がれます。確定タマゴを新たに買うと、高い方の等級だけが残ります。",
+          "Son los Digimon que dejaste al comprar un huevo nuevo. Recupéralo cuando quieras y sigue desde donde se quedó. Si estás criando uno, cambian de lugar, y la rareza garantizada de tu huevo pasa al siguiente. Si compras otro huevo garantizado, solo se conserva la rareza más alta.",
+          "Ce sont les Digimon confiés lors de l'achat d'un nouvel œuf. Récupère-les quand tu veux pour reprendre où ils s'étaient arrêtés. Si tu élèves un Digimon, ils échangent leur place, et la rareté garantie de ton œuf est reportée sur le suivant. Si tu achètes un autre œuf garanti, seule la rareté la plus élevée est conservée.",
+          "São os Digimon que você guardou ao comprar um ovo novo. Retire quando quiser e continue de onde parou. Se estiver criando um, eles trocam de lugar, e a raridade garantida do seu ovo passa para o próximo. Se comprar outro ovo garantido, só a raridade mais alta é mantida.",
+          "Diese Digimon wurden beim Kauf eines neuen Eis verwahrt. Hol sie jederzeit ab und mach dort weiter, wo es aufhörte. Wenn du ein Digimon großziehst, tauschen sie den Platz, und die garantierte Seltenheit deines Eis wird auf das nächste Ei übertragen. Kaufst du ein weiteres garantiertes Ei, bleibt nur die höhere Seltenheit.")
     }
     /// 목록이 빈 상태(진입점을 숨기므로 도달은 드물다 — 화면을 열어 둔 채 마지막 개체를 꺼낸 경우).
     var storageEmpty: String {
@@ -860,21 +865,18 @@ struct L {
     var storageStoredAt: String {
         t("보관", "Stored", "預けた", "Almacenado", "Confié", "Guardado", "Verwahrt")
     }
-    /// 꺼내기 버튼.
+    /// 꺼내기 버튼 — 활성 개체가 **없을** 때(빈 자리에 세운다).
     var storageRetrieve: String {
         t("꺼내기", "Retrieve", "引き取る", "Recuperar", "Récupérer", "Retirar", "Abholen")
     }
-    /// 꺼낼 수 없는 이유 ① 활성 개체가 있다 — 자리가 하나뿐이다.
-    var storageBlockedActive: String {
-        t("지금 키우는 디지몬이 있어요. 졸업시키거나 알을 새로 사서 자리를 비워야 꺼낼 수 있어요.",
-          "You're raising a Digimon right now. Graduate it or buy a new egg to free the slot.",
-          "今は育てているデジモンがいます。卒業させるか新しいタマゴを買って空けてください。",
-          "Ahora estás criando un Digimon. Gradúalo o compra un huevo nuevo para liberar el espacio.",
-          "Tu élèves déjà un Digimon. Fais-le diplômer ou achète un nouvel œuf pour libérer la place.",
-          "Você está criando um Digimon agora. Forme-o ou compre um ovo novo para liberar o espaço.",
-          "Du ziehst gerade ein Digimon groß. Lass es abschließen oder kauf ein neues Ei, um Platz zu machen.")
+    /// 꺼내기 버튼 — 활성 개체가 **있을** 때. 확인 단계가 없어(즉시 교체) 이 라벨이 사용자가 받는
+    /// 유일한 예고다. "꺼내기"만 쓰면 지금 키우던 디지몬이 보관함으로 들어가는 걸 누른 뒤에 안다
+    /// (`CompanionStore.storageRetrieveLabel`).
+    var storageSwap: String {
+        t("자리 바꾸기", "Swap in", "入れ替える", "Intercambiar", "Échanger", "Trocar", "Tauschen")
     }
-    /// 꺼낼 수 없는 이유 ② 부화가 진행 중이다 — 끝나면 열린다.
+    /// 꺼낼 수 없는 유일한 이유 — 부화가 진행 중이다(끝나면 열린다). 활성 개체·보증 알은
+    /// 이제 차단이 아니라 교체·파킹으로 처리된다(`CompanionStore.retrieveStored`).
     var storageBlockedHatching: String {
         t("알이 지금 부화하고 있어요. 끝나면 꺼낼 수 있어요.",
           "An egg is hatching right now. You can retrieve once it finishes.",
@@ -883,16 +885,6 @@ struct L {
           "Un œuf est en train d'éclore. Tu pourras récupérer une fois terminé.",
           "Um ovo está chocando agora. Você poderá retirar quando terminar.",
           "Ein Ei schlüpft gerade. Nach dem Schlüpfen kannst du abholen.")
-    }
-    /// 꺼낼 수 없는 이유 ③ 등급 보증 알을 품고 있다 — 보증은 알에만 붙는 값이라 공존할 수 없다.
-    var storageBlockedGuarantee: String {
-        t("등급 확정 알을 품고 있어요. 그 알이 먼저 부화해야 꺼낼 수 있어요.",
-          "You're holding a guaranteed-rarity egg. It has to hatch first.",
-          "等級確定のタマゴを抱えています。そのタマゴが先に孵化する必要があります。",
-          "Tienes un huevo con rareza garantizada. Ese huevo debe eclosionar primero.",
-          "Tu portes un œuf à rareté garantie. Cet œuf doit éclore d'abord.",
-          "Você está com um ovo de raridade garantida. Esse ovo precisa chocar primeiro.",
-          "Du hältst ein Ei mit garantierter Seltenheit. Dieses Ei muss zuerst schlüpfen.")
     }
     /// 방생 버튼(1단계).
     var storageRelease: String {

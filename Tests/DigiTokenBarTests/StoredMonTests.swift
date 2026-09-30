@@ -276,24 +276,40 @@ final class StoredMonTests: XCTestCase {
 
     // MARK: 함정 4 — 경합 보호(활성 개체 존재 / isHatching 락)
 
-    /// 활성 개체가 있으면 보관함에서 꺼낼 자리가 없다 — 교체가 아니라 거절.
+    /// 활성 개체가 있으면 **교체**한다(제품 결정 2026-09-30) — 예전엔 거절이었다.
     /// 보관 1건 + 활성 개체(다른 종, baseID 99)가 함께 있는 상태를 JSON 으로 직접 시드해
-    /// `pickHatchSpecies`/`hatchIfNeeded` 의 비동기 경합 없이 게이트만 동기적으로 검증한다.
-    func testRetrieveStoredRejectedWhileActiveExists() {
-        let storedMonJSON = "{\"id\":\"stored-1\",\"mon\":{\"baseID\":10,\"pathIDs\":[10],"
-            + "\"stageIndex\":0,\"usedAtStage\":200000000,\"rarity\":\"common\",\"totalForms\":3},"
+    /// `pickHatchSpecies`/`hatchIfNeeded` 의 비동기 경합 없이 동기 경로만 검증한다.
+    ///
+    /// **양쪽 육성 상태가 보존되는지**가 핵심이다 — 나가는 개체를 새로 만들거나 알 취급하면
+    /// (`MonState()` 로 재구성·`stageIndex` 리셋) 교체 한 번으로 성장분이 사라진다. 나가는 쪽은
+    /// `usedAtStage`, 들어오는 쪽은 `usedAtStage`+`stageIndex` 로 각각 고정한다.
+    func testRetrieveStoredSwapsWithActiveAndPreservesBothGrowthStates() {
+        let storedMonJSON = "{\"id\":\"stored-1\",\"mon\":{\"baseID\":10,\"pathIDs\":[10,11],"
+            + "\"stageIndex\":1,\"usedAtStage\":200000000,\"rarity\":\"common\",\"totalForms\":3},"
             + "\"storedAt\":\(now.timeIntervalSince1970)}"
-        let activeMonJSON = "{\"baseID\":99,\"pathIDs\":[99],\"stageIndex\":0,\"usedAtStage\":0,"
+        let activeMonJSON = "{\"baseID\":99,\"pathIDs\":[99],\"stageIndex\":0,\"usedAtStage\":777000000,"
             + "\"rarity\":\"common\",\"totalForms\":1}"
         let json = "{\"saveVersion\":\(CompanionState.currentSaveVersion),\"active\":\(activeMonJSON),"
-            + "\"dex\":[],\"stored\":[\(storedMonJSON)]}"
+            + "\"dex\":[],\"stored\":[\(storedMonJSON)],\"eggUsage\":12345}"
         let s = store(json: json)
         XCTAssertEqual(s.state.stored.count, 1, "사전 조건 — 보관 1건이 시드돼야 한다")
 
-        XCTAssertFalse(s.canRetrieveStored("stored-1"), "활성 개체가 있는데 꺼내기가 허용됐다")
-        XCTAssertFalse(s.retrieveStored(id: "stored-1"))
-        XCTAssertEqual(s.state.stored.count, 1, "거절됐는데 보관함이 줄었다")
-        XCTAssertEqual(s.state.active?.baseID, 99, "거절됐는데 활성 개체가 바뀌었다")
+        XCTAssertTrue(s.canRetrieveStored("stored-1"), "활성이 있어도 꺼내기(교체)는 열려 있어야 한다")
+        XCTAssertTrue(s.retrieveStored(id: "stored-1"))
+
+        // 들어온 개체 — 중단한 단계와 성장분 그대로.
+        XCTAssertEqual(s.state.active?.baseID, 10, "꺼낸 개체가 활성이 되지 않았다")
+        XCTAssertEqual(s.state.active?.stageIndex, 1, "꺼낸 개체의 단계가 리셋됐다")
+        XCTAssertEqual(s.state.active?.usedAtStage, 200_000_000, "꺼낸 개체의 성장분이 사라졌다")
+        // 나간 개체 — 방생이 아니라 보관함으로, 성장분 그대로.
+        XCTAssertEqual(s.state.stored.count, 1, "교체인데 보관 칸 수가 바뀌었다(넣고 빼서 1건 유지)")
+        let parked = try! XCTUnwrap(s.state.stored.first)
+        XCTAssertEqual(parked.mon.baseID, 99, "나간 활성 개체가 보관함에 없다 — 조용히 사라졌다")
+        XCTAssertEqual(parked.mon.usedAtStage, 777_000_000, "나간 개체의 성장분이 사라졌다")
+        XCTAssertEqual(parked.storedAt, now, "보관 시각은 교체 시점이어야 한다(목록 정렬 기준)")
+        XCTAssertTrue(s.state.dex.isEmpty, "교체는 방생이 아니다 — 도감 기록을 만들면 안 된다")
+        // 교체 경로엔 알이 없다 — 알 관련 값을 태우면 존재하지 않는 알의 진행분을 "버리는" 헛일이 된다.
+        XCTAssertEqual(s.state.eggUsage, 12_345, "교체가 다음 알의 인큐베이션 진행분을 지웠다")
     }
 
     /// 라인 fetch 를 붙잡아 `isHatching` 이 실제로 잠긴 창을 만드는 스텁 — `EggSpeciesPickTests`
@@ -330,11 +346,10 @@ final class StoredMonTests: XCTestCase {
         func release() { released = true }
     }
 
-    /// 활성 개체도 없고(알 상태) 보증도 없지만, **부화가 라인 fetch 에서 대기 중**이면 여전히
-    /// 꺼내기를 거절해야 한다 — `canRetrieveStored` 의 세 조건(`active == nil`, `!isHatching`,
-    /// `eggTier == nil`) 중 `!isHatching` 단독으로 이 시나리오를 가른다. 이걸 빼놓고
-    /// `active`/`eggTier` 두 테스트만 돌리면 `!isHatching` 삭제가 초록으로 통과해 함정 4가
-    /// 실제로는 2/3 만 닫힌 채로 보고될 뻔했다(advisor 지적).
+    /// **부화가 라인 fetch 에서 대기 중**이면 꺼내기를 거절한다 — 이제 `canRetrieveStored` 의
+    /// **유일한** 조건이다(활성·보증은 교체·파킹으로 처리된다). 그래서 이 테스트가 게이트 전체를
+    /// 지키는 단 하나의 축이 됐다: 빠지면 `!isHatching` 삭제가 초록으로 통과해 부화 락 창에서 활성이
+    /// 뒤바뀌는 경합(함정 4)이 열린다. 이 창은 비동기라야 열린다(동기 테스트로는 공허하게 통과).
     func testRetrieveStoredRejectedWhileHatchInFlight() async throws {
         let storedMonJSON = "{\"id\":\"stored-1\",\"mon\":{\"baseID\":349,\"pathIDs\":[349],"
             + "\"stageIndex\":0,\"usedAtStage\":200000000,\"rarity\":\"uncommon\",\"totalForms\":2},"
@@ -367,18 +382,49 @@ final class StoredMonTests: XCTestCase {
         await hatching.value
     }
 
-    /// 알 보증(`eggTier`)이 걸려 있으면 꺼내기를 거절한다 — 그대로 허용하면 다음 디스크 로드에서
-    /// `SaveTransfer.sanitized` 가 `active != nil` 을 보고 보증을 지운다(산 보증 증발).
-    func testRetrieveStoredRejectedWhileEggTierGuaranteed() {
+    /// 꺼내기 버튼 문구가 **교체임을 예고**한다 — 확인 단계가 없으므로(제품 결정: 즉시 교체) 이
+    /// 라벨이 사용자가 누르기 전에 받는 유일한 경고다. 두 상태에 같은 문구를 쓰면 지금 키우던
+    /// 디지몬이 보관함으로 들어가는 걸 **누른 뒤에** 알게 된다.
+    ///
+    /// 두 축을 같이 고정한다: (1) 상태별로 맞는 문구를 고르는가, (2) 두 문구가 애초에 **다른가**.
+    /// (2)가 없으면 두 `Localization` 값이 같은 문구로 수렴해도 (1)이 green 으로 통과한다.
+    func testRetrieveButtonLabelWarnsAboutSwapWhenActiveExists() {
+        let withActive = store(json: activeStoreJSON())
+        XCTAssertTrue(withActive.hasActive, "사전 조건 — 활성 개체가 있어야 교체 축이다")
+        XCTAssertEqual(withActive.storageRetrieveLabel, withActive.l.storageSwap,
+                       "활성이 있는데 꺼내기 문구가 교체를 예고하지 않는다")
+
+        // 알 상태(활성 없음) — 치울 개체가 없으니 그냥 꺼내기다.
+        let eggJSON = "{\"saveVersion\":\(CompanionState.currentSaveVersion),\"active\":null,"
+            + "\"dex\":[],\"stored\":[],\"eggUsage\":0}"
+        let empty = store(json: eggJSON)
+        XCTAssertFalse(empty.hasActive, "사전 조건 — 빈 자리 축")
+        XCTAssertEqual(empty.storageRetrieveLabel, empty.l.storageRetrieve,
+                       "활성이 없는데 교체 문구가 떴다")
+
+        XCTAssertNotEqual(empty.l.storageRetrieve, empty.l.storageSwap,
+                          "두 문구가 같으면 라벨이 교체를 구분해 주지 못한다(위 두 단언이 공허해진다)")
+    }
+
+    /// 알 보증(`eggTier`)이 걸려 있어도 꺼낼 수 있다 — 보증은 거절 사유가 아니라 **파킹 대상**이다
+    /// (제품 결정 2026-09-30). 예전엔 거절했다: 그대로 허용하면 다음 디스크 로드에서
+    /// `SaveTransfer.sanitized` 가 `active != nil` 을 보고 보증을 지웠기 때문(산 보증 증발).
+    ///
+    /// 이제 보증은 `parkedEggTier` 로 옮겨 가고 `eggTier` 는 비어야 한다 — 둘 다 세워 두면 정확히
+    /// 그 sanitize 경로에 걸려 증발한다(파킹이 무의미해진다).
+    func testRetrieveStoredParksEggGuaranteeInsteadOfRejecting() {
         let s = store(json: activeStoreJSON())
         XCTAssertTrue(s.buyEgg(.rare))
         XCTAssertEqual(s.state.eggTier, .rare)
         let id = try! XCTUnwrap(s.state.stored.first?.id)
 
-        XCTAssertFalse(s.canRetrieveStored(id), "보증이 걸린 채로 꺼내기가 허용됐다")
-        XCTAssertFalse(s.retrieveStored(id: id))
-        XCTAssertEqual(s.state.stored.count, 1)
-        XCTAssertNil(s.state.active)
+        XCTAssertTrue(s.canRetrieveStored(id), "보증이 걸렸다고 꺼내기가 막히면 안 된다")
+        XCTAssertTrue(s.retrieveStored(id: id))
+
+        XCTAssertNotNil(s.state.active, "꺼낸 개체가 활성이 되지 않았다")
+        XCTAssertEqual(s.state.parkedEggTier, .rare, "산 보증이 파킹되지 않고 증발했다")
+        XCTAssertNil(s.state.eggTier, "활성과 공존하는 eggTier 는 sanitize 에서 지워진다 — 비워야 한다")
+        XCTAssertNil(s.eggGuarantee, "활성 개체가 있는 동안 알 보증 표시가 뜨면 안 된다")
     }
 
     /// 정상 경로 — 알 상태(활성 없음, 보증 없음)에서 꺼내면 중단한 형태(usedAtStage 포함)부터 복원된다.
@@ -424,9 +470,8 @@ final class StoredMonTests: XCTestCase {
 
     // MARK: [리뷰 W1] retrieveStored 가 남의 개체 졸업 배너를 정리하는가
 
-    /// `graduate()` 직후 6초 창(`justGraduated`/`eventUntil` 이 살아있는 동안)엔 `canRetrieveStored`
-    /// 의 세 조건(`active == nil`, `!isHatching`, `eggTier == nil`)이 전부 동시에 열린다 — 특수
-    /// 조건 없이 정상 플레이 경로로 도달한다. `buyEgg`/`applySave` 는 이 1회성 배너 필드를
+    /// `graduate()` 직후 6초 창(`justGraduated`/`eventUntil` 이 살아있는 동안)에도 꺼내기 게이트는
+    /// 열려 있다(`!isHatching`) — 특수 조건 없이 정상 플레이 경로로 도달한다. `buyEgg`/`applySave` 는 이 1회성 배너 필드를
     /// 정리하지만 `retrieveStored` 는 원래 정리하지 않았다 — 방치하면 방금 졸업시킨 개체의
     /// 이름으로 "졸업했어요" 배너가 꺼낸 개체 위에 최대 6초간 뜬다(CompanionView.swift 의
     /// `justGraduated`/`computeState` 소비 지점). 리뷰 지적으로 `buyEgg` 와 동일한 세 줄
@@ -451,7 +496,7 @@ final class StoredMonTests: XCTestCase {
         XCTAssertNotNil(s.justGraduated, "사전 조건 — 배너가 실제로 떠 있어야 아래 단언이 의미 있다")
         XCTAssertEqual(s.displayState, .levelUp, "사전 조건 — 6초 창이 열려 있어야 한다(eventUntil 은 private, computeState 경유로 관찰)")
 
-        XCTAssertTrue(s.canRetrieveStored("stored-1"), "졸업 직후 6초 창에서도 꺼내기 세 조건은 전부 열린다")
+        XCTAssertTrue(s.canRetrieveStored("stored-1"), "졸업 직후 6초 창에서도 꺼내기는 열려 있다")
         XCTAssertTrue(s.retrieveStored(id: "stored-1"))
 
         XCTAssertNil(s.justGraduated, "남의 개체(패트몬) 졸업 배너가 꺼낸 개체(브이몬) 위에 남아있다")
@@ -620,8 +665,8 @@ final class StoredMonTests: XCTestCase {
         XCTAssertEqual(Set(s.state.dex.map(\.id)), dexIDsBefore, "실패한 호출이 도감을 늘리면 안 된다")
     }
 
-    /// 방생은 **활성 개체가 있어도** 된다 — 꺼내기와 달리 자리 경합이 없다. `canRetrieveStored` 로
-    /// 게이트하는 구현이면 정상 케이스(다른 디지몬을 키우는 중에 보관함을 정리)가 막힌다.
+    /// 방생은 **활성 개체가 있어도** 된다 — 다른 디지몬을 키우는 중에 보관함을 정리하는 정상 케이스다.
+    /// (`isHatching` 으로 게이트하는 `canRetrieveStored` 를 방생에도 재사용하면 이 경로가 막힌다.)
     func testReleaseStoredWorksWhileAnotherDigimonIsActive() {
         // "활성 + 보관 1건" 을 JSON 으로 직접 시드한다(`testRetrieveStoredRejectedWhileActiveExists`
         // 와 같은 방식 — 비동기 경합 없이 동기 경로만 본다).
@@ -629,8 +674,7 @@ final class StoredMonTests: XCTestCase {
         XCTAssertNotNil(s.state.active)
         XCTAssertEqual(s.state.stored.count, 1, "사전 조건 — 보관 1건이 시드돼야 한다")
 
-        XCTAssertFalse(s.canRetrieveStored("stored-1"), "활성이 있으니 꺼내기는 막혀 있다")
-        XCTAssertTrue(s.releaseStored(id: "stored-1"), "그래도 방생은 돼야 한다")
+        XCTAssertTrue(s.releaseStored(id: "stored-1"), "활성이 있어도 방생은 돼야 한다")
         XCTAssertTrue(s.state.stored.isEmpty)
         XCTAssertEqual(s.state.active?.baseID, 349, "방생이 활성 개체를 건드리면 안 된다")
     }
@@ -757,25 +801,29 @@ final class StoredMonTests: XCTestCase {
 
     // MARK: 꺼내기 불가 사유 / 진입점 게이트 (뷰가 읽는 표면 — 판정은 store 에 있다)
 
-    /// 사유 문구는 `canRetrieveStored` 의 세 조건을 **같은 순서로** 뒤집는다. 꺼낼 수 있으면 nil.
-    func testStoredRetrieveBlockReasonMirrorsGateConditions() {
+    /// 사유 문구는 `canRetrieveStored` 를 그대로 뒤집는다 — 꺼낼 수 있으면 nil.
+    ///
+    /// 조건이 하나(부화 중)뿐인 건 설계가 바뀐 결과다: 활성 개체가 있는 상태와 보증 알을 품은 상태는
+    /// 이제 열린 게이트이므로 **사유가 없어야 한다.** 옛 문구가 남아 있으면 바로 꺼낼 수 있는 행에
+    /// "졸업시키거나 알을 새로 사라"는 차단 안내가 붙는다(부화 중 축은
+    /// `testRetrieveStoredRejectedWhileHatchInFlight` 가 전담한다 — 그 창은 비동기라야 열린다).
+    func testStoredRetrieveBlockReasonIsNilWheneverGateIsOpen() {
         // ① 알 상태(활성 없음·보증 없음) — 꺼낼 수 있으니 사유가 없다.
         let open = store(json: storedOnlyJSON())
         XCTAssertTrue(open.canRetrieveStored("stored-1"))
         XCTAssertNil(open.storedRetrieveBlockReason("stored-1"), "꺼낼 수 있는데 사유 문구가 뜨면 안 된다")
 
-        // ② 활성 개체가 있으면 자리가 없다.
+        // ② 활성 개체가 있으면 교체다 — 차단이 아니므로 사유도 없다.
         let busy = store(json: activeAndStoredJSON())
-        XCTAssertFalse(busy.canRetrieveStored("stored-1"))
-        XCTAssertEqual(busy.storedRetrieveBlockReason("stored-1"), busy.l.storageBlockedActive)
+        XCTAssertTrue(busy.canRetrieveStored("stored-1"), "활성이 있어도 교체로 열려 있다")
+        XCTAssertNil(busy.storedRetrieveBlockReason("stored-1"), "교체 가능한데 차단 사유가 떴다")
 
-        // ③ 등급 보증 알 — 활성은 없지만 보증이 걸려 있다(`buyEgg` 가 만드는 실제 상태와 같은 모양).
+        // ③ 등급 보증 알 — 보증은 파킹되므로 차단이 아니다(`buyEgg` 가 만드는 실제 상태와 같은 모양).
         let guaranteed = store(json: storedOnlyJSON().replacingOccurrences(
             of: "\"active\":null", with: "\"active\":null,\"eggTier\":\"rare\""))
         XCTAssertEqual(guaranteed.state.eggTier, .rare, "사전 조건 — 보증이 시드돼야 한다")
-        XCTAssertFalse(guaranteed.canRetrieveStored("stored-1"))
-        XCTAssertEqual(guaranteed.storedRetrieveBlockReason("stored-1"),
-                       guaranteed.l.storageBlockedGuarantee)
+        XCTAssertTrue(guaranteed.canRetrieveStored("stored-1"), "보증은 파킹 대상이지 차단 사유가 아니다")
+        XCTAssertNil(guaranteed.storedRetrieveBlockReason("stored-1"))
     }
 
     /// 존재하지 않는 id 는 사유가 없다 — 목록에 뜬 행은 항상 실 id 라 도달하지 않고, 안내할
@@ -794,5 +842,197 @@ final class StoredMonTests: XCTestCase {
         let id = try! XCTUnwrap(s.state.stored.first?.id)
         XCTAssertTrue(s.releaseStored(id: id))
         XCTAssertFalse(s.canOpenStorage, "마지막 개체를 방생하면 진입점이 다시 닫힌다")
+    }
+
+    // MARK: 보증 파킹 — 꺼내기가 산 보증을 삼키지 않는가 (제품 결정 2026-09-30)
+
+    /// 보증 알 + 보관 1건. 활성은 없다(= 알 상태) — `buyEgg` 를 거치지 않고 파킹 대상 상태만 직접
+    /// 시드해 동기 경로만 본다(`storedOnlyJSON` 은 이미 활성 없음 + 보관 1건이다).
+    private func guaranteedEggWithStoredJSON(tier: String = "rare", preRoll: Int? = 331,
+                                             userPick: Bool = false,
+                                             wallet: Int = 50_000_000_000) -> String {
+        var extra = ",\"eggTier\":\"\(tier)\""
+        if let preRoll { extra += ",\"pendingHatchID\":\(preRoll),\"pendingHatchIsUserPick\":\(userPick)" }
+        // 지갑은 JSON 으로 시드한다(`state` 는 테스트에서 읽기 전용) — 알 구매 축에 필요하다.
+        return storedOnlyJSON()
+            .replacingOccurrences(of: "\"usedSinceInstall\":5000", with: "\"usedSinceInstall\":\(wallet)")
+            .replacingOccurrences(of: "\"active\":null", with: "\"active\":null" + extra)
+    }
+
+    /// [핵심] 보증 알을 품은 채 꺼냈다가 **다시 알 상태가 되면 보증이 복원된다.**
+    ///
+    /// 이 테스트가 없으면 파킹은 반쪽이다 — `retrieveStored` 가 값을 옮기기만 하고 아무도 되돌리지
+    /// 않으면 사용자 입장에선 증발과 구분되지 않는다(게이트를 열어 준 것이 오히려 손실이 된다).
+    /// 복원 지점은 "알이 생기는 순간" 두 곳뿐이다(`graduate`/`buyEgg`) — 여기선 졸업 경로를 본다.
+    ///
+    /// 파킹 상태를 필드에 직접 심지 않고 `retrieveStored` 로 만든다 — 쓰기 지점을 건너뛰면 그
+    /// 지점이 망가져도 초록이다. 졸업도 `applyUsage` 실경로로 도달한다.
+    func testParkedGuaranteeIsRestoredWhenEggStateReturnsViaGraduation() async {
+        // 보관 개체(349)가 곧장 졸업 가능한 라인 — 꺼낸 그 개체를 키워 졸업까지 민다(활성 교체 없음).
+        // stageIndex 1(=358)이 트리의 말단이라 임계 도달 시 `graduate()` 로 떨어진다.
+        let finalLine = EvoLine(baseID: 349, tree: EvoNode(speciesID: 349, children: [
+            EvoNode(speciesID: 358, children: [])
+        ]), rarity: .uncommon, names: [349: ["ko": "브이몬"], 358: ["ko": "엑스브이몬"]])
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("stored-park-grad-\(UUID().uuidString).json")
+        let s = store(finalLine, json: guaranteedEggWithStoredJSON(preRoll: 331, userPick: true), at: url)
+        XCTAssertEqual(s.state.eggTier, .rare, "사전 조건 — 보증 알을 품고 있어야 한다")
+
+        // ① 꺼낸다 → 보증은 파킹되고 현재 알 보증은 비워진다.
+        XCTAssertTrue(s.retrieveStored(id: "stored-1"))
+        XCTAssertEqual(s.state.parkedEggTier, .rare)
+        XCTAssertNil(s.state.eggTier)
+        XCTAssertNil(s.eggGuarantee, "활성이 있는 동안 보증 표시가 뜨면 안 된다")
+
+        // ② 꺼낸 개체를 졸업시킨다 → 새 알이 생기므로 보증이 돌아온다.
+        // `retrieveStored` 가 띄운 `loadCurrentLine()` Task 가 끝나야 진화/졸업 판정이 돈다
+        // (`applyUsage` 는 `currentLine == nil` 이면 적립만 하고 반환한다).
+        for _ in 0..<200 where s.currentLine == nil { await Task.yield() }
+        XCTAssertNotNil(s.currentLine, "사전 조건 — 라인이 로드돼야 졸업 판정이 돈다")
+        s.applyUsage(DigimonBalance.graduationTotal(.uncommon))
+
+        XCTAssertNil(s.state.active, "사전 조건 — 졸업해서 알 상태가 돼야 한다")
+        XCTAssertEqual(s.state.eggTier, .rare, "맡긴 보증이 새 알에 복원되지 않았다 — 산 보증 증발")
+        XCTAssertNil(s.state.parkedEggTier, "복원됐으면 파킹 자리는 비워야 한다(두 번 복원되면 영구 프리미엄)")
+        XCTAssertEqual(s.eggGuarantee, .rare, "알 상태인데 보증 표시가 뜨지 않는다")
+        XCTAssertEqual(s.state.pendingHatchID, 331, "보증과 함께 맡긴 pre-roll 도 돌아와야 한다")
+
+        // ③ 복원이 **디스크에도** 반영됐는가 — 인메모리로만 복원되면 졸업 직후 종료 시 산 보증이
+        // 사라진다(`applyUsage` 말미의 `save()` 가 이 경로를 덮는지가 실제 계약이다).
+        let reloaded = CompanionStore(provider: StubProvider(value: finalLine), clock: { self.now },
+                                      fileURL: url, rng: SeededRNG(seed: 7))
+        XCTAssertEqual(reloaded.state.eggTier, .rare, "복원된 보증이 저장되지 않았다 — 재시작에서 유실")
+        XCTAssertNil(reloaded.state.parkedEggTier)
+    }
+
+    /// 보증과 pre-roll 은 **한 묶음**으로 움직인다 — 맡길 때도, 복원할 때도.
+    ///
+    /// 한쪽만 다루면 두 방향 모두 버그다: pre-roll 만 남기면 졸업으로 받는 **무료** 알이 프리미엄
+    /// 롤 결과로 부화하고(`SaveTransfer.sanitized` 의 같은 누수), 보증만 복원하면 사용자가 직접 고른
+    /// 종 예고가 꺼내기 한 번으로 사라진다. `pendingHatchIsUserPick` 까지 따라가야 후자가 닫힌다.
+    func testParkedGuaranteeMovesAsOneBundleWithItsPreRoll() {
+        let s = store(json: guaranteedEggWithStoredJSON(preRoll: 331, userPick: true))
+        XCTAssertEqual(s.state.pendingHatchID, 331, "사전 조건 — pre-roll 이 시드돼야 한다")
+        XCTAssertTrue(s.state.pendingHatchIsUserPick, "사전 조건 — 사용자 선택 표시가 서야 한다")
+
+        XCTAssertTrue(s.retrieveStored(id: "stored-1"))
+        // 맡긴 쪽: 세 값이 함께 이동.
+        XCTAssertEqual(s.state.parkedEggTier, .rare)
+        XCTAssertEqual(s.state.parkedPendingHatchID, 331, "보증만 맡기고 pre-roll 을 버렸다")
+        XCTAssertTrue(s.state.parkedPendingHatchIsUserPick, "사용자 선택 표시가 파킹에서 강등됐다")
+        // 현재 알 쪽: 알이 없어졌으니 세 값이 비어야 한다.
+        XCTAssertNil(s.state.eggTier)
+        XCTAssertNil(s.state.pendingHatchID)
+        XCTAssertFalse(s.state.pendingHatchIsUserPick)
+
+        // 복원 쪽 묶음은 `CompanionState` 단독으로 본다 — 상태 변환만 보는 축이라 store 를 거칠
+        // 필요가 없다(복원 지점이 실제로 이걸 부르는지는 위 졸업 테스트가 지킨다).
+        var parked = CompanionState()
+        parked.parkedEggTier = .rare
+        parked.parkedPendingHatchID = 331
+        parked.parkedPendingHatchIsUserPick = true
+        parked.restoreParkedEggGuarantee()
+        XCTAssertEqual(parked.eggTier, .rare)
+        XCTAssertEqual(parked.pendingHatchID, 331, "보증만 복원되고 pre-roll 이 사라졌다")
+        XCTAssertTrue(parked.pendingHatchIsUserPick, "사용자 선택 예고가 프리패치 롤로 강등됐다")
+        XCTAssertNil(parked.parkedPendingHatchID)
+        XCTAssertFalse(parked.parkedPendingHatchIsUserPick)
+    }
+
+    /// 파킹 보증은 활성 개체가 있는 동안 **복원되지 않는다** — 보증과 활성은 공존할 수 없어서
+    /// (`SaveTransfer.sanitized`) 여기서 복원하면 바로 지워진다(= 파킹이 무의미해진다).
+    func testParkedGuaranteeIsNotRestoredWhileActiveExists() {
+        let s = store(json: guaranteedEggWithStoredJSON())
+        XCTAssertTrue(s.retrieveStored(id: "stored-1"))
+        XCTAssertNotNil(s.state.active, "사전 조건 — 꺼낸 개체가 활성이어야 한다")
+
+        var copy = s.state
+        copy.restoreParkedEggGuarantee()   // 활성이 있는 동안 몇 번 불러도 no-op 이어야 한다
+        XCTAssertNil(copy.eggTier, "활성이 있는데 보증이 복원됐다 — 다음 sanitize 에서 증발한다")
+        XCTAssertEqual(copy.parkedEggTier, .rare, "복원도 안 됐는데 파킹 값이 사라졌다")
+        // 실제 경계(디스크 로드·수입)에서도 같아야 한다 — 여기서 복원되면 바로 증발한다.
+        XCTAssertNil(SaveTransfer.sanitized(s.state).eggTier)
+        XCTAssertEqual(SaveTransfer.sanitized(s.state).parkedEggTier, .rare)
+    }
+
+    /// 새로 산 보증과 파킹 보증이 **동시에 유효한 유일한 창** — `canBuyEgg` 가 `hasActive` 를 요구하므로
+    /// 파킹 상태(활성 있음)에서도 알을 살 수 있다. 더 높은 쪽만 남고 pre-roll 은 양방향 모두 버려진다.
+    ///
+    /// pre-roll 을 남기면 두 방향 다 사고다: 낮은 보증의 pre-roll 이 높은 보증 아래 남으면 등급 미달로
+    /// 버려지는 낭비고, 높은 보증의 pre-roll 이 낮은 보증 아래 남으면 **사지 않은 프리미엄 결과**가 나온다.
+    func testBuyEggWithParkedGuaranteeKeepsHigherTierAndDropsBothPreRolls() {
+        // ① 파킹(.rare) > 새로 산 것(무보증 기본 알) — 파킹이 이긴다.
+        let a = store(json: guaranteedEggWithStoredJSON(tier: "rare", preRoll: 331, userPick: true))
+        XCTAssertTrue(a.retrieveStored(id: "stored-1"))
+        XCTAssertEqual(a.state.parkedEggTier, .rare, "사전 조건 — 보증이 파킹돼야 한다")
+        XCTAssertTrue(a.buyFreshEgg(), "사전 조건 — 파킹 상태에서도 알을 살 수 있다")
+        XCTAssertEqual(a.state.eggTier, .rare, "무보증 알이 파킹된 보증을 덮어 산 것이 사라졌다")
+        // 무보증 알은 **충돌이 아니다**(유효한 보증이 파킹된 쪽 하나뿐) — 묶음 전체가 그대로 복원된다.
+        // 여기서 pre-roll 을 버리면 사용자가 직접 고른 종 예고만 아무 이유 없이 사라진다.
+        XCTAssertEqual(a.state.pendingHatchID, 331, "충돌이 아닌데 pre-roll 이 버려졌다")
+        XCTAssertTrue(a.state.pendingHatchIsUserPick, "사용자 선택 표시까지 버려졌다")
+        XCTAssertNil(a.state.parkedEggTier, "파킹 자리는 비워야 한다(재복원 = 영구 프리미엄)")
+
+        // ② 파킹(.uncommon) < 새로 산 것(.rare) — 산 쪽이 이긴다(파킹이 강등시키면 안 된다).
+        let b = store(json: guaranteedEggWithStoredJSON(tier: "uncommon", preRoll: 331, userPick: true))
+        XCTAssertTrue(b.retrieveStored(id: "stored-1"))
+        XCTAssertEqual(b.state.parkedEggTier, .uncommon)
+        XCTAssertTrue(b.buyEgg(.rare))
+        XCTAssertEqual(b.state.eggTier, .rare, "파킹된 낮은 보증이 방금 산 높은 보증을 강등시켰다")
+        // 여긴 **진짜 충돌**이다(두 보증이 동시에 유효) — 승자와 무관하게 pre-roll 을 버리고
+        // 프리패치가 승자 기준으로 다시 롤한다. 남기면 등급 미달 낭비(낮은→높은) 또는
+        // 사지 않은 프리미엄(높은→낮은)이 된다.
+        XCTAssertNil(b.state.pendingHatchID, "충돌 창에서 pre-roll 이 살아남았다")
+        XCTAssertFalse(b.state.pendingHatchIsUserPick)
+        XCTAssertNil(b.state.parkedEggTier)
+    }
+
+    /// 파킹이 **재시작을 건너 살아남는다** — 영속 필드가 아니면 앱을 닫는 순간 산 보증이 사라진다
+    /// (`pendingHatchIsUserPick` 이 저장 필드여야 하는 것과 같은 이유).
+    func testParkedGuaranteeSurvivesRestart() {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("stored-park-rt-\(UUID().uuidString).json")
+        let s = store(json: guaranteedEggWithStoredJSON(preRoll: 331, userPick: true), at: url)
+        XCTAssertTrue(s.retrieveStored(id: "stored-1"))
+        XCTAssertEqual(s.state.parkedEggTier, .rare, "사전 조건 — 파킹돼야 한다")
+
+        let reloaded = CompanionStore(provider: StubProvider(value: vmonLine), clock: { self.now },
+                                      fileURL: url, rng: SeededRNG(seed: 7))
+        XCTAssertEqual(reloaded.state.parkedEggTier, .rare, "파킹 보증이 재시작에서 유실됐다")
+        XCTAssertEqual(reloaded.state.parkedPendingHatchID, 331)
+        XCTAssertTrue(reloaded.state.parkedPendingHatchIsUserPick)
+        XCTAssertNil(reloaded.state.eggTier, "활성이 있으므로 현재 알 보증은 여전히 비어 있어야 한다")
+    }
+
+    /// 파킹이 `SaveTransfer` 내보내기→불러오기를 통과한다 — 다른 기기로 옮기는 중에 파킹 상태였다면
+    /// 그 보증도 따라가야 한다(분류를 빼먹으면 이전 직후 알이 생기는 순간에만 드러난다).
+    ///
+    /// `applySave` 는 `load()` 를 타지 않으므로 `sanitized` 가 이 경로의 유일한 경계다.
+    func testParkedGuaranteeSurvivesSaveTransferRoundTrip() throws {
+        let s = store(json: guaranteedEggWithStoredJSON(preRoll: 331, userPick: true))
+        XCTAssertTrue(s.retrieveStored(id: "stored-1"))
+        XCTAssertEqual(s.state.parkedEggTier, .rare, "사전 조건 — 파킹돼야 한다")
+
+        let data = try s.exportedSaveData(appVersion: "1.0", deviceName: "MacTest")
+        let envelope = try SaveTransfer.decode(data)
+        XCTAssertEqual(envelope.state.parkedEggTier, .rare, "파킹 보증이 수입 경계에서 사라졌다")
+        XCTAssertEqual(envelope.state.parkedPendingHatchID, 331)
+        XCTAssertTrue(envelope.state.parkedPendingHatchIsUserPick)
+    }
+
+    /// 파킹 필드가 **없는** 세이브(이 기능 이전 형태)는 관대 디코딩이 "맡긴 것 없음"으로 흡수한다 —
+    /// `saveVersion` 을 올리지 않았으므로(순수 추가 필드) `.legacy` 백업도 생기지 않아야 한다.
+    func testSaveWithoutParkedFieldsDecodesAsNothingParked() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("stored-park-legacy-\(UUID().uuidString).json")
+        try Data(storedOnlyJSON().utf8).write(to: url)
+        let s = store(json: storedOnlyJSON(), at: url)
+
+        XCTAssertNil(s.state.parkedEggTier)
+        XCTAssertNil(s.state.parkedPendingHatchID)
+        XCTAssertFalse(s.state.parkedPendingHatchIsUserPick)
+        XCTAssertEqual(s.state.stored.count, 1, "파킹 필드가 없다고 보관함이 날아가면 안 된다")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: url.appendingPathExtension("legacy").path),
+                       "순수 추가 필드는 세대 불일치가 아니다 — .legacy 백업이 생기면 안 된다")
     }
 }
