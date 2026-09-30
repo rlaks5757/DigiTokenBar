@@ -226,6 +226,10 @@ enum SaveTransfer {
         // 그 보증으로 미리 뽑아둔 종(pendingHatchID)도 함께 버린다 — 보증만 지우면 졸업 후 받는 **무료**
         // 알이 그 pre-roll 로 부화해, 아무도 사지 않은 프리미엄 결과가 나온다.
         if s.active != nil { s.eggTier = nil; s.pendingHatchID = nil }
+        // 불변식: 미리 뽑아둔 종이 없으면 "사용자가 골랐다"는 표시도 있을 수 없다. 위 분기가
+        // `pendingHatchID` 를 지우는 경우를 포함해 손편집·구버전 세이브가 이 조합을 깨뜨리면 여기서
+        // 한 번에 닫는다(개별 write 사이트가 아니라 들어오는 경계에서 정규화 — 이 파일 상단 원칙과 동일).
+        if s.pendingHatchID == nil { s.pendingHatchIsUserPick = false }
         // 만족시킬 수 없는 보증은 알을 영구히 못 깨게 만든다 — 전설은 capture_rate 로 표현할 수 없어
         // (captureRateCeiling == nil) 두 롤 경로 모두 후보를 0개로 만들고, 부화가 없으니 보증도 소비되지
         // 않으며, 새 알 구매는 `hasActive` 게이트에 막혀 빠져나갈 수단이 없다. 디코드는 *성공*하므로

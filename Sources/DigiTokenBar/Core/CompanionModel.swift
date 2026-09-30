@@ -639,6 +639,12 @@ struct CompanionState: Codable, Sendable {
     var eggTier: Rarity?
     // 알 상태에서 미리 롤해둔 부화 종(프리패칭) — 부화 순간 네트워크 딜레이 제거. 재시작에도 유지.
     var pendingHatchID: Int?
+    /// `pendingHatchID` 가 **사용자가 직접 고른 것**인가(true) vs 프리패치가 롤한 것인가(false).
+    /// 두 경로가 같은 필드를 공유하므로 이 플래그 없이는 "도감에 이미 있는 유아기가 우연히 롤됐다"와
+    /// "사용자가 그 종을 골랐다"를 구분할 수 없었다(`pickedHatchBaseID` 의 옛 프록시 한계). 알 상태에서
+    /// `MonState` 가 아직 없어 여기(`CompanionState`)에 영속해야 하고, 부화 전 예고가 재시작을 건너
+    /// 살아남으려면(`testPickSurvivesRestart`) 휘발성 프로퍼티가 아니라 저장 필드여야 한다.
+    var pendingHatchIsUserPick = false
     /// 오늘 사용량 적립 기준값 — 프로바이더별로 독립 관리한다.
     ///
     /// `nil`은 aggregate `claimedTodayTokens`만 가지고 있던 구버전 세이브가 아직 첫 유효
@@ -685,6 +691,8 @@ struct CompanionState: Codable, Sendable {
         // 모르는 rawValue 는 nil(보증 없음)로 강등 — 관대 디코딩의 안전한 방향(있지도 않은 보증을 만들지 않는다).
         eggTier            = c.lenientOptional(Rarity.self, forKey: .eggTier)
         pendingHatchID     = c.lenientOptional(Int.self, forKey: .pendingHatchID)
+        // 이 필드 이전 세이브엔 키가 없다 — 없으면 "사용자가 고른 것 아님"이 안전한 기본값이다.
+        pendingHatchIsUserPick = c.lenient(Bool.self, forKey: .pendingHatchIsUserPick, default: false)
         if c.contains(.claimedTodayTokensByProvider) {
             claimedTodayTokensByProvider = c.lenient([String: Int].self,
                                                       forKey: .claimedTodayTokensByProvider,

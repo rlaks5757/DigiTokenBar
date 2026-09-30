@@ -614,6 +614,130 @@ final class EggSpeciesPickTests: XCTestCase {
         XCTAssertEqual(s.pickedHatchName, CompanionStore.dataName(vmon.baseID, .ko))
     }
 
+    /// D — 프리패치가 **도감에 이미 있는 유아기 종**을 우연히 롤하면 예고가 뜨면 안 된다.
+    /// 위 테스트(`testPickedNameOnlyRevealsCandidates`)는 agumon(도감에 없음)으로 프리패치 롤을
+    /// 흉내 내는데, 그 종은 옛 `babyPicks.contains` 프록시로도 이미 걸러져 D 전후로 똑같이
+    /// 통과한다. 여기서는 **vmon(도감 보유 종)** 이 `pendingHatchID` 에 롤됐다고 세팅한다 —
+    /// `pendingHatchIsUserPick` 이 기본값 false 라 옛 프록시라면 이 id 가 후보에도 있어 예고가
+    /// 뜨지만(버그), 새 플래그 판정에서는 사용자가 고른 게 아니므로 nil 이어야 한다.
+    func testPrefetchRollOfOwnedBabyDoesNotRevealPick() throws {
+        var seed = CompanionState()
+        seed.installBaselineSet = true
+        seed.dex = [pickGraduated(vmon)]
+        seed.pendingHatchID = vmon.baseID   // 프리패치가 우연히 도감 보유 종을 롤함
+        let provider = PickStubProvider(
+            lines: Dictionary(uniqueKeysWithValues: DigimonData.lines.map { ($0.baseID, pickLine($0)) }))
+        let s = try store(provider, seed: seed)
+        XCTAssertTrue(s.babyPicks.contains { $0.baseID == vmon.baseID },
+                      "vmon 이 후보에 없다 — 이 테스트의 전제가 깨졌다")
+        XCTAssertNil(s.pickedHatchBaseID,
+                    "프리패치가 롤한 도감 보유 종이 사용자 선택으로 예고됐다")
+        XCTAssertNil(s.pickedHatchName)
+
+        // 이어서 사용자가 실제로 같은 종을 고르면(id 는 이미 pendingHatchID 와 같다) 그제서야 예고가
+        // 떠야 한다 — `pickHatchSpecies` 가 `isRepeat` 로 id 대입을 건너뛰어도 사용자 선택 표시는
+        // 반드시 별도로 세워야 하는 경계다.
+        XCTAssertTrue(s.pickHatchSpecies(baseID: vmon.baseID))
+        XCTAssertEqual(s.pickedHatchBaseID, vmon.baseID,
+                       "같은 id 를 사용자가 다시 골랐는데도 선택 표시가 서지 않았다(isRepeat 구멍)")
+    }
+
+    /// D — 위 테스트는 `pendingHatchID` 를 **직접 세팅**해 롤을 흉내 낸다. 그래서 `ensureEggPrefetch`
+    /// 의 실제 롤 write 사이트(`state.pendingHatchIsUserPick` 를 false 로 쓰는 줄)가 정말 도는지는
+    /// 아무도 안 본다 — 그 줄을 `true` 로 바꿔도 위 테스트들은 전부 green 이다(`pendingHatchID` 를
+    /// 직접 세팅하는 다른 테스트들과 마찬가지). 여기서는 `update()` 를 불러 프리패치를 **실제로
+    /// 태우고**, 후보(vmon) 하나만 있는 provider 로 롤 결과를 그 종에 고정한 뒤 플래그를 확인한다.
+    func testActualPrefetchRollWritesFlagFalse() async throws {
+        var seed = CompanionState()
+        seed.installBaselineSet = true
+        seed.dex = [pickGraduated(vmon)]
+        seed.eggUsage = 0
+        seed.usedSinceInstall = 20_000_000_000
+        // 후보를 vmon 하나로 좁힌다 — 다른 종이 롤되면 `babyPicks` conjunct 가 먼저 걸러 플래그
+        // 축을 못 보는 옛 문제(`pickedHatchBaseID`)가 되풀이된다.
+        let provider = PickStubProvider(lines: [vmon.baseID: pickLine(vmon)])
+        let s = try store(provider, seed: seed)
+
+        s.update(todayTokensByProvider: ["claude_code": 0], todayDate: "2026-09-29",
+                 monthTotal: 0, burnTier: .normal, limitWarning: false, hasUsageData: true)
+        // ensureEggPrefetch 는 update() 가 던진 Task 안에서 돈다 — 완주할 때까지 양보한다.
+        for _ in 0..<2_000 where s.state.pendingHatchID == nil { await Task.yield() }
+
+        XCTAssertEqual(s.state.pendingHatchID, vmon.baseID, "롤이 완주하지 않았다 — 아래 단언이 공허하다")
+        XCTAssertFalse(s.state.pendingHatchIsUserPick,
+                       "실제 프리패치 롤이 사용자 선택 플래그를 true 로 세웠다")
+        XCTAssertNil(s.pickedHatchBaseID, "프리패치 롤이 예고로 노출됐다")
+    }
+
+    /// D 의 새 필드가 세이브 round-trip 되고, 필드 없는 구버전 JSON 은 false 로 흡수된다.
+    func testPendingHatchIsUserPickRoundTripsAndDefaultsFalse() throws {
+        var seed = CompanionState()
+        seed.pendingHatchID = vmon.baseID
+        seed.pendingHatchIsUserPick = true
+        let data = try JSONEncoder().encode(seed)
+        let decoded = try JSONDecoder().decode(CompanionState.self, from: data)
+        XCTAssertTrue(decoded.pendingHatchIsUserPick, "true 값이 세이브를 왕복하지 못했다")
+
+        // 필드 자체가 없는 구버전 JSON — 키를 손으로 제거해 흉내 낸다.
+        var object = try XCTUnwrap(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        object.removeValue(forKey: "pendingHatchIsUserPick")
+        let legacyData = try JSONSerialization.data(withJSONObject: object)
+        let legacy = try JSONDecoder().decode(CompanionState.self, from: legacyData)
+        XCTAssertFalse(legacy.pendingHatchIsUserPick,
+                       "필드 없는 구버전 세이브가 기본값(false)으로 흡수되지 않았다")
+        XCTAssertEqual(legacy.pendingHatchID, vmon.baseID, "무관한 필드가 같이 날아갔다")
+    }
+
+    /// D — 소비 축: 부화가 끝나면 플래그가 클리어된다(다음 알에 stale true 가 새지 않는다).
+    func testPickedFlagClearsAfterHatch() async throws {
+        let s = try eggStore(owning: [vmon], eggUsage: DigimonBalance.eggHatchThreshold)
+        XCTAssertTrue(s.pickHatchSpecies(baseID: vmon.baseID))
+        XCTAssertTrue(s.state.pendingHatchIsUserPick, "선택 직후 플래그가 서지 않았다 — 아래 단언이 공허하다")
+        await s.hatchIfNeeded()
+        XCTAssertNotNil(s.state.active, "부화가 일어나지 않았다 — 아래 단언이 공허하다")
+        XCTAssertFalse(s.state.pendingHatchIsUserPick, "부화 후에도 플래그가 stale true 로 남았다")
+        XCTAssertNil(s.pendingHatchSpeciesID)
+    }
+
+    /// D — 소비 축(다른 경로): 활성 개체 없이 알만 있는 상태에서 보관함 개체를 꺼내도(`retrieveStored`)
+    /// 그 알의 pre-roll 선택 표시가 클리어된다. `pickedHatchBaseID` 는 `active != nil` 이 되는 순간
+    /// 그 자체로 nil 이 되어 이 write 사이트를 가려버리므로, 상태 필드(`pendingHatchIsUserPick`)를
+    /// 직접 단언해야 한다(`testPickedFlagClearsAfterHatch` 와 같은 이유).
+    func testRetrieveStoredClearsPendingPickFlag() async throws {
+        // buyEgg 는 hasActive 를 요구한다 — 먼저 부화시켜 활성 개체를 만든 뒤 알을 사서 보관시킨다
+        // (StoredMonTests 와 같은 순서).
+        let s = try eggStore(owning: [vmon], eggUsage: DigimonBalance.eggHatchThreshold)
+        XCTAssertTrue(s.pickHatchSpecies(baseID: vmon.baseID))
+        await s.hatchIfNeeded()
+        XCTAssertNotNil(s.state.active, "사전 조건 — 부화가 먼저 일어나야 한다")
+
+        XCTAssertTrue(s.buyEgg(nil), "알 구매가 실패해 보관함이 비어 있다 — 아래 단언이 공허하다")
+        XCTAssertEqual(s.state.stored.count, 1, "사전 조건 — 보관 1건이 시드돼야 한다")
+        let storedID = try XCTUnwrap(s.state.stored.first?.id)
+
+        XCTAssertTrue(s.pickHatchSpecies(baseID: vmon.baseID))
+        XCTAssertTrue(s.state.pendingHatchIsUserPick, "선택 직후 플래그가 서지 않았다 — 아래 단언이 공허하다")
+
+        XCTAssertTrue(s.retrieveStored(id: storedID))
+        XCTAssertFalse(s.state.pendingHatchIsUserPick, "꺼내기 후에도 알의 선택 표시가 stale true 로 남았다")
+        XCTAssertNil(s.state.pendingHatchID, "알을 버렸는데 그 알의 pre-roll id 가 남아 있다")
+    }
+
+    /// D — `hatchCore` 가 사용자 선택으로 태어난 개체의 `MonState.pickedByUser` 를 세운다.
+    /// 프리패치 롤로 태어난 개체는 여전히 false 여야 한다(대조군).
+    func testHatchedMonCarriesPickedByUserFromSelection() async throws {
+        let picked = try eggStore(owning: [vmon], eggUsage: DigimonBalance.eggHatchThreshold)
+        XCTAssertTrue(picked.pickHatchSpecies(baseID: vmon.baseID))
+        await picked.hatchIfNeeded()
+        XCTAssertEqual(picked.state.active?.pickedByUser, true,
+                       "사용자가 직접 고른 부화인데 MonState.pickedByUser 가 false 다")
+
+        let rolled = try eggStore(owning: [vmon], eggUsage: DigimonBalance.eggHatchThreshold)
+        await rolled.hatchIfNeeded()
+        XCTAssertEqual(rolled.state.active?.pickedByUser, false,
+                       "프리패치 롤로 태어난 개체가 pickedByUser=true 로 잘못 표시됐다")
+    }
+
     /// 활성 개체가 있으면 예고도 없다(알이 없으므로).
     func testPickedNameIsNilWithActive() async throws {
         let s = try eggStore(owning: [vmon], eggUsage: DigimonBalance.eggHatchThreshold)
