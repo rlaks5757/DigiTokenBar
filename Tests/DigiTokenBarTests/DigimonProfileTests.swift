@@ -385,6 +385,101 @@ final class DigimonProfileMigrationTests: XCTestCase {
         XCTAssertLessThan(profile.level, 100)
     }
 
+    /// `migrateDigimonProfilesIfNeeded` only walked `active`/`dex` and skipped `state.stored`
+    /// entirely — a stored slot from an imported/hand-edited save kept `profile == nil` forever
+    /// (`retrieveStored` never backfills it, `graduate()` then loses growth and mints a fresh dex id).
+    /// This exercises the real `load()` path (no direct field seeding) so the migration call site
+    /// is actually under test, not bypassed.
+    func testLegacyStoredSlotsMigrateWithPerSlotSeedsAndPreserveExistingProfiles() throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("profile-stored-migration-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let file = dir.appendingPathComponent("companion-state.json")
+
+        var legacy = CompanionState()
+        let untouched = DigimonProfile.generate(seed: 12_345, instanceID: "keep-me")
+        legacy.stored = [
+            // stageIndex 0 — nothing completed yet, growth stays at 0.
+            StoredMon(id: "slot-1",
+                      mon: MonState(baseID: 79, pathIDs: [79, 80], stageIndex: 0, usedAtStage: 0,
+                                   rarity: .common, totalForms: 2),
+                      storedAt: Date(timeIntervalSince1970: 10)),
+            // stageIndex 1 — one completed stage, growth must reflect it (not just seed/ivs differ).
+            StoredMon(id: "slot-2",
+                      mon: MonState(baseID: 79, pathIDs: [79, 80], stageIndex: 1, usedAtStage: 0,
+                                   rarity: .common, totalForms: 2),
+                      storedAt: Date(timeIntervalSince1970: 20)),
+            // stageIndex 1 AND partial usage in the current phase — the migration must credit the
+            // completed stage but NOT the partial usage (it is difficulty-priced and not
+            // recoverable here). Without this fixture, passing `stored.mon.usedAtStage` instead of
+            // `0` for `currentStageUsage` survives every other assertion.
+            StoredMon(id: "slot-partial",
+                      mon: MonState(baseID: 79, pathIDs: [79, 80], stageIndex: 1, usedAtStage: 90_000,
+                                   rarity: .common, totalForms: 2),
+                      storedAt: Date(timeIntervalSince1970: 25)),
+            StoredMon(id: "slot-already-migrated",
+                      mon: MonState(baseID: 79, pathIDs: [79], stageIndex: 0, usedAtStage: 0,
+                                   rarity: .common, totalForms: 1, profile: untouched),
+                      storedAt: Date(timeIntervalSince1970: 30)),
+        ]
+        try JSONEncoder().encode(legacy).write(to: file)
+
+        let store = CompanionStore(provider: ProfileLineProvider(), fileURL: file)
+        let slots = Dictionary(uniqueKeysWithValues: store.state.stored.map { ($0.id, $0) })
+
+        let slot1Profile = try XCTUnwrap(slots["slot-1"]?.mon.profile)
+        let slot2Profile = try XCTUnwrap(slots["slot-2"]?.mon.profile)
+        XCTAssertNotEqual(slot1Profile.seed, slot2Profile.seed,
+                          "each stored slot must derive its seed from its own id, not a shared key")
+        XCTAssertNotEqual(slot1Profile.ivs, slot2Profile.ivs)
+
+        // slot-1 has no completed stage — growth stays at 0 and level at the generation default.
+        XCTAssertEqual(slot1Profile.growthTokens, 0)
+        XCTAssertEqual(slot1Profile.level, 5)
+        // slot-2 completed one stage — the reached ladder progress must be recovered as growth,
+        // exactly like the `dex` branch's reconstructed estimate (here it's exact, not an upper bound).
+        let slot2ExpectedGrowth = CompanionStore.reconstructedGrowthTokens(
+            rarity: .common, totalForms: 2, completedStages: 1, currentStageUsage: 0)
+        XCTAssertGreaterThan(slot2ExpectedGrowth, 0)
+        XCTAssertEqual(slot2Profile.growthTokens, slot2ExpectedGrowth)
+        XCTAssertGreaterThan(slot2Profile.level, 5, "applyGrowth(0,) must raise the level past hatch")
+
+        // Partial usage in the current phase is excluded: the slot is credited for its one
+        // completed stage only. Both directions are pinned, because passing `usedAtStage` through
+        // as `currentStageUsage` is the more intuitive implementation and must stay refuted.
+        let partialProfile = try XCTUnwrap(slots["slot-partial"]?.mon.profile)
+        let excludingUsage = CompanionStore.reconstructedGrowthTokens(
+            rarity: .common, totalForms: 2, completedStages: 1, currentStageUsage: 0)
+        let includingUsage = CompanionStore.reconstructedGrowthTokens(
+            rarity: .common, totalForms: 2, completedStages: 1, currentStageUsage: 90_000)
+        XCTAssertNotEqual(excludingUsage, includingUsage,
+                          "fixture must make the two candidate values distinguishable")
+        XCTAssertEqual(partialProfile.growthTokens, excludingUsage)
+        XCTAssertNotEqual(partialProfile.growthTokens, includingUsage,
+                          "difficulty-priced partial usage must not be credited at migration time")
+
+        // Already-migrated slot must survive untouched — no reseed, no growth recompute.
+        XCTAssertEqual(slots["slot-already-migrated"]?.mon.profile, untouched)
+
+        // This save has no legacy `active`/`dex` — `changed` can only be set true by the new
+        // `stored` loop. If that flag were dropped on the stored-only path, the migrated profiles
+        // would exist in memory but never reach disk: the one-time pre-profiles-v1 backup would be
+        // skipped and `save()` would never run. Regeneration itself would stay idempotent (the seed
+        // key is derived from the persisted `stored.id`), but the lost backup is a real gap.
+        XCTAssertTrue(FileManager.default.fileExists(
+            atPath: dir.appendingPathComponent("companion-state.pre-profiles-v1.json").path))
+
+        // Read the file directly — this is the one check that actually discriminates a missed
+        // save(). Reconstructing a second `CompanionStore` from the same path would just find the
+        // profiles already in memory-equivalent state and prove nothing about whether they were
+        // ever written.
+        let onDisk = try JSONDecoder().decode(CompanionState.self, from: Data(contentsOf: file))
+        let onDiskSlots = Dictionary(uniqueKeysWithValues: onDisk.stored.map { ($0.id, $0) })
+        XCTAssertNotNil(onDiskSlots["slot-1"]?.mon.profile, "migrated stored profile must reach disk")
+        XCTAssertNotNil(onDiskSlots["slot-2"]?.mon.profile, "migrated stored profile must reach disk")
+    }
+
     func testDigimonIndividualsIncludesSyntheticActiveAndMatchingStoredIndividuals() throws {
         let dir = FileManager.default.temporaryDirectory
             .appendingPathComponent("profile-individuals-\(UUID().uuidString)", isDirectory: true)

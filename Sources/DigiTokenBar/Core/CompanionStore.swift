@@ -2348,6 +2348,32 @@ final class CompanionStore {
                 changed = true
             }
         }
+        for index in state.stored.indices {
+            let stored = state.stored[index]
+            if stored.mon.profile == nil {
+                // Stored slots keep their real ladder progress (unlike `dex`, which only has the
+                // reached `chainOrder`), so the completed-phase estimate is exact, not an upper
+                // bound. `reconcileActiveProfileGrowth` only ever touches `state.active`, and
+                // `retrieveStored` swaps a slot into `state.active` without calling it — so the
+                // current partial phase's difficulty-priced usage isn't recoverable here. If the
+                // slot is later retrieved (becomes active), `advanceGrowth(to:)`'s high-water mark
+                // means the next `applyUsage()` or migration pass folds the partial phase back in
+                // without ever lowering the level already set here. `releaseStored` is the exception:
+                // it copies this profile verbatim into a `DexEntry`, which never passes through
+                // `state.active`, so a slot released before retrieval permanently drops the partial
+                // phase — a smaller loss than the pre-fix total loss (nil profile, fresh dex id).
+                let growth = Self.reconstructedGrowthTokens(
+                    rarity: stored.mon.rarity, totalForms: stored.mon.totalForms,
+                    completedStages: stored.mon.stageIndex, currentStageUsage: 0)
+                var profile = DigimonProfile.generate(
+                    seed: DigimonProfileMigration.seed("stored:\(stored.id)"),
+                    growthTokens: growth,
+                    instanceID: stored.id)
+                profile.applyGrowth(0, rarity: stored.mon.rarity)
+                state.stored[index].mon.profile = profile
+                changed = true
+            }
+        }
         let before = state.active?.profile
         reconcileActiveProfileGrowth()
         if !changed {

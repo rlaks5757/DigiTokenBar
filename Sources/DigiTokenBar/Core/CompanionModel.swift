@@ -576,8 +576,9 @@ struct DexEntry: Codable, Sendable, Identifiable {
 /// `MonState` 를 그대로 감싸 저장한다: 꺼내면 `state.active` 에 되돌려 **중단한 형태부터 이어서**
 /// 키울 수 있어야 하므로 `releasedDexEntry` 처럼 도달분만 접는 요약이 아니라 필드 전체가 필요하다.
 /// `id` 는 저장 시점에 새로 발급한다(`profile?.instanceID` 를 빌리지 않는다) — 프로필이 nil 인
-/// 개체도 이 배열에 들어올 수 있고, `migrateDigimonProfilesIfNeeded` 는 `active`/`dex` 만 훑어서
-/// 이 배열의 nil 프로필은 마이그레이션되지 않기 때문이다.
+/// 개체도 이 배열에 들어올 수 있기 때문이다(수입 경계·손편집 세이브). `migrateDigimonProfilesIfNeeded`
+/// 가 이 배열도 훑어 nil 프로필을 채우며, 이때 이 `id` 를 칸별 시드 키로 쓴다 — 프로필에서 `id` 를
+/// 파생하는 식으로 바뀌면 모든 칸이 같은 시드로 수렴한다.
 struct StoredMon: Codable, Sendable, Identifiable {
     var id: String
     var mon: MonState
