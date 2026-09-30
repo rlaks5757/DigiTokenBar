@@ -1448,6 +1448,80 @@ final class CompanionStore {
         return true
     }
 
+    /// 보관 개체를 꺼낼 수 없는 **이유** — 꺼낼 수 있으면 nil. `canRetrieveStored` 의 세 조건을
+    /// 그대로 뒤집어 화면에 말해 준다.
+    ///
+    /// 뷰가 `store.hasActive`/`isHatching`/`eggGuarantee` 를 직접 조합해 문구를 고르면 게이트와
+    /// 문구가 두 곳에 갈라져 한쪽만 고쳐진다(`jogressPartnerHint` 와 같은 태도 — 판정과 그 설명은
+    /// 둘 다 store 에 있다). 순서는 게이트와 같다: 활성 → 부화 중 → 보증.
+    ///
+    /// **분기 순서는 정확성이 아니라 문구 선택이다** — 뮤테이션으로 순서를 뒤집어도 테스트는 초록이고,
+    /// 그게 맞다. 세 조건 중 둘이 동시에 참인 상태는 하나뿐이고(활성 + `isHatching` — `hatch(baseID:)`
+    /// 가 활성 유무를 안 보므로 원리상 가능하다. 활성 + 보증은 `SaveTransfer.sanitized` 가 정규화해
+    /// 도달 불가), 그 창에서는 두 문구가 **둘 다 사실**이라 어느 쪽을 골라도 틀리지 않는다.
+    /// 활성을 먼저 두는 이유는 사용자가 할 일이 그쪽이 더 크기 때문이다(부화는 기다리면 끝난다).
+    /// 도달 불가·무해한 축에 순서 단언을 세우면 공허한 초록만 남는다.
+    ///
+    /// id 가 없는 경우는 문구가 없다(nil) — 목록에 뜬 행은 항상 존재하는 id 라 도달하지 않고,
+    /// 안내할 사용자 행동도 없다.
+    func storedRetrieveBlockReason(_ id: String) -> String? {
+        guard state.stored.contains(where: { $0.id == id }) else { return nil }
+        if state.active != nil { return l.storageBlockedActive }
+        if isHatching { return l.storageBlockedHatching }
+        if state.eggTier != nil { return l.storageBlockedGuarantee }
+        return nil
+    }
+
+    /// 보관함 진입점을 그릴지 — 보관 개체가 하나도 없으면 숨긴다(`canPickHatchSpecies` 선례:
+    /// 후보가 0개인 화면으로 보내는 죽은 버튼을 두지 않는다).
+    var canOpenStorage: Bool { !state.stored.isEmpty }
+
+    /// 보관 개체를 방생한다 — **도감에 기록을 남기고** 보관함에서 제거한다.
+    ///
+    /// `graduate()` 의 dex append 를 베끼지 않는다. 다른 점이 셋이다:
+    ///  - `collectedFinals` 를 건드리지 않는다. 그건 "최종체를 완성했다"는 졸업 기록이고 분기
+    ///    가중에 쓰인다 — 중간에 포기한 개체가 거기 들어가면 졸업 기록이 오염된다.
+    ///  - `releasedAt` 을 세운다. 그래서 이 기록은 `hasJogressPartnerRecord` 의 `!isReleased`
+    ///    게이트에 자동으로 걸린다 — 방생이 죠그레스 파트너 자격을 **새로 만들지 않는다**.
+    ///    (보관도 자격을 만들지 않았다. 두 경로가 같은 결론에 서로 다른 이유로 도달한다:
+    ///    보관은 도감을 안 건드려서, 방생은 도감 기록이 방생분이라서.)
+    ///  - `chainOrder` 는 **도달분**(`prefix(stageIndex + 1)`)이다. `plannedPathIDs` 는 미도달
+    ///    단계를 포함하므로 쓰면 진화하지 않은 종이 도감에 생긴다(`dexSpecies` 가 stored/active 를
+    ///    접는 규칙과 같다).
+    ///
+    /// 종 **보유**는 방생 전후로 바뀌지 않는다: 같은 도달분이 `state.stored` 경로에서 `state.dex`
+    /// 경로로 옮겨 갈 뿐이고 `ownsSpecies` 는 `isReleased` 를 보지 않는다. 그래서
+    /// `reconcileRepresentativeSelection()` 을 부르지 않는다 — 부를 이유가 없는 호출은 "여기서
+    /// 보유가 끊길 수 있다"는 잘못된 신호를 남긴다.
+    ///
+    /// 이름은 `DigimonData` 에서 심는다(`recordArmorDexEntry` 와 같은 이유). 보관 개체엔
+    /// `currentLine` 이 없어서 `graduate()` 처럼 라인에서 뜰 수 없고, 비워 두면
+    /// `needsNamesRefresh` 가 영영 true 라 `backfillMissingDexNames` 가 매번 라인을 조회한다.
+    /// - Returns: 방생했으면 true. 그 id 의 보관 개체가 없으면 false(`retrieveStored` 와 같은 방어).
+    @discardableResult
+    func releaseStored(id: String) -> Bool {
+        guard let index = state.stored.firstIndex(where: { $0.id == id }) else { return false }
+        let mon = state.stored.remove(at: index).mon
+        let reached = Array(mon.pathIDs.prefix(mon.stageIndex + 1))
+        let now = clock()
+        state.dex.append(DexEntry(
+            id: mon.profile?.instanceID ?? UUID().uuidString,
+            baseID: mon.baseID,
+            // 사다리 끝 — 표시 축(`displayID`, 아머 오버레이)이 아니다. 방생 기록도 사다리 기준이다
+            // (`EggCard` 의 확인 문구가 `ladderName` 을 쓰는 것과 같은 이유).
+            finalID: mon.currentID,
+            chainOrder: reached,
+            rarity: mon.rarity,
+            caughtAt: now,
+            profile: mon.profile,
+            names: Dictionary(uniqueKeysWithValues:
+                reached.compactMap { id in DigimonData.name(for: id).map { (id, $0.localizedNames) } }),
+            releasedAt: now))
+        AppLog.write("stored mon released: base=\(mon.baseID) stage=\(mon.stageIndex)")
+        save()
+        return true
+    }
+
     /// 지급 판정(순수·엣지 트리거) — 한도 창이 100% 를 새로 넘어선 순간에만 지급.
     /// - 100% 미만 → 맵에서 제거(재무장). resets_at 등 휘발 필드는 key 에 없다(안정 식별자만).
     /// - 이미 지급한 창(tier≥1)은 재지급 안 함. session=1개·weekly=weeklyGrant.

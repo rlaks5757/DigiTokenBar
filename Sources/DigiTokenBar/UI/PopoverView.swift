@@ -31,11 +31,14 @@ final class PopoverNavigation {
     /// `DigimonDetailView` 처럼 로컬 @State 로 밀어 넣으면 세그먼트 피커 아래에 그려진다.
     /// `reset()` 대상이다: 팝오버를 닫았다 열면 항상 Home 으로 돌아가야 한다.
     var showEggPicker = false
+    /// 보관함 화면 — `showEggPicker` 와 같은 층(탭 피커 위)·같은 이유. `reset()` 대상이다.
+    var showStorage = false
 
     func reset() {
         showSettings = false
         expandAdvancedOnOpen = false
         showEggPicker = false
+        showStorage = false
         tab = .home
     }
 
@@ -84,6 +87,9 @@ struct PopoverView: View {
             } else if nav.showEggPicker {
                 // 설정과 같은 층 — 시트가 아니라 팝오버 내부 화면 전환이다(위 NOTE 참고).
                 EggPickerView(store: companion) { nav.showEggPicker = false }
+            } else if nav.showStorage {
+                // EggPicker 와 같은 층·같은 이유(위 NOTE 참고).
+                StorageView(store: companion) { nav.showStorage = false }
             } else {
                 mainContent
             }
@@ -138,7 +144,9 @@ struct PopoverView: View {
             } else if nav.tab == .shop {
                 ShopView(store: companion, nav: nav)
             } else {
-                CompanionHeader(store: companion, onPickSpecies: { nav.showEggPicker = true })
+                CompanionHeader(store: companion,
+                                onPickSpecies: { nav.showEggPicker = true },
+                                onOpenStorage: { nav.showStorage = true })
                 Divider()
                 header
                 Divider()
