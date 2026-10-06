@@ -2102,16 +2102,66 @@ final class CompanionStore {
                 AppLog.write("hatch: no candidate for guaranteed \(tier?.rawValue ?? "none") — egg kept, retry next tick")
                 return nil
             }
-            let weights = index.map { e in
+            // 이미 졸업한 라인을 **풀에서 뺀다**(docs/GAME-DESIGN.md §2 "랜덤 풀 규칙"). 12라인에서는
+            // `CollectionWeight.adjusted` 의 가중치 ½ 가 1/12 → 1/11.5 수준이라 사실상 무의미해서,
+            // "특정 라인이 안 나와서 도감을 못 넘긴다"(균등 1/12 쿠폰 수집 = 마지막 2종에 기대 18알)를
+            // 구조적으로 막으려면 확률 조정이 아니라 제외가 필요하다.
+            //
+            // **티어 필터(바로 위)와 달리 이건 하드 필터가 아니다.** 비면 `return nil`(알 유지)이
+            // 아니라 티어로 좁힌 풀로 **완화**한다. 희귀 보증 알을 샀는데 그 티어의 종이 전부 졸업했고
+            // 도감은 아직 미완성이면, 하드로 두면 알이 **영구히** 못 깨진다 — 티어 보증은 사용자가 돈을
+            // 낸 약속이라 못 지키면 기다리는 게 맞지만, 졸업 제외는 무한 대기를 막는 장치일 뿐이라
+            // 그것 때문에 새 무한 대기를 만들면 자기 모순이다.
+            // 이 완화 한 줄이 문서의 "도감 완성 후 전체 풀 복귀"도 같이 만족한다 — 전원 졸업하면
+            // `ungraduated` 가 비어 폴백이 전체 풀을 돌려주고, 그때부터 `CollectionWeight.adjusted` 의
+            // ½ 가중(= `repeatGrowthMultiplier` 체제)이 다시 유효해진다. 그래서 `isDexComplete` 같은
+            // 별도 술어를 만들지 않는다.
+            //
+            // **프리패치된 pre-roll 은 부화 시점에 졸업 여부로 재검사하지 않는다(의도).** 롤은 여기서
+            // 한 번 일어나고 `hatchCore` 는 등급만 다시 본다. 재검사를 넣으면 바로 위 완화가 존재하는
+            // 그 상황(티어 밴드 전원 졸업 + 도감 미완성)에서 이 함수가 **의도적으로** 졸업분을
+            // 돌려주는데 `hatchCore` 가 그걸 거절하고, 다음 프리패치가 같은 결과를 롤해 롤→거절→재롤이
+            // 무한 반복된다 — `hatchCore` 의 복제 가드 주석(:2000)이 "좁은 게이트는 자기 종료적이지만
+            // 넓은 게이트는 그렇지 않다"고 적은 것과 **같은 함정**이다(다른 문으로 도달).
+            // **직접 롤 경로**는 이 축이 도달 불가다: pre-roll 은 알 상태에서만 서고
+            // (`ensureEggPrefetch` 가 `state.active == nil` 요구) 부화 직전 비워지므로, 졸업으로
+            // `collectedFinals` 가 커진 **뒤에** 롤이 돌아 이미 제외가 적용된다.
+            //
+            // **파킹 복원 경로는 다르다 — 정상 UI 조작만으로 도달한다.** `graduate()` 가 한 함수
+            // 안에서 졸업을 기록(`:796` `collectedFinals.insert`)한 **뒤** `restoreParkedEggGuarantee()`
+            // (`:820`)를 호출하고, 그 함수의 "보증 없는 알" 분기는 `parkedPendingHatchID` 를 졸업
+            // 여부로 **재검사하지 않고 그대로 되돌려 준다**(`CompanionModel.swift:779~`). 따라서
+            // 보증 알의 pre-roll 이 파킹된 동안 그 라인을 보관함에서 꺼내 졸업시키면, 방금 졸업한
+            // 라인이 그대로 부화한다. 손편집·수입 세이브로만 닿는 축이 아니다.
+            //
+            // 그래도 **여기서 닫지 않는다.** 이 함수는 롤 시점 게이트라 이미 소비된 pre-roll 에
+            // 손댈 수 없고, `hatchCore` 재검사는 위 livelock 함정에 걸린다. 복원 함수 안에서
+            // 졸업분을 버리는 안이 남지만, 호출부가 `graduate():820` · `buyEgg():1401` ·
+            // `SaveTransfer.sanitized:257` **셋**이라 수입 경계까지 발화해 범위가 커진다
+            // (= "복원된 pre-roll 은 재검사되지 않는다"는 기존 갭의 일부). 별도 작업으로 둔다.
+            let ungraduated = index.filter { !state.hasCollectedFinal(forBaseID: $0.id) }
+            let pool = ungraduated.isEmpty ? index : ungraduated
+            // 위 완화는 `total == 0` 도 함께 막는다 — `pool` 이 비면 `weights` 가 비어 `total` 이 0 이
+            // 되고 바로 아래 `rng.next() % UInt64(total)` 가 **0 나눗셈으로 크래시**한다(뮤테이션으로
+            // 실측: 완화를 지우면 테스트가 실패하는 게 아니라 프로세스가 죽는다). 즉 이 한 줄은
+            // 게임 규칙이자 크래시 가드다 — 지우거나 하드 필터로 바꾸지 마라.
+            //
+            // 완화 분기(`pool == index`)에서는 `isCollected` 가 **전원 true** 다(그 분기는 미졸업이
+            // 하나도 없을 때만 선다). 그래서 ½ 가중은 거의 균일 스케일이고 — `max(1, w/2)` 바닥값이
+            // 걸리는 조합에서만 비율이 조금 움직인다 — 분포에 대한 효과가 사실상 관측 불가다.
+            // ½→1배 뮤테이션이 전체 스위트에서 생존하는 건 테스트 부실이 아니라 이 구조의 결과다.
+            // 비완화 분기에서는 정의상 전원 false 라 `adjusted` 가 항등으로 돈다. 그래도 도감 완성
+            // 후 중복 억제라는 계약을 들고 있으므로 `adjusted` 를 지우지 않는다.
+            let weights = pool.map { e in
                 CollectionWeight.adjusted(e.captureRate, isCollected: state.hasCollectedFinal(forBaseID: e.id))
             }
             let total = weights.reduce(0, +)
             var r = Int(rng.next() % UInt64(total))
             for (i, w) in weights.enumerated() {
                 r -= w
-                if r < 0 { return index[i].id }
+                if r < 0 { return pool[i].id }
             }
-            return index.last?.id   // 도달 불가(방어)
+            return pool.last?.id   // 도달 불가(방어)
         }
         // base 인덱스 취득 실패(예: GraphQL 엔드포인트 장애) → REST 폴백. 부화가 한 엔드포인트에 묶이지 않게.
         //
@@ -2132,6 +2182,18 @@ final class CompanionStore {
     /// 마찬가지로 의미가 없다.
     private func chooseBaseViaREST() async -> Int? {
         let tier = state.eggTier
+        // 졸업 제외를 가중 경로(`chooseBase`)와 **같은 기준**으로 여기서도 적용한다. 이 폴백만 빠지면
+        // 주입 provider(`RestOnlyTieredProvider`) 경로가 수정 전 동작을 그대로 보인다.
+        //
+        // 완화 방식이 가중 경로와 다르다 — 여기는 풀을 열거하지 않는 rejection sampling 이라
+        // `ungraduated.isEmpty` 같은 판정을 할 수 없다. 대신 **티어는 통과했지만 졸업한** 첫 후보를
+        // 기억해 두고 루프가 끝나면 그걸 반환한다. 졸업분을 `continue` 로 건너뛰기만 하면, 그 티어의
+        // 종이 전부 졸업한 상태에서 16회를 다 소진해 `return nil`(알 유지) 로 떨어지고 — 다음 틱도
+        // 같은 결과라 — 알이 영구히 못 깨진다. 가중 경로의 완화와 **같은 이유**로 막아야 한다.
+        // 시도 상한 16 과 nil 반환 경로(네트워크 실패 / 티어 후보 자체를 못 찾음)는 그대로 둔다.
+        // 기억해 둔 후보는 capture_rate 가중을 못 받고 "먼저 만난 것"으로 치우치는데, 이 폴백은
+        // 애초에 가중을 생략하는 경로라(함수 주석) 새로 생기는 편향이 아니다.
+        var graduatedFallback: Int?
         for attempt in 1...16 {
             let ids = DigimonAssets.queryableSpeciesIDs
             let id = Int(rng.next() % UInt64(ids.count)) + ids.lowerBound
@@ -2140,6 +2202,10 @@ final class CompanionStore {
                     // 등급 보증은 가중 경로와 **같은 기준**으로 여기서도 걸러야 한다 — 이 폴백만 빠지면
                     // GraphQL 인덱스 장애 때 보증이 조용히 깨진다. 못 찾으면 알 유지(구매 소멸 금지).
                     if let tier, !tier.includes(captureRate: bs.captureRate) { continue }
+                    if state.hasCollectedFinal(forBaseID: id) {
+                        if graduatedFallback == nil { graduatedFallback = id }
+                        continue
+                    }
                     AppLog.write("hatch: REST fallback picked base \(id) (cap \(bs.captureRate), \(attempt) tries)")
                     return id
                 }
@@ -2148,6 +2214,10 @@ final class CompanionStore {
                 AppLog.write("hatch: REST fallback network error — retry next tick: \(error)")
                 return nil   // REST 도 불가 → 알 유지, 다음 update 틱 재시도
             }
+        }
+        if let graduatedFallback {
+            AppLog.write("hatch: REST fallback found only graduated lines — relaxing to base \(graduatedFallback)")
+            return graduatedFallback
         }
         AppLog.write("hatch: REST fallback exhausted 16 tries")
         return nil
