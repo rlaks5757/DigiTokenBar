@@ -179,7 +179,7 @@ final class UsageStoreTests: XCTestCase {
     }
 
     override func tearDown() {
-        testDefaults.removePersistentDomain(forName: suiteName)
+        UserDefaults.removeTestSuite(suiteName)
         super.tearDown()
     }
 

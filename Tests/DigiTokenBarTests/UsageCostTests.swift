@@ -166,7 +166,7 @@ final class UsageCostTests: XCTestCase {
     func testStoreCarriesCoverageToMenuAndDailyTrend() async throws {
         let suite = "CostStore-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
-        defer { defaults.removePersistentDomain(forName: suite) }
+        defer { UserDefaults.removeTestSuite(suite) }
         defaults.set(true, forKey: "disableKeychainAccess")
         defaults.set(false, forKey: "statusChecksEnabled")
         defaults.set(true, forKey: "showCostInMenu")

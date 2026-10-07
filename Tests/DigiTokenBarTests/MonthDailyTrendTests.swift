@@ -265,7 +265,7 @@ final class MonthDailyTrendTests: XCTestCase {
 
         let suite = "MonthDailyTrendTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
-        defer { defaults.removePersistentDomain(forName: suite) }
+        defer { UserDefaults.removeTestSuite(suite) }
         let store = UsageStore(
             providers: [
                 TrendProvider(id: "priced", daily: daily(20), enrichment: withSeries),

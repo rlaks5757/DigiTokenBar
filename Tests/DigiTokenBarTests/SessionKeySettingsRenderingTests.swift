@@ -13,7 +13,7 @@ final class SessionKeySettingsRenderingTests: XCTestCase {
     func testSessionKeyEntryOpensInsideViewportAndPreservesDifficultyControls() async throws {
         let suite = "SessionKeySettingsRendering-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
-        defer { defaults.removePersistentDomain(forName: suite) }
+        defer { UserDefaults.removeTestSuite(suite) }
         let file = FileManager.default.temporaryDirectory.appendingPathComponent("\(suite).json")
         defer { try? FileManager.default.removeItem(at: file) }
         let usage = UsageStore(providers: [], autoRefresh: false, defaults: defaults)

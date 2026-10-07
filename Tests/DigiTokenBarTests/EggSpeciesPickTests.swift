@@ -156,7 +156,11 @@ final class EggSpeciesPickTests: XCTestCase {
             return url
         }()
         // defaults 를 격리한다 — 러너 도메인의 난이도 잔여물이 임계를 바꾸면 시드가 무의미해진다.
-        let defaults = UserDefaults(suiteName: "eggpick-\(UUID().uuidString)")!
+        // 정리는 `defer` 가 아니라 `addTeardownBlock` 이다 — 반환하는 store 가 이 defaults 를
+        // 계속 쓰므로, 헬퍼 스코프에서 지우면 살아 있는 store 밑을 빼는 셈이 된다.
+        let suiteName = "eggpick-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        addTeardownBlock { UserDefaults.removeTestSuite(suiteName) }
         return CompanionStore(provider: provider, clock: { pickFixedNow }, fileURL: url,
                               rng: SeededRNG(seed: rngSeed), defaults: defaults)
     }
@@ -174,7 +178,9 @@ final class EggSpeciesPickTests: XCTestCase {
         try JSONEncoder().encode(seed).write(to: url)
         let provider = PickStubProvider(
             lines: Dictionary(uniqueKeysWithValues: DigimonData.lines.map { ($0.baseID, pickLine($0)) }))
-        let defaults = UserDefaults(suiteName: "eggpick-\(UUID().uuidString)")!
+        let suiteName = "eggpick-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        addTeardownBlock { UserDefaults.removeTestSuite(suiteName) }
         let s = CompanionStore(provider: provider, clock: { pickFixedNow }, fileURL: url,
                                rng: SeededRNG(seed: 7), defaults: defaults)
         return (s, url, provider)

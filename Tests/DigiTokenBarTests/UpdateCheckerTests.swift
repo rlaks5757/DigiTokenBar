@@ -45,7 +45,7 @@ final class UpdateCheckerTests: XCTestCase {
     func testSkippedReleaseStaysVisibleAndANewerOneReturnsToTheBanner() {
         let suite = "UpdateCheckerTests.skip.\(UUID().uuidString)"
         let box = UserDefaults(suiteName: suite)!
-        defer { box.removePersistentDomain(forName: suite) }
+        defer { UserDefaults.removeTestSuite(suite) }
         let checker = UpdateChecker(currentVersion: "2.5.3", defaults: box)
 
         checker.consider(latest: "2.5.4", url: "https://github.com/rlaks5757/DigiTokenBar/releases/tag/v2.5.4")
@@ -76,7 +76,7 @@ final class UpdateCheckerTests: XCTestCase {
     func testShowAgainRestoresTheBannerAndUpdateUsesTheSkippedRelease() {
         let suite = "UpdateCheckerTests.restore.\(UUID().uuidString)"
         let box = UserDefaults(suiteName: suite)!
-        defer { box.removePersistentDomain(forName: suite) }
+        defer { UserDefaults.removeTestSuite(suite) }
         let checker = UpdateChecker(currentVersion: "2.5.3", defaults: box)
         let url = "https://github.com/rlaks5757/DigiTokenBar/releases/tag/v2.5.4"
         checker.consider(latest: "2.5.4", url: url)

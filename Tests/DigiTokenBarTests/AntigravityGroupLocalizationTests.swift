@@ -20,7 +20,7 @@ final class AntigravityGroupLocalizationTests: XCTestCase {
     func testKoreanCandyAndAlertWindowsDropEnglishAPIGroupNames() async {
         let suite = "agy-i18n-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
-        defer { defaults.removePersistentDomain(forName: suite) }
+        defer { UserDefaults.removeTestSuite(suite) }
 
         let gemini = AntigravityQuotaGroup(
             displayName: "Gemini Models",

@@ -31,7 +31,7 @@ final class ProviderTabLayoutTests: XCTestCase {
     func testTabListMatchesTheRegisteredProviders() {
         let suite = "ProviderTabLayoutTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
-        defer { defaults.removePersistentDomain(forName: suite) }
+        defer { UserDefaults.removeTestSuite(suite) }
         let store = UsageStore(autoRefresh: false, defaults: defaults)
         XCTAssertEqual(allProviders.map(\.providerID), store.registeredProviderIDs,
                        "탭 레이아웃 가드의 프로바이더 목록이 UsageStore.init 기본 배열과 다르다")

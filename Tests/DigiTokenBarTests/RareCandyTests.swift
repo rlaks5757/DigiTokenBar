@@ -284,7 +284,7 @@ final class RareCandyStoreTests: XCTestCase {
                 let url = FileManager.default.temporaryDirectory.appendingPathComponent("rc-batch-\(UUID().uuidString).json")
                 let suiteName = "rc-batch-\(UUID().uuidString)"
                 let defaults = UserDefaults(suiteName: suiteName)!
-                defer { defaults.removePersistentDomain(forName: suiteName) }
+                defer { UserDefaults.removeTestSuite(suiteName) }
                 defaults.set(difficulty, forKey: "growthDifficulty")
                 let s = CompanionStore(provider: StubProvider(value: rcLinear3), clock: { rcNow },
                                        fileURL: url, rng: SeededRNG(seed: 7), defaults: defaults)
@@ -557,7 +557,7 @@ final class RareCandyGrantIntegrationTests: XCTestCase {
         defaults = UserDefaults(suiteName: suiteName)
     }
     override func tearDown() {
-        defaults.removePersistentDomain(forName: suiteName)
+        UserDefaults.removeTestSuite(suiteName)
         super.tearDown()
     }
 

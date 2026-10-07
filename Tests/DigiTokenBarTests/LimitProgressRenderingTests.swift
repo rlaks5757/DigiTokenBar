@@ -8,7 +8,7 @@ final class LimitProgressRenderingTests: XCTestCase {
     func testRemainingModeReversesRenderedFillAndClampsExhaustedQuota() throws {
         let suite = "LimitProgressRendering-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
-        defer { defaults.removePersistentDomain(forName: suite) }
+        defer { UserDefaults.removeTestSuite(suite) }
         let store = UsageStore(providers: [], autoRefresh: false, defaults: defaults)
 
         func renderedPercent(_ used: Double) throws -> Double {
@@ -42,7 +42,7 @@ final class LimitProgressRenderingTests: XCTestCase {
     func testPaceMarkerRendersAtElapsedPositionAndMirrorsInRemainingMode() throws {
         let suite = "LimitPaceRendering-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
-        defer { defaults.removePersistentDomain(forName: suite) }
+        defer { UserDefaults.removeTestSuite(suite) }
         let store = UsageStore(providers: [], autoRefresh: false, defaults: defaults)
         let width = 200.0
         let height = 14.0
@@ -102,7 +102,7 @@ final class LimitProgressRenderingTests: XCTestCase {
     func testPaceMarkerStaysCloseToPaintedTrackHeight() throws {
         let suite = "LimitPaceHeight-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
-        defer { defaults.removePersistentDomain(forName: suite) }
+        defer { UserDefaults.removeTestSuite(suite) }
         let store = UsageStore(providers: [], autoRefresh: false, defaults: defaults)
         let width = 200.0
         let height = 20.0
