@@ -2134,11 +2134,13 @@ final class CompanionStore {
             // 보증 알의 pre-roll 이 파킹된 동안 그 라인을 보관함에서 꺼내 졸업시키면, 방금 졸업한
             // 라인이 그대로 부화한다. 손편집·수입 세이브로만 닿는 축이 아니다.
             //
-            // 그래도 **여기서 닫지 않는다.** 이 함수는 롤 시점 게이트라 이미 소비된 pre-roll 에
-            // 손댈 수 없고, `hatchCore` 재검사는 위 livelock 함정에 걸린다. 복원 함수 안에서
-            // 졸업분을 버리는 안이 남지만, 호출부가 `graduate():820` · `buyEgg():1401` ·
-            // `SaveTransfer.sanitized:257` **셋**이라 수입 경계까지 발화해 범위가 커진다
-            // (= "복원된 pre-roll 은 재검사되지 않는다"는 기존 갭의 일부). 별도 작업으로 둔다.
+            // **이 축은 복원 함수 쪽에서 닫혔다** — 여기도 `hatchCore` 도 아니다. 이 함수는 롤 시점
+            // 게이트라 이미 소비된 pre-roll 에 손댈 수 없고, `hatchCore` 재검사는 위 livelock 함정에
+            // 걸린다(이 함수가 **의도적으로** 내주는 완화 출력을 거절하게 된다). 그래서
+            // `restoreParkedEggGuarantee` 의 "보증 없는 알" 분기가 복원된 pre-roll 을 졸업 여부로
+            // 재검사해 버린다(프리패치 롤만 — 사용자 선택은 면제, 사유는 그쪽 주석). 호출부가
+            // `graduate():820` · `buyEgg():1401` · `SaveTransfer.sanitized:257` 셋이라 수입 경계에서도
+            // 함께 발화하는데, 그건 수용한다 — 수입 세이브의 졸업분 pre-roll 도 같은 결함이다.
             let ungraduated = index.filter { !state.hasCollectedFinal(forBaseID: $0.id) }
             let pool = ungraduated.isEmpty ? index : ungraduated
             // 위 완화는 `total == 0` 도 함께 막는다 — `pool` 이 비면 `weights` 가 비어 `total` 이 0 이

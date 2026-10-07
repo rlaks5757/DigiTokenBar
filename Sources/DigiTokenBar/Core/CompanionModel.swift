@@ -795,6 +795,30 @@ struct CompanionState: Codable, Sendable {
             eggTier = parked
             pendingHatchID = parkedPendingHatchID
             pendingHatchIsUserPick = parkedPendingHatchIsUserPick
+            // 단, **졸업한 라인의 프리패치 pre-roll 은 되돌리지 않는다.** 복원은 알이 생기는 순간에
+            // 돌고(`graduate()` 는 `collectedFinals.insert` **뒤에** 이걸 부른다), 그 사이 파킹에
+            // 실려 있던 롤은 졸업 여부를 다시 보지 않는다 — 그래서 보증 알의 pre-roll 이 파킹된
+            // 동안 그 라인을 보관함에서 꺼내 졸업시키면 **방금 졸업한 라인이 그대로 부화**한다
+            // (`CompanionStore.chooseBase` 의 졸업 제외를 우회하는 유일한 정상 UI 경로).
+            // 비우면 프리패치가 졸업 제외가 적용된 풀에서 다시 롤한다 — 잃는 건 예열뿐이다.
+            //
+            // **사용자가 직접 고른 pre-roll 은 면제한다.** `CompanionStore.hatchCore` 의 중복 가드
+            // (`wasUserPicked` + `hasLiveIndividual`)와 방향이 **반대**지만 모순이 아니다 — 그쪽은
+            // 게이트가 자기 출력을 다시 걸지 않는 쪽(user pick)으로 좁혀야 자기 종료적이고, 여기는
+            // 반대로 프리패치 롤 쪽이 안전한 재롤 경로(졸업 제외 + 전원 졸업 시 완화 폴백)를 가진
+            // 쪽이다. 직접 고르기는 졸업한 라인도 후보로 내주는 **의도된 동작**이므로
+            // (`ownsSpecies` 가 `dex.chainOrder` 를 보니 졸업분은 소유) 여기서 버리면 사용자가
+            // 방금 고른 종을 설명 없이 갈아 치우게 된다.
+            if let preRoll = pendingHatchID, !pendingHatchIsUserPick,
+               hasCollectedFinal(forBaseID: preRoll) {
+                pendingHatchID = nil
+                // 조건상 이미 false 다(위 `!pendingHatchIsUserPick`) — 방어적 중복이라
+                // 삭제해도 테스트가 안 깨진다. 남겨 두는 이유는 "pre-roll 을 비우는 곳은
+                // 플래그도 함께 비운다"가 이 타입의 불변식이기 때문이다
+                // (`setPendingHatch` 와 같은 쌍). 둘이 갈라지면 선택 표시만 남은 유령
+                // 상태가 생긴다.
+                pendingHatchIsUserPick = false
+            }
         }
         parkedEggTier = nil
         parkedPendingHatchID = nil
