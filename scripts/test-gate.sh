@@ -11,20 +11,24 @@
 # 서브프로세스·네트워크·Keychain 의존이라 단위 커버리지 대상에서 제외
 # (해당 부분은 파서/순수 헬퍼만 별도로 테스트됨).
 #
-# ⚠️ 알려진 결함: 아래 `llvm-cov report` 는 위치 인자 소스 필터를 무시하고 바이너리 전체
-# (테스트 파일 포함)를 집계한다 → 출력되는 COVER 는 LOGIC_CORE 수치가 아니며, 아래 배열을
-# 고쳐도 숫자가 바뀌지 않는다(= 배열 오타를 게이트가 잡지 못한다).
-# 실측(2026-10-07): 게이트 출력 ~81.7% vs LOGIC_CORE 실제 ~93.5% (둘 다 실행마다 소폭 변동).
-# 올바른 산출은 `llvm-cov export --summary-only` 후 LOGIC_CORE 파일만 합산하는 것.
-# 임계값 의미가 바뀌는 변경이라 별도 작업으로 분리했다.
+# 커버리지 산출: `llvm-cov export --summary-only` 로 전체를 받아 LOGIC_CORE 파일만 합산한다.
+# `llvm-cov report <BIN> ... <소스경로들>` 은 쓰지 않는다 — 바이너리가 플래그보다 앞에 오면
+# llvm-cov 가 뒤따르는 소스 경로를 필터가 아니라 *추가 오브젝트 파일*로 해석해 조용히 무시하고
+# (소스 필터는 `--sources` 플래그가 필요) 바이너리 전체를 집계한다. 2026-10-07 수정 전까지
+# 그래서 테스트 파일까지 섞인 ~81.7% 가 출력됐고, LOGIC_CORE 배열을 고쳐도 숫자가 변하지
+# 않았다(= 배열 오타·삭제된 파일을 게이트가 잡지 못했다. 실제로 3개가 오래 썩어 있었다).
+# 지금은 배열 항목이 리포트에 없으면 "미검증 항목" 으로 보고하고, 계측 라인이 0인 선언 전용
+# 파일(예: 프로토콜·DTO)은 그 사유를 함께 출력한다.
 #
 # 사용:  ./scripts/test-gate.sh          # 게이트 실행
-#        THRESHOLD=75 ./scripts/test-gate.sh   # 임계값 임시 상향
+#        THRESHOLD=90 ./scripts/test-gate.sh   # 임계값 임시 조정
 #
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-THRESHOLD="${THRESHOLD:-75}"
+# 실측 93.50%(6127/6553, 2026-10-07) 기준 약 3.5%p 마진. 75 는 필터 결함 시절 바이너리
+# 전체(~81.7%)에 맞춰진 값이라 실제 분모에서는 무의미했다.
+THRESHOLD="${THRESHOLD:-90}"
 
 LOGIC_CORE=(
   "Sources/DigiTokenBar/Core/CompanionModel.swift"
@@ -70,13 +74,14 @@ fi
 
 echo
 echo "▶ 로직 코어 커버리지 (임계값 ${THRESHOLD}%)"
-REPORT=$("$LLVM_COV" report "$BIN" -instr-profile="$PROF" "${LOGIC_CORE[@]}" 2>/dev/null)
-echo "$REPORT"
-
-# TOTAL 행의 라인 커버리지(%) 추출 — 컬럼: ... Lines MissedLines Cover(=$10)
-COVER=$(echo "$REPORT" | awk '/^TOTAL/ { gsub("%","",$10); print $10 }')
+# `--sources` 없이 위치 인자로 필터가 안 되므로, 전체를 export 해서 파일별로 합산한다.
+# `|| true` 가 필요하다: `set -e` 아래에서는 python 이 non-zero 로 끝나면 이 대입에서
+# 즉시 중단돼 아래 진단이 영구히 출력되지 않는다(사유 없는 exit 1 만 남는다).
+# 스크립트가 사유를 stderr 로 이미 찍었으므로 여기서는 종료만 책임진다.
+COVER=$("$LLVM_COV" export -summary-only -instr-profile "$PROF" "$BIN" 2>/dev/null \
+  | python3 scripts/logic_core_coverage.py "${LOGIC_CORE[@]}") || COVER=""
 if [[ -z "$COVER" ]]; then
-  echo "✗ 커버리지 수치 파싱 실패." >&2
+  echo "✗ 커버리지 산출 실패 — 위 진단을 보고 LOGIC_CORE 배열 또는 profdata 를 확인하세요." >&2
   exit 1
 fi
 
