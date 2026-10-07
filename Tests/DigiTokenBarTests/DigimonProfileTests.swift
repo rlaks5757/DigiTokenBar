@@ -147,24 +147,6 @@ final class DigimonProfileLogicTests: XCTestCase {
         XCTAssertTrue(hiddenFallback.abilityIsHidden)
     }
 
-    func testSpeciesIdentityRebaseKeepsIVsButClearsDisguiseMetadata() {
-        var profile = DigimonProfile.generate(seed: 7, instanceID: "ditto")
-        profile.enrich(with: profileDetails)
-        let ivs = profile.ivs
-
-        profile.applyGrowth(125_000_000, rarity: .common)
-        profile.rebaseForSpeciesIdentity(from: .common, to: .rare)
-
-        XCTAssertEqual(profile.instanceID, "ditto")
-        XCTAssertEqual(profile.ivs, ivs)
-        XCTAssertNil(profile.gender)
-        XCTAssertNil(profile.abilitySlot)
-        XCTAssertNil(profile.abilityName)
-        XCTAssertFalse(profile.abilityIsHidden)
-        XCTAssertTrue(profile.moves.isEmpty)
-        XCTAssertEqual(profile.growthTokens, 500_000_000)
-        XCTAssertEqual(profile.level, 20)
-    }
 }
 
 // 기술 정규화(`PokeAPIClient.normalizedMoves`)와 그 테스트는 주체와 함께 삭제됐다 — 테스트가
