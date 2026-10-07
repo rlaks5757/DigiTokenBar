@@ -27,7 +27,7 @@ final class ProfileGrowthIntegrationTests: XCTestCase {
     nonisolated(unsafe) private var suites: [String] = []
     override func tearDown() {
         for path in paths { try? FileManager.default.removeItem(at: path) }
-        for suite in suites { UserDefaults.standard.removePersistentDomain(forName: suite) }
+        for suite in suites { UserDefaults.removeTestSuite(suite) }
         super.tearDown()
     }
     private func fixture(_ state: CompanionState = CompanionState(), difficulty: Double = 1,

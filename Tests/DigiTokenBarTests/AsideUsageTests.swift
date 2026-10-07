@@ -53,7 +53,7 @@ final class AsideUsageTests: XCTestCase, @unchecked Sendable {
     func testRegisteredAlongsideHermesWithCustomRootSupport() throws {
         let suite = "AsideRegistration-\(UUID())"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
-        defer { defaults.removePersistentDomain(forName: suite) }
+        defer { UserDefaults.removeTestSuite(suite) }
         let ids = UsageStore(autoRefresh: false, defaults: defaults).registeredProviderIDs
         XCTAssertTrue(ids.contains("aside"))
         XCTAssertTrue(ids.contains("hermes"))

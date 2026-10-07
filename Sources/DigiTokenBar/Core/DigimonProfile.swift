@@ -121,20 +121,6 @@ struct DigimonProfile: Codable, Sendable, Equatable {
             moves: [])
     }
 
-    /// Ditto's disguise is a different species identity, not an evolution. Keep the individual
-    /// values, but reroll every species-dependent field once Ditto's own metadata is available.
-    mutating func rebaseForSpeciesIdentity(from oldRarity: Rarity, to rarity: Rarity) {
-        let fraction = min(1, Double(max(0, growthTokens)) / Double(DigimonBalance.graduationTotal(oldRarity)))
-        let rebasedGrowth = Int((fraction * Double(DigimonBalance.graduationTotal(rarity))).rounded(.down))
-        gender = nil
-        abilitySlot = nil
-        abilityName = nil
-        abilityIsHidden = false
-        moves = []
-        self.growthTokens = rebasedGrowth
-        advanceGrowth(to: rebasedGrowth, rarity: rarity)
-    }
-
     mutating func enrich(with details: DigimonDetails) {
         var random = ProfileRNG(seed: seed ^ 0xA11B_1E5D_9EED)
         if gender == nil {

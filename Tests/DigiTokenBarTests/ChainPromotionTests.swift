@@ -60,7 +60,7 @@ final class ChainPromotionTests: XCTestCase {
         // 등록을 store 생성보다 **먼저** 해서 도중에 throw 해도 suite 가 남지 않게 한다.
         let suite = "chain-promotion-\(UUID())"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
-        addTeardownBlock { UserDefaults.standard.removePersistentDomain(forName: suite) }
+        addTeardownBlock { UserDefaults.removeTestSuite(suite) }
         return CompanionStore(provider: ChainStubProvider(value: line),
                               clock: { chainFixedNow }, fileURL: url, rng: SeededRNG(seed: rngSeed),
                               defaults: defaults)
@@ -373,7 +373,7 @@ final class ChainPromotionTests: XCTestCase {
 
         let suite = "chain-promotion-\(UUID())"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
-        defer { defaults.removePersistentDomain(forName: suite) }
+        defer { UserDefaults.removeTestSuite(suite) }
         let s = CompanionStore(provider: ChainStubProvider(value: cVmonLine),
                                clock: { chainFixedNow }, fileURL: url, rng: SeededRNG(seed: 7),
                                defaults: defaults)
