@@ -49,12 +49,16 @@ final class EvoLineNameTests: XCTestCase {
 }
 
 final class PokeAPILanguageTests: XCTestCase {
+    /// `apiCodes` 는 `localizedName` 이 이름을 고르는 우선순위다(CompanionModel: resolve(preferredCodes:)).
+    /// 기대값을 리터럴로 고정한다 — `AppLanguage.allCases.flatMap(\.apiCodes)` 로 적으면 단언이
+    /// 자기 자신과의 비교(동어반복)가 되어 코드 변경을 하나도 잡지 못한다.
     func testFetchedLanguageCodesMatchAppLanguageAPICodesWithoutDuplicates() {
-        let expected = AppLanguage.allCases.flatMap(\.apiCodes)
+        let expected = ["ko", "en", "ja-hrkt", "ja", "es", "fr", "pt-br", "pt", "de"]
+        let codes = AppLanguage.allCases.flatMap(\.apiCodes)
 
-        XCTAssertEqual(PokeAPIClient.langCodes, expected)
-        XCTAssertEqual(Set(PokeAPIClient.langCodes).count, PokeAPIClient.langCodes.count)
-        XCTAssertTrue(PokeAPIClient.langCodes.contains("de"))
+        XCTAssertEqual(codes, expected)
+        XCTAssertEqual(Set(codes).count, codes.count)
+        XCTAssertTrue(codes.contains("de"))
     }
 }
 

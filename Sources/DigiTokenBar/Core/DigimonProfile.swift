@@ -16,11 +16,6 @@ struct DigimonDetails: Codable, Sendable, Equatable {
 
     var baseStatTotal: Int { baseStats.values.reduce(0, +) }
 
-    /// Invariant: hatchable species are bounded by `DigimonAssets.queryableSpeciesIDs`
-    /// (the PokéAPI query range — no longer an animated-sprite constraint; that axis was
-    /// removed 2026-09-22). Keep this learnset selection in sync if that bound is ever raised.
-    static let preferredVersionGroup = "black-2-white-2"
-
     func levelUpMoves(through level: Int) -> [DigimonKnownMove] {
         var bestByName: [String: Int] = [:]
         for move in moves {

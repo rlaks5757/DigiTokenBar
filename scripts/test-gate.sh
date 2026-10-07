@@ -6,10 +6,17 @@
 #   2) swift test 전체 통과
 #   3) "로직 코어" 파일 집합의 라인 커버리지 >= THRESHOLD
 #
-# 로직 코어 = 결정적으로 단위 테스트 가능한 파일만 포함. ProcessRunner / PokeAPIClient /
-# CcusageProvider / CodexRateLimitsProvider / OAuthLimitsProvider / UpdateChecker /
-# BinaryLocator 는 실제 서브프로세스·네트워크·Keychain 의존이라 단위 커버리지 대상에서 제외
+# 로직 코어 = 결정적으로 단위 테스트 가능한 파일만 포함. ProcessRunner / CcusageProvider /
+# CodexRateLimitsProvider / OAuthLimitsProvider / UpdateChecker / BinaryLocator 는 실제
+# 서브프로세스·네트워크·Keychain 의존이라 단위 커버리지 대상에서 제외
 # (해당 부분은 파서/순수 헬퍼만 별도로 테스트됨).
+#
+# ⚠️ 알려진 결함: 아래 `llvm-cov report` 는 위치 인자 소스 필터를 무시하고 바이너리 전체
+# (테스트 파일 포함)를 집계한다 → 출력되는 COVER 는 LOGIC_CORE 수치가 아니며, 아래 배열을
+# 고쳐도 숫자가 바뀌지 않는다(= 배열 오타를 게이트가 잡지 못한다).
+# 실측(2026-10-07): 게이트 출력 ~81.7% vs LOGIC_CORE 실제 ~93.5% (둘 다 실행마다 소폭 변동).
+# 올바른 산출은 `llvm-cov export --summary-only` 후 LOGIC_CORE 파일만 합산하는 것.
+# 임계값 의미가 바뀌는 변경이라 별도 작업으로 분리했다.
 #
 # 사용:  ./scripts/test-gate.sh          # 게이트 실행
 #        THRESHOLD=75 ./scripts/test-gate.sh   # 임계값 임시 상향
@@ -21,11 +28,9 @@ THRESHOLD="${THRESHOLD:-75}"
 
 LOGIC_CORE=(
   "Sources/DigiTokenBar/Core/CompanionModel.swift"
-  "Sources/DigiTokenBar/Core/UnownForm.swift"
   "Sources/DigiTokenBar/Core/CollectionWeight.swift"
   "Sources/DigiTokenBar/Core/CompanionStore.swift"
-  "Sources/DigiTokenBar/Core/PokemonProfile.swift"
-  "Sources/DigiTokenBar/Core/PokemonNameLocalization.swift"
+  "Sources/DigiTokenBar/Core/DigimonLineProviding.swift"
   "Sources/DigiTokenBar/Core/LocalizationErrors.swift"
   "Sources/DigiTokenBar/Core/UsageStore.swift"
   "Sources/DigiTokenBar/Core/Models.swift"
