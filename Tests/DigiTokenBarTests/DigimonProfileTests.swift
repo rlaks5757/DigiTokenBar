@@ -167,30 +167,10 @@ final class DigimonProfileLogicTests: XCTestCase {
     }
 }
 
-final class DigimonDetailNormalizationTests: XCTestCase {
-    func testParserKeepsOnlySupportedVersionGroupBeforeCaching() {
-        let supported = PokemonMoveVersionDTO(
-            level_learned_at: 5,
-            move_learn_method: NamedRef(name: "level-up", url: nil),
-            version_group: NamedRef(name: DigimonDetails.preferredVersionGroup, url: nil))
-        let unsupported = PokemonMoveVersionDTO(
-            level_learned_at: 9,
-            move_learn_method: NamedRef(name: "level-up", url: nil),
-            version_group: NamedRef(name: "scarlet-violet", url: nil))
-        let moves = [
-            PokemonMoveDTO(move: NamedRef(name: "mixed", url: nil),
-                           version_group_details: [supported, unsupported]),
-            PokemonMoveDTO(move: NamedRef(name: "future-only", url: nil),
-                           version_group_details: [unsupported]),
-        ]
-
-        let normalized = PokeAPIClient.normalizedMoves(moves)
-
-        XCTAssertEqual(normalized.map(\.name), ["mixed"])
-        XCTAssertEqual(normalized[0].learnMethods,
-                       [DigimonMoveLearnMethod(method: "level-up", level: 5)])
-    }
-}
+// 기술 정규화(`PokeAPIClient.normalizedMoves`)와 그 테스트는 주체와 함께 삭제됐다 — 테스트가
+// 조용히 사라진 게 아니다. 프로덕션 `detailProvider` 는 nil 이라 `profile.moves` 는 항상 빈
+// 배열이었고, 입력 타입(`PokemonMoveDTO`/`PokemonMoveVersionDTO`)도 이 함수 전용이었다.
+// 세이브에서 들어온 `moves` 를 클램프하는 수입 경계는 별개이며 아래 sanitize 테스트가 지킨다.
 
 /// 이식 세이브는 다른 기기에서 온 파일이고 `DigimonProfile` 은 합성 디코더라 파일이 말하는 값을 그대로
 /// 받는다. 즉 `SaveTransfer.sanitized` 가 손편집된 세이브와 상세 화면 사이의 유일한 관문이다.

@@ -55,7 +55,6 @@ final class DigimonNameLocalizationTests: XCTestCase {
         XCTAssertNil(AppLanguage.ko.resolveName(["fr": "Charge"]))
         XCTAssertEqual(AppLanguage.pt.apiCodes, ["pt-br", "pt"])
         XCTAssertEqual(AppLanguage.ja.apiCodes, ["ja-hrkt", "ja"])
-        XCTAssertEqual(PokeAPIClient.langCodes, AppLanguage.allCases.flatMap(\.apiCodes))
     }
 
     func testParserPreservesFutureLanguagesAndIgnoresEmptyValues() throws {

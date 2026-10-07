@@ -422,7 +422,7 @@ final class CompanionStore {
     ///
     /// 격자는 저장된 이름만 읽으므로 백필이 없으면 칸이 종 번호(`#41`)로 남는다. 동행 기록는 행이
     /// 뜰 때 행 단위로 같은 일을 해 왔지만, 로그를 한 번도 안 열면 격자는 계속 번호다.
-    /// 라인 조회는 `PokeAPIClient` 가 base 단위로 캐시하므로 같은 라인이 여러 항목이어도 네트워크는 1회.
+    /// 라인 조회는 번들 JSON 에서 즉시 해결되므로 같은 라인이 여러 항목이어도 비용은 1회.
     /// 오프라인이면 `dexResolveChainNames` 가 저장 없이 폴백만 돌려주므로 다음 진입에서 다시 시도한다.
     func backfillMissingDexNames() async {
         for entry in state.dex where entry.needsNamesRefresh {
@@ -2090,7 +2090,7 @@ final class CompanionStore {
     /// **기본 provider(`DigimonLineProvider`) 기준으로는 위 설명 중 "PokéAPI 1~5세대 base 전체
     /// (329종)"·"공식 capture_rate"·"GraphQL/30일 캐시"는 더 이상 사실이 아니다** — 인덱스는 번들
     /// JSON 12라인 고정이고 captureRate 는 등급에서 유도한 값이다(네트워크 호출 없음). 이 문단은
-    /// `PokeAPIClient` 처럼 실제 PokéAPI 에 붙는 provider 를 주입했을 때만 유효하다.
+    /// 네트워크에 붙는 `DigimonLineProviding` 구현을 주입했을 때만 유효하다(현재 그런 구현은 없다).
     private func chooseBase() async -> Int? {
         let tier = state.eggTier
         if let full = try? await provider.baseSpeciesIndex(), !full.isEmpty {
@@ -2170,7 +2170,7 @@ final class CompanionStore {
         // **기본 provider(`DigimonLineProvider`) 에서는 이 분기가 도달 불가다** —
         // `baseSpeciesIndex()` 가 throw 하지 않고 번들 JSON 에 라인이 있는 한 항상 비어있지 않은
         // 배열을 반환하므로 위 `if` 가 항상 성립한다. `chooseBaseViaREST()` 도 함께 죽은 코드가
-        // 됐지만, `PokeAPIClient` 처럼 실제로 throw 할 수 있는 provider 를 주입하면 여전히 유효한
+        // 됐지만, 프로토콜이 `throws` 라 실제로 throw 하는 provider 를 주입하면 여전히 유효한
         // 폴백이므로 코드는 남겨둔다.
         AppLog.write("hatch: base index unavailable — REST fallback")
         return await chooseBaseViaREST()

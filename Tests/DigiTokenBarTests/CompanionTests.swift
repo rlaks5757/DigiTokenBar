@@ -2066,16 +2066,12 @@ private struct FailingPokeProvider: DigimonLineProviding {
     }
 }
 
-// MARK: PokéAPI SSRF 가드 (evolution_chain URL 검증 — 응답 변조 시 임의 호스트 fetch 방지)
-
-final class PokeAPIGuardTests: XCTestCase {
-    func testValidatedChainURLAcceptsPokeapiHttps() {
-        XCTAssertNotNil(PokeAPIClient.validatedChainURL("https://pokeapi.co/api/v2/evolution-chain/1/"))
-    }
-    func testValidatedChainURLRejectsUntrusted() {
-        XCTAssertNil(PokeAPIClient.validatedChainURL("https://evil.example.com/x"), "임의 호스트 거부(SSRF)")
-        XCTAssertNil(PokeAPIClient.validatedChainURL("https://pokeapi.co.evil.com/x"), "유사 호스트 거부")
-        XCTAssertNil(PokeAPIClient.validatedChainURL("http://pokeapi.co/x"), "http 거부(https 고정)")
-        XCTAssertNil(PokeAPIClient.validatedChainURL(""), "빈 문자열 거부")
-    }
-}
+// PokéAPI SSRF 가드(`validatedChainURL`)와 그 테스트는 주체인 `PokeAPIClient` 와 함께 삭제됐다.
+// 그 가드는 *서버 제어 문자열*(`baseSpecies.evolution_chain.url`)을 검증했고, 그 호출부가 사라졌다.
+// 디지몬 종·메타데이터 쪽에 남은 유일한 조립부인 `DigimonNameLocalization.swift:95` 는 호스트를
+// 리터럴로 두고 경로를 로컬 enum(`Kind: String`) + `DigimonNameResource.isValid` 의 `[a-z0-9-]`
+// 화이트리스트로 제한한다. `Sources` 전체에는 `URL(string:)` 가 17곳 더 있으나 호스트는 모두
+// 리터럴이거나 로컬에서 조립한 값이고, *서버 제어 문자열*을 URL 로 만드는 축은
+// `UpdateChecker.swift:61`(응답의 `html_url` → `NSWorkspace.open`) 뿐이며 그쪽은 자체
+// `https` + `github.com` 가드를 갖고 있다.
+// 따라서 SSRF 축은 이 가드 없이도 독립적으로 보호된다.
