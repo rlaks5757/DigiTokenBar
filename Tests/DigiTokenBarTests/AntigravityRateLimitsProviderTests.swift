@@ -89,7 +89,7 @@ final class AntigravityRateLimitsProviderTests: XCTestCase {
 
         let suite = "test.antigravity.limits.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
-        defer { defaults.removePersistentDomain(forName: suite) }
+        defer { UserDefaults.removeTestSuite(suite) }
 
         defaults.set(true, forKey: "showLimitInMenu")
 

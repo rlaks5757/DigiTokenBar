@@ -24,7 +24,7 @@ final class DifficultyTests: XCTestCase {
         // 계속 쓰므로, 헬퍼 스코프에서 도메인을 지우면 아직 살아 있는 store 밑을 빼는 셈이 된다.
         let suiteName = "ptb-diff-\(UUID().uuidString)"
         let suite = UserDefaults(suiteName: suiteName)!
-        addTeardownBlock { UserDefaults.standard.removePersistentDomain(forName: suiteName) }
+        addTeardownBlock { UserDefaults.removeTestSuite(suiteName) }
         suite.set(growth, forKey: "growthDifficulty")
         suite.set(shop, forKey: "shopDifficulty")
         return CompanionStore(provider: StubDiffProvider(value: line()),

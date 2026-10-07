@@ -27,7 +27,7 @@ final class DifficultySaveTests: XCTestCase {
         // 두 번째 store 까지 만든다. 등록을 store 생성보다 **먼저** 해서 도중에 throw 해도 남지 않게 한다.
         let suite = "difficulty-save-\(UUID())"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
-        addTeardownBlock { UserDefaults.standard.removePersistentDomain(forName: suite) }
+        addTeardownBlock { UserDefaults.removeTestSuite(suite) }
         defaults.set(difficulty, forKey: "growthDifficulty")
         defaults.set(20.0, forKey: "shopDifficulty")
         let store = CompanionStore(provider: DifficultySaveProvider(), fileURL: url,

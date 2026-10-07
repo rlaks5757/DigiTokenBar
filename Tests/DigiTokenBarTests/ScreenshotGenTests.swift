@@ -137,7 +137,7 @@ final class ScreenshotGenTests: XCTestCase {
         let l = L(language)
         let suite = "PaceShot-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
-        defer { defaults.removePersistentDomain(forName: suite) }
+        defer { UserDefaults.removeTestSuite(suite) }
         let store = UsageStore(providers: [], autoRefresh: false, defaults: defaults)
 
         /// PopoverView.quotaRow 와 같은 구성 — 그 함수는 private 이라 여기서 형태만 맞춘다.

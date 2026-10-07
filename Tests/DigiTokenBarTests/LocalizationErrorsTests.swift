@@ -43,7 +43,7 @@ final class LocalizationErrorsTests: XCTestCase {
     @MainActor func testStoredErrorsFollowLanguageChangesAndKeepDiagnostics() async {
         let suite = "localization-errors-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
-        defer { defaults.removePersistentDomain(forName: suite) }
+        defer { UserDefaults.removeTestSuite(suite) }
         defaults.set(0, forKey: "refreshInterval")
         defaults.set(false, forKey: "statusChecksEnabled")
         let store = UsageStore(providers: [ErrorUsageProvider()],
