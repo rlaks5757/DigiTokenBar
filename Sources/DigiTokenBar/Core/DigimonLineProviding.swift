@@ -25,4 +25,4 @@ protocol DigimonDetailProviding: Sendable {
 // MARK: - 이름 응답 DTO (`DigimonNameLocalization` 이 디코드)
 
 struct NameDTO: Decodable, Sendable { let name: String; let language: NamedRef }
-struct NamedRef: Decodable, Sendable { let name: String; let url: String? }
+struct NamedRef: Decodable, Sendable { let name: String }
