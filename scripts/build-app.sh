@@ -33,6 +33,10 @@ for key in $LINE_KEYS; do
     cp "Resources/digivolution.$key.html" "$APP/Contents/Resources/digivolution.$key.html"
     [[ -s "$APP/Contents/Resources/digivolution.$key.html" ]] || { echo "✗ digivolution.$key.html 복사 실패" >&2; exit 1; }
 done
+# MIT 라이선스 고지 — chattymin/PokeTokenBar 포크이므로 원저작권 고지를 배포물에 동반해야 한다.
+# codesign 전에 복사해야 한다: 서명 seal 은 Contents/ 전체를 봉인하므로 서명 후 추가하면 무효화된다.
+cp LICENSE "$APP/Contents/Resources/LICENSE"
+[[ -s "$APP/Contents/Resources/LICENSE" ]] || { echo "✗ LICENSE 복사 실패" >&2; exit 1; }
 
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>

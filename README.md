@@ -80,7 +80,7 @@ swift build
 ./scripts/test-gate.sh
 ```
 
-python 테스트 → swift 테스트(1163개) → 로직 코어 커버리지(≥75%) 순으로 검사합니다.
+python 테스트 → swift 테스트 → 로직 코어 커버리지(≥90%) 순으로 검사합니다.
 
 ---
 
